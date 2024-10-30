@@ -36,7 +36,6 @@ const originalTitle = document.title;
 
 // State variables
 let replyingTo = null;
-let isUserListVisible = false;
 let typingTimeout;
 let currentUser = null;
 let typingUsers = new Set();
@@ -59,13 +58,6 @@ var socketio = io({
 });
 
 // Helper functions
-const createTypingIndicator = () => {
-  const typingIndicator = document.createElement("div");
-  typingIndicator.className = "typing-indicator";
-  typingIndicator.style.display = "none";
-  messages.parentNode.insertBefore(typingIndicator, messages.nextSibling);
-  return typingIndicator;
-};
 
 const updatePageTitle = () => {
   if (unreadCount > 0) {
@@ -111,8 +103,6 @@ const updateLocalStorage = (key, value) => {
 };
 
 document.addEventListener("visibilitychange", handleVisibilityChange);
-
-const typingIndicator = createTypingIndicator();
 
 // Responsive message spacing variables
 let MESSAGE = {
@@ -281,6 +271,162 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   addEventListeners(messageBubble, messageId, msg);
 
   return element;
+};
+
+const createTypingIndicator = (name) => {
+  const element = document.createElement("div");
+  element.style.padding = `${MESSAGE.padding.vertical}px ${MESSAGE.padding.horizontal}px`;
+  element.style.display = 'flex';
+  element.style.alignItems = 'flex-start';
+  element.style.gap = `${MESSAGE.photo.gap}px`;
+  element.className = 'typing-indicator group hover:bg-gray-50/5 transition-colors duration-200';
+
+  // Profile photo section
+  const profilePhotoContainer = document.createElement("div");
+  profilePhotoContainer.style.flexShrink = '0';
+  const profilePhoto = document.createElement("img");
+  profilePhoto.src = `/profile_photos/${name}`;
+  profilePhoto.alt = `${name}'s profile`;
+  profilePhoto.style.width = `${MESSAGE.photo.size}px`;
+  profilePhoto.style.height = `${MESSAGE.photo.size}px`;
+  profilePhoto.className = "rounded-full object-cover ring-1 ring-white dark:ring-gray-800 shadow-sm";
+  profilePhoto.onerror = function() {
+    this.src = '/static/images/default-profile.png';
+  };
+  profilePhotoContainer.appendChild(profilePhoto);
+  element.appendChild(profilePhotoContainer);
+
+  // Message container
+  const messageContainer = document.createElement("div");
+  messageContainer.style.maxWidth = getResponsiveMaxWidth();
+  messageContainer.className = "relative";
+
+  // User name
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block";
+  nameSpan.textContent = name;
+  messageContainer.appendChild(nameSpan);
+
+  // Typing bubble
+  const typingBubble = document.createElement("div");
+  typingBubble.className = "bg-gray-100 dark:bg-gray-800 rounded-t-2xl rounded-r-2xl rounded-bl-lg p-4";
+  typingBubble.style.width = "fit-content";
+
+  // Dots container
+  const dotsContainer = document.createElement("div");
+  dotsContainer.className = "flex gap-1";
+
+  // Create three dots with animation
+  for (let i = 0; i < 3; i++) {
+    const dot = document.createElement("div");
+    dot.className = "w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500";
+    dot.style.animation = `typingAnimation 1.4s infinite`;
+    dot.style.animationDelay = `${i * 0.2}s`;
+    dotsContainer.appendChild(dot);
+  }
+
+  typingBubble.appendChild(dotsContainer);
+  messageContainer.appendChild(typingBubble);
+  element.appendChild(messageContainer);
+
+  return element;
+};
+
+// Add CSS animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes typingAnimation {
+    0%, 60%, 100% {
+      transform: translateY(0);
+      opacity: 0.4;
+    }
+    30% {
+      transform: translateY(-4px);
+      opacity: 1;
+    }
+  }
+`;
+document.head.appendChild(style);
+
+// Modified typing indicator management
+let typingIndicators = new Map(); // Map to store typing indicators by user
+
+const updateTypingIndicators = () => {
+  const typingContainer = document.getElementById('typing-indicators-container') || (() => {
+    const container = document.createElement('div');
+    container.id = 'typing-indicators-container';
+    messages.parentNode.insertBefore(container, messages.nextSibling);
+    return container;
+  })();
+
+  // Clear existing indicators for users who stopped typing
+  for (const [user, indicator] of typingIndicators.entries()) {
+    if (!typingUsers.has(user)) {
+      indicator.remove();
+      typingIndicators.delete(user);
+    }
+  }
+
+  // Add indicators for new typing users
+  for (const user of typingUsers) {
+    if (!typingIndicators.has(user)) {
+      const indicator = createTypingIndicator(user);
+      typingIndicators.set(user, indicator);
+      typingContainer.appendChild(indicator);
+    }
+  }
+};
+
+// Modified socket event handler
+socketio.on("typing", (data) => {
+  if (data.isTyping) {
+    typingUsers.add(data.name);
+  } else {
+    typingUsers.delete(data.name);
+  }
+  updateTypingIndicators();
+});
+
+// Modified input event handler
+messageInput.addEventListener("keyup", (event) => {
+  if (event.key === "Enter") {
+    sendMessage();
+  } else {
+    if (!typingTimeout) {
+      socketio.emit("typing", { isTyping: true });
+    }
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      socketio.emit("typing", { isTyping: false });
+      typingTimeout = null;
+    }, TYPING_TIMEOUT);
+  }
+});
+
+const sendMessage = () => {
+  const message = messageInput.value.trim();
+  
+  if (message || imageUpload.files.length > 0) {
+    // If there's an image selected, handle it through the image upload event listener
+    if (imageUpload.files.length > 0) {
+      imageUpload.dispatchEvent(new Event('change'));
+    } else {
+      // Otherwise, just send the text message
+      const messageData = {
+        data: message,
+        replyTo: replyingTo ? replyingTo.id : null
+      };
+      socketio.emit("message", messageData);
+    }
+
+    // Clear the input and reply state
+    messageInput.value = "";
+    cancelReply();
+
+    // Clear the typing indicator
+    clearTimeout(typingTimeout);
+    socketio.emit("typing", { isTyping: false });
+  }
 };
 
 // Event listener to adjust max width on window resize
@@ -604,22 +750,6 @@ const editMessage = (messageId) => {
   input.addEventListener('blur', handleEdit);
 };
 
-const updateTypingIndicator = () => {
-  const typingArray = Array.from(typingUsers);
-  let typingText = '';
-
-  if (typingArray.length === 1) {
-    typingText = `${typingArray[0]} is typing...`;
-  } else if (typingArray.length === 2) {
-    typingText = `${typingArray[0]} and ${typingArray[1]} are typing...`;
-  } else if (typingArray.length > 2) {
-    typingText = `${typingArray[0]}, ${typingArray[1]}, and ${typingArray.length - 2} more are typing...`;
-  }
-
-  typingIndicator.textContent = typingText;
-  typingIndicator.style.display = typingArray.length > 0 ? "block" : "none";
-};
-
 const deleteMessage = async (messageId) => {
   if (confirm('Are you sure you want to delete this message?')) {
     const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
@@ -648,44 +778,6 @@ const deleteMessage = async (messageId) => {
     socketio.emit('delete_message', { messageId });
   }
 };
-const sendMessage = () => {
-  const message = messageInput.value.trim();
-  
-  if (message || imageUpload.files.length > 0) {
-    // If there's an image selected, handle it through the image upload event listener
-    if (imageUpload.files.length > 0) {
-      imageUpload.dispatchEvent(new Event('change'));
-    } else {
-      // Otherwise, just send the text message
-      const messageData = {
-        data: message,
-        replyTo: replyingTo ? replyingTo.id : null
-      };
-      socketio.emit("message", messageData);
-    }
-
-    // Clear the input and reply state
-    messageInput.value = "";
-    cancelReply();
-
-    // Clear the typing indicator
-    clearTimeout(typingTimeout);
-    socketio.emit("typing", { isTyping: false });
-  }
-};
-
-// Event listeners
-messageInput.addEventListener("keyup", (event) => {
-  if (event.key === "Enter") {
-    sendMessage();
-  } else {
-    socketio.emit("typing", { isTyping: true });
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      socketio.emit("typing", { isTyping: false });
-    }, TYPING_TIMEOUT);
-  }
-});
 
 socketio.on('update_reactions', (data) => {
   const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
@@ -1035,15 +1127,6 @@ socketio.on("delete_message", (data) => {
     // Remove the entire message element
     messageElement.remove();
   }
-});
-
-socketio.on("typing", (data) => {
-  if (data.isTyping) {
-    typingUsers.add(data.name);
-  } else {
-    typingUsers.delete(data.name);
-  }
-  updateTypingIndicator();
 });
 
 socketio.on("connect", () => {

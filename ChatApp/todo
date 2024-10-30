@@ -1,38 +1,59 @@
-1. Fix reactions to messages 
-    -  this is a error in chat.js 
-    (Also the code can be simplified)
+1. Fix reactions to messages
+   -  this is a error in chat.js
+   (Also the code can be simplified)
 
-2. Fix replys to messages 
-    - this is a error in chat.js
 
-3. Make notifcations work better
-    - notification icon
-    - mute chats
-    - vibrate devices 
-    - notification icons
+2. Fix replies to messages
+   - this is a error in chat.js
+
+
+3. Make notifications work better
+   - notification icon
+   - mute chats
+   - vibrate devices
+   - notification icons
+
 
 4. Add profile photos to chats
-    - add profile photo cache to service workeer
+   - add profile photo cache to service worker
 
-5. Add a profile photo cache 
-    - main.py 
-    - service worker
+
+5. Add a profile photo cache
+   - main.py
+   - service worker
+
 
 6. Make rooms display better on homepage
-    - make a verticle room list
+   - make a vertical room list
+
 
 7. Fix jumping to messages
-    - I have no idea how to fix this
+   - I have no idea how to fix this
 
-8. Add basic E2E encription to messages
+
+8. Add basic E2E encryption to messages
+
 
 9. Improve messages bubble.
 
-11. Patch security vunrabilites
+
+11. Patch security vulnerabilities
+
 
 12. Dockerise it
-    - Use gevenlet for deploying
+   - Use gevenlet for deploying
+
 
 10. Simplify all around code
-    -Add comments
-    -improve strucute
+   -Add comments
+   -improve structure
+
+
+11. Gif API
+
+
+12. Image model
+
+
+13. Improved typing bubbles
+
