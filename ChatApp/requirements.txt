@@ -1,0 +1,15 @@
+flask
+flask-socketio 
+redis 
+Werkzeug
+requests
+Pillow
+Flask-WTF
+pymongo
+firebase-admin
+python-dotenv
+flask-cors
+flask_login
+apscheduler
+python-Levenshtein
+fuzzywuzzy

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Channel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Channel - a simple, modern chatroom-based messaging app for real-time conversations. Join and connect instantly.">
+    <meta name="keywords" content="Chat app, messaging app, real-time chat, chatroom, social app">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    
+    <!-- Open Graph (OG) Tags for Social Sharing -->
+    <meta property="og:title" content="Channel - Modern Chat App">
+    <meta property="og:description" content="Connect instantly with Channel, a modern chatroom-based messaging app for real-time conversations.">
+    <meta property="og:image" content="{{ url_for('static', filename='images/preview.png') }}">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:type" content="website">
+
+    <!-- Twitter Card Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Channel - Modern Chat App">
+    <meta name="twitter:description" content="A simple, real-time chatroom app for seamless communication.">
+    <meta name="twitter:image" content="{{ url_for('static', filename='images/preview.png') }}">
+
+    <!-- PWA and Theme Configuration -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="apple-mobile-web-app-status-bar" content="#4E46DC">
+    <meta name="theme-color" content="#4E46DC">
+    <link rel="icon" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+    <link rel="apple-touch-icon" href="/static/icons/icon-96x96.png" sizes="96x96">
+    <link rel="apple-touch-icon" href="/static/icons/icon-152x152.png" sizes="152x152">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png" sizes="192x192">
+    <link rel="apple-touch-icon" href="/static/icons/icon-512x512.png" sizes="512x512">
+
+    <!-- Canonical Tag -->
+    <link rel="canonical" href="{{ request.url }}">
+
+    <!-- Robots Meta Tag -->
+    <meta name="robots" content="index, follow">
+
+    <!-- Tailwind CSS and Custom Theme -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        indigo: { 50: '#EEF2FF', 500: '#6366F1', 600: '#4F46E5', 700: '#4338CA' },
+                        purple: { 50: '#F5F3FF', 500: '#8B5CF6', 600: '#7C3AED' },
+                        pink: { 50: '#FDF2F8' },
+                        gray: { 50: '#F9FAFB', 100: '#F3F4F6', 200: '#E5E7EB', 300: '#D1D5DB', 500: '#6B7280', 600: '#4B5563', 700: '#374151', 800: '#1F2937', 900: '#111827' }
+                    },
+                    height: { screen: '100vh', '[100dvh]': '100dvh' },
+                },
+            },
+        };
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+        }
+    </style>
+
+    <!-- Structured Data (JSON-LD) for SEO -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Channel",
+        "operatingSystem": "Web",
+        "applicationCategory": "CommunicationApplication",
+        "description": "A modern chatroom-based messaging app for real-time conversations.",
+        "url": "{{ request.url }}",
+        "image": "{{ url_for('static', filename='images/preview.png') }}",
+        "softwareVersion": "1.0.0",
+        "inLanguage": "en",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        }
+    }
+    </script>
+</head>
+
+<body class="h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
+
+    <!-- Main Content Area -->
+    <div class="content">
+        {% block content %} 
+        {% endblock %}
+    </div>
+
+    <!-- Dark Mode Script based on localStorage and System Preference -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const html = document.documentElement;
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (localStorage.getItem('darkMode') === 'dark' || (!localStorage.getItem('darkMode') && prefersDark)) {
+                html.classList.add('dark');
+            } else {
+                html.classList.remove('dark');
+            }
+        });
+    </script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/firebase-messaging-sw.js')
+                    .then(registration => console.log('Service Worker registered with scope:', registration.scope))
+                    .catch(err => console.log('Service Worker registration failed:', err));
+            }
+        });
+    </script>
+
+    <!-- Heartbeat Logic for Server Connection -->
+    <script>
+        let heartbeatInterval;
+
+        function sendHeartbeat() {
+            fetch('/heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            }).then(response => {
+                if (!response.ok) console.error('Heartbeat failed');
+            }).catch(error => console.error('Error:', error));
+        }
+
+        function startHeartbeat() {
+            sendHeartbeat();
+            console.log("Initial heartbeat sent!");
+            heartbeatInterval = setInterval(sendHeartbeat, 4 * 60 * 1000); // Every 4 minutes
+        }
+
+        function stopHeartbeat() {
+            clearInterval(heartbeatInterval);
+            fetch('/stop_heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            }).then(response => {
+                if (!response.ok) console.error('Failed to stop heartbeat');
+            }).catch(error => console.error('Error:', error));
+        }
+
+        startHeartbeat();
+        window.addEventListener('beforeunload', stopHeartbeat);
+    </script>
+
+    <!-- Additional Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" defer></script>
+
+</body>
+
+</html>

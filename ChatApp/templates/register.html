@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
+    <style>
+        /* Improved styling with transitions and better mobile support */
+        #background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+        }
+        
+        .form-container {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            width: 100%;
+            max-width: 450px;
+        }
+        
+        .form-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.15);
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .input-group input:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            outline: none;
+        }
+
+        .input-group label {
+            position: absolute;
+            left: 1rem;
+            top: 0.75rem;
+            color: #6b7280;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            background: transparent;
+            padding: 0 0.25rem;
+        }
+
+        .input-group input:focus + label,
+        .input-group input:not(:placeholder-shown) + label {
+            top: -0.5rem;
+            left: 0.75rem;
+            font-size: 0.875rem;
+            color: #4f46e5;
+            background: white;
+        }
+
+        @media (max-width: 640px) {
+            .form-container {
+                padding: 1.5rem;
+                margin: 1rem;
+            }
+        }
+
+        /* Dark mode improvements */
+        @media (prefers-color-scheme: dark) {
+            #background {
+                background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+            }
+            
+            .form-container {
+                background: rgba(31, 41, 55, 0.95);
+            }
+            
+            .input-group input {
+                background: rgba(55, 65, 81, 0.9);
+                border-color: #4b5563;
+            }
+            
+            .input-group input:focus + label,
+            .input-group input:not(:placeholder-shown) + label {
+                background: #1f2937;
+            }
+        }
+    </style>
+
+    <!-- Background Particles Container -->
+    <div id="background"></div>
+
+    <!-- Enhanced Form Container -->
+    <div class="form-container">
+        <h2 class="text-3xl font-extrabold text-gray-900 text-center mb-8 dark:text-white">Join the Conversation</h2>
+        
+        <!-- Registration Form with improved styling -->
+        <form class="space-y-6" action="{{ url_for('register') }}" method="POST">
+            <div class="input-group">
+                <input id="username" name="username" type="text" required placeholder=" ">
+                <label for="username">Username</label>
+            </div>
+            
+            <div class="input-group">
+                <input id="password" name="password" type="password" required placeholder=" ">
+                <label for="password">Password</label>
+            </div>
+            
+            <div class="input-group">
+                <input id="confirm_password" name="confirm_password" type="password" required placeholder=" ">
+                <label for="confirm_password">Confirm Password</label>
+            </div>
+
+            <button type="submit" 
+                    class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg 
+                           font-medium transition-colors duration-200 ease-in-out transform hover:scale-[1.02] 
+                           active:scale-[0.98] dark:bg-indigo-500 dark:hover:bg-indigo-600">
+                Create Account
+            </button>
+        </form>
+        
+        <!-- Improved sign-in link -->
+        <p class="mt-8 text-center text-sm text-gray-600 dark:text-gray-300">
+            Already have an account?
+            <a href="{{ url_for('login') }}" 
+               class="ml-1 font-medium text-indigo-600 hover:text-indigo-500 
+                      transition-colors duration-200 dark:text-indigo-400 dark:hover:text-indigo-300">
+                Sign in
+            </a>
+        </p>
+    </div>
+
+    <!-- Enhanced Particles.js Script -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        // Detect if device is mobile
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Adjust particle count and size based on screen size
+        const particleCount = isMobile ? 50 : 120;
+        const particleSize = isMobile ? 3 : 4;
+        
+        particlesJS("background", {
+            particles: {
+                number: { 
+                    value: particleCount,
+                    density: { enable: true, value_area: 800 } 
+                },
+                color: { 
+                    value: ["#6366f1", "#4f46e5", "#3b82f6", "#2563eb", "#7c3aed"] 
+                },
+                shape: { 
+                    type: "circle",
+                    stroke: { width: 0 },
+                    polygon: { nb_sides: 6 } 
+                },
+                opacity: { 
+                    value: 0.6,
+                    random: true,
+                    anim: { 
+                        enable: true,
+                        speed: 0.8,
+                        opacity_min: 0.3,
+                        sync: false 
+                    } 
+                },
+                size: { 
+                    value: particleSize,
+                    random: true,
+                    anim: { 
+                        enable: true,
+                        speed: 2,
+                        size_min: 0.8,
+                        sync: false 
+                    } 
+                },
+                line_linked: { 
+                    enable: true,
+                    distance: isMobile ? 100 : 150,
+                    color: window.matchMedia('(prefers-color-scheme: dark)').matches ? "#4b5563" : "#a5b4fc",
+                    opacity: 0.4,
+                    width: 1 
+                },
+                move: {
+                    enable: true,
+                    speed: isMobile ? 1 : 1.5,
+                    direction: "none",
+                    random: true,
+                    straight: false,
+                    out_mode: "bounce",
+                    bounce: true,
+                    attract: { 
+                        enable: true,
+                        rotateX: 600,
+                        rotateY: 1200 
+                    }
+                }
+            },
+            interactivity: {
+                detect_on: "canvas",
+                events: {
+                    onhover: { 
+                        enable: true,
+                        mode: "bubble" 
+                    },
+                    onclick: { 
+                        enable: true,
+                        mode: "push" 
+                    },
+                    resize: true
+                },
+                modes: {
+                    bubble: {
+                        distance: 150,
+                        size: particleSize * 1.5,
+                        duration: 2,
+                        opacity: 0.8,
+                        speed: 3
+                    },
+                    push: { 
+                        particles_nb: isMobile ? 2 : 4 
+                    },
+                    repulse: { 
+                        distance: 100,
+                        duration: 0.4 
+                    }
+                }
+            },
+            retina_detect: true
+        });
+
+        // Adjust particles on theme change
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            const particles = window.pJSDom[0].pJS.particles;
+            particles.line_linked.color = event.matches ? "#4b5563" : "#a5b4fc";
+            particles.fn.particlesRefresh();
+        });
+
+        // Handle window resize
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (window.pJSDom && window.pJSDom[0]) {
+                    window.pJSDom[0].pJS.fn.vendors.destroypJS();
+                    window.pJSDom = [];
+                    particlesJS("background", config);
+                }
+            }, 250);
+        });
+    </script>
+</div>
+{% endblock %}
