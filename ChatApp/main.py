@@ -88,40 +88,171 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 def datetime_to_iso(dt):
     return dt.isoformat() if dt else None
 
-def send_push_notification(token, content):
-    message = messaging.Message(
-        notification=messaging.Notification(
-            title=f"New message from {content['name']}",
-            body=content['message']
-        ),
-        token=token,
-    )
-    
+class NotificationService:
+    def __init__(self, users_collection):
+        self.users_collection = users_collection
+        
+    def get_user_notification_settings(self, username):
+        user = self.users_collection.find_one(
+            {"username": username},
+            {"notification_settings": 1}
+        )
+        return user.get("notification_settings", {
+            "enabled": False,
+            "direct_messages": True,
+            "mentions": True,
+            "group_messages": True,
+            "sound_enabled": True,
+            "vibration_enabled": True
+        })
+
+    def update_notification_settings(self, username, settings):
+        return self.users_collection.update_one(
+            {"username": username},
+            {"$set": {"notification_settings": settings}}
+        )
+
+    def get_user_fcm_token(self, username):
+        user = self.users_collection.find_one(
+            {"username": username},
+            {"fcm_token": 1}
+        )
+        return user.get("fcm_token") if user else None
+
+    async def send_notification(self, recipient_username, notification_type, content):
+        try:
+            # Get recipient's notification settings and FCM token
+            recipient = self.users_collection.find_one({
+                "username": recipient_username
+            })
+            
+            if not recipient:
+                return False
+                
+            settings = recipient.get("notification_settings", {})
+            fcm_token = recipient.get("fcm_token")
+            
+            # Check if notifications are enabled and the specific type is enabled
+            if not settings.get("enabled") or not settings.get(notification_type, True):
+                return False
+                
+            if not fcm_token:
+                return False
+                
+            # Construct the notification based on type
+            notification = self._build_notification(notification_type, content)
+            
+            # Send the notification through Firebase
+            message = messaging.Message(
+                notification=messaging.Notification(
+                    title=notification["title"],
+                    body=notification["body"]
+                ),
+                data=notification.get("data", {}),
+                token=fcm_token
+            )
+            
+            response = messaging.send(message)
+            return bool(response)
+            
+        except Exception as e:
+            print(f"Error sending notification: {str(e)}")
+            return False
+            
+    def _build_notification(self, notification_type, content):
+        notifications = {
+            "direct_message": {
+                "title": f"New message from {content['sender']}",
+                "body": content['message'][:100] + ('...' if len(content['message']) > 100 else ''),
+                "data": {
+                    "type": "direct_message",
+                    "sender": content['sender'],
+                    "room_id": content.get('room_id', '')
+                }
+            },
+            "mention": {
+                "title": f"{content['sender']} mentioned you",
+                "body": content['message'][:100] + ('...' if len(content['message']) > 100 else ''),
+                "data": {
+                    "type": "mention",
+                    "sender": content['sender'],
+                    "room_id": content.get('room_id', '')
+                }
+            },
+            "group_message": {
+                "title": f"New message in {content['room_name']}",
+                "body": f"{content['sender']}: {content['message'][:100]}" + ('...' if len(content['message']) > 100 else ''),
+                "data": {
+                    "type": "group_message",
+                    "sender": content['sender'],
+                    "room_id": content['room_id'],
+                    "room_name": content['room_name']
+                }
+            }
+        }
+        
+        return notifications.get(notification_type, {
+            "title": "New Notification",
+            "body": "You have a new notification"
+        })
+
+# Initialize the notification service
+notification_service = NotificationService(users_collection)
+
+@app.route('/notification-settings', methods=['GET', 'POST'])
+@login_required
+def notification_settings():
+    if request.method == 'GET':
+        settings = notification_service.get_user_notification_settings(current_user.username)
+        return jsonify(settings)
+        
+    elif request.method == 'POST':
+        try:
+            settings = request.json
+            notification_service.update_notification_settings(current_user.username, settings)
+            return jsonify({"message": "Settings updated successfully"}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
+
+@app.route('/register-fcm-token', methods=['POST'])
+@login_required
+def register_fcm_token():
     try:
-        response = messaging.send(message)
+        data = request.json
+        fcm_token = data.get('token')
+        clear_all = data.get('clearAll', False)
+        
+        if clear_all:
+            # Clear the FCM token
+            users_collection.update_one(
+                {"username": current_user.username},
+                {"$unset": {"fcm_token": "", "notification_settings.enabled": ""}}
+            )
+            return jsonify({"message": "Notification settings cleared"}), 200
+            
+        if not fcm_token:
+            return jsonify({"error": "Token is required"}), 400
+            
+        # Update the user's FCM token and enable notifications
+        users_collection.update_one(
+            {"username": current_user.username},
+            {
+                "$set": {
+                    "fcm_token": fcm_token,
+                    "notification_settings.enabled": True
+                }
+            }
+        )
+        
+        return jsonify({"message": "FCM token registered successfully"}), 200
+        
     except Exception as e:
-        print('Error sending message:', e)
+        return jsonify({"error": str(e)}), 400
         
 @app.route('/firebase-messaging-sw.js')
 def serve_sw():
     root_dir = os.path.abspath(os.getcwd())  # Gets the current working directory (project root)
     return send_from_directory(root_dir, 'firebase-messaging-sw.js', mimetype='application/javascript')
-    
-@app.route('/register-fcm-token', methods=['POST'])
-@login_required
-def register_fcm_token():
-    data = request.json
-    fcm_token = data.get('token')
-    
-    if current_user.is_authenticated and fcm_token:
-        # Update the user's FCM token in MongoDB
-        users_collection.update_one(
-            {"username": current_user.username},
-            {"$set": {"fcm_token": fcm_token}},
-            upsert=True
-        )
-        return jsonify({"message": "FCM token registered successfully"}), 200
-    return jsonify({"error": "Invalid data"}), 400
 
 def save_profile_photo(file, username, current_photo_url=None):
     """Helper function to save and process profile photos, including removing old ones without cache invalidation."""
@@ -1099,45 +1230,37 @@ def get_room_data(room_code):
 def room(code):
     username = current_user.username
     
-    # If no code provided in URL, try to get it from session
     if code is None:
         code = session.get("room")
         if code is None:
             flash("No room code provided")
             return redirect(url_for("home"))
     
-    # Validate room existence
     room_data = rooms_collection.find_one({"_id": code})
     if not room_data:
         flash("Room does not exist")
         return redirect(url_for("home"))
 
-    # Set session data
     session["room"] = code
     session["name"] = username
     
     try:
-        # Get user data
         user_data = users_collection.find_one({"username": username})
         
-        # Update user's current room
         users_collection.update_one(
             {"username": username},
             {"$set": {"current_room": code}}
         )
         
-        # Initialize room data structure if needed
         room_data.setdefault("users", [])
         room_data.setdefault("messages", [])
         room_data.setdefault("created_by", "")
-        room_data.setdefault("name", "Unnamed Room")  # Default name if not set
+        room_data.setdefault("name", "Unnamed Room")
 
-        # Add friend status to messages
         user_friends = set(user_data.get("friends", []))
         for message in room_data["messages"]:
             message["is_friend"] = message["name"] in user_friends
         
-        # Get user list with online status and friend information
         user_list = []
         for user in room_data["users"]:
             user_profile = users_collection.find_one({"username": user})
@@ -1148,20 +1271,27 @@ def room(code):
                     "isFriend": user in user_friends
                 })
 
-        # Get friends list for invite functionality
         friends_data = []
         for friend in user_friends:
             friend_data = users_collection.find_one({"username": friend})
             if friend_data:
+                # Get room name if friend is in a room
+                room_name = "Unknown Room"
+                if friend_data.get("current_room"):
+                    friend_room_data = get_room_data(friend_data["current_room"])
+                    if friend_room_data:
+                        room_name = friend_room_data.get("name", "Unnamed Room")
+                
                 friends_data.append({
                     "username": friend,
                     "online": friend_data.get("online", False),
-                    "current_room": friend_data.get("current_room")
+                    "current_room": friend_data.get("current_room"),
+                    "room_name": room_name
                 })
         
         return render_template("room.html",
                             code=code,
-                            room_name=room_data["name"],  # Pass room name to template
+                            room_name=room_data["name"],
                             messages=room_data["messages"],
                             users=user_list,
                             username=username,
@@ -1264,13 +1394,53 @@ def message(data):
     sender_username = current_user.username
     room_users = room_data["users"]
     
+    # Prepare notification content
+    notification_content = {
+        'sender': sender_username,
+        'message': content['message'],
+        'room_id': str(room),
+        'room_name': room_data.get('name', 'Group Chat')
+    }
+    
     for username in room_users:
         if username != sender_username:
-            user_data = users_collection.find_one({"username": username}, {"fcm_token": 1})
-            if user_data and "fcm_token" in user_data:
-                send_push_notification(user_data["fcm_token"], content)
-            else:
-                print(f"FCM token not found for {username}")
+            # Get user's notification settings
+            user_data = users_collection.find_one(
+                {"username": username},
+                {"notification_settings": 1, "fcm_token": 1}
+            )
+            
+            if not user_data or "fcm_token" not in user_data:
+                continue
+                
+            settings = user_data.get("notification_settings", {})
+            
+            # Determine if we should send notification based on room type
+            should_notify = False
+            if len(room_users) == 2 and settings.get("direct_messages", True):
+                should_notify = True
+            elif len(room_users) > 2 and settings.get("group_messages", True):
+                should_notify = True
+                
+            # Check if notifications are enabled globally
+            if should_notify and settings.get("enabled", False):
+                try:
+                    notification_type = 'direct_message' if len(room_users) == 2 else 'group_message'
+                    message = messaging.Message(
+                        notification=messaging.Notification(
+                            title=f"New message from {content['name']}",
+                            body=content['message'][:100] + ('...' if len(content['message']) > 100 else '')
+                        ),
+                        data={
+                            'type': notification_type,
+                            'room_id': str(room),
+                            'sender': sender_username
+                        },
+                        token=user_data["fcm_token"]
+                    )
+                    messaging.send(message)
+                except Exception as e:
+                    print(f'Error sending notification to {username}:', e)
 
 @socketio.on("load_more_messages")
 def load_more_messages(data):

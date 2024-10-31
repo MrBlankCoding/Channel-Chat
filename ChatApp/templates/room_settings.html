@@ -95,10 +95,13 @@
                    data-username="{{ user.username }}">
                 <div class="flex items-center space-x-3">
                   <div class="relative">
-                    <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
-                      <span class="text-indigo-600 dark:text-indigo-400 font-medium">
-                        {{ user.username[0] | upper }}
-                      </span>
+                    <div class="w-10 h-10 rounded-full overflow-hidden">
+                      <img 
+                        src="{{ url_for('profile_photo', username=user.username) }}"
+                        alt="{{ user.username }}'s profile"
+                        class="w-full h-full object-cover"
+                        onerror="this.onerror=null; this.innerHTML='{{ user.username[0] | upper }}'; this.classList.add('bg-indigo-100', 'dark:bg-indigo-900', 'flex', 'items-center', 'justify-center', 'text-indigo-600', 'dark:text-indigo-400', 'font-medium');"
+                      />
                     </div>
                     <span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800 
                                 {{ 'bg-green-500' if user.online else 'bg-gray-400' }}"></span>

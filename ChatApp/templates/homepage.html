@@ -252,20 +252,20 @@
                               <!-- Username and Status -->
                               <div class="flex-1 min-w-0">
                                  <p class="text-sm font-medium text-gray-900 dark:text-white truncate friend-name">
-                                    {{ friend.username }}
+                                     {{ friend.username }}
                                  </p>
                                  <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                    {% if friend.online %}
-                                          {% if friend.current_room and friend.current_room in user_data.get('rooms', []) %}
-                                             In Room: {{ friend.current_room }}
-                                          {% else %}
+                                     {% if friend.online %}
+                                         {% if friend.current_room and friend.current_room in user_data.get('rooms', []) %}
+                                             In Room: {{ friend.room_name }}
+                                         {% else %}
                                              Online
-                                          {% endif %}
-                                    {% else %}
-                                          Offline
-                                    {% endif %}
+                                         {% endif %}
+                                     {% else %}
+                                         Offline
+                                     {% endif %}
                                  </p>
-                              </div>
+                             </div>
 
                               <!-- Status Indicator (Color-coded circle) -->
                               <div class="flex items-center space-x-2">

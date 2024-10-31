@@ -77,33 +77,65 @@
   </div>
 
   <!-- Input area with sticky positioning -->
-  <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-    <div class="px-4 py-2">
-      <div class="flex items-center gap-2">
-        <label class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer">
+<div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+  <!-- Emoji picker - now horizontal above the input -->
+  <div id="emojiPicker" class="hidden px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+    <div class="flex overflow-x-auto hide-scrollbar gap-1 pb-1">
+      <!-- Emojis will be inserted here via JavaScript -->
+    </div>
+  </div>
+
+  <div class="px-4 py-2">
+    <div class="flex items-center gap-2">
+      <!-- Plus button with dropdown -->
+      <div class="relative">
+        <button id="plusButton" class="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
           <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-          <input type="file" id="image-upload" accept="image/*" class="hidden">
-        </label>
-
-        <div class="flex-1 relative">
-          <input type="text" id="message" 
-            class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full 
-                   border-0 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 
-                   placeholder-gray-500 dark:placeholder-gray-400"
-            placeholder="Message">
-        </div>
-
-        <button id="sendButton" onclick="sendMessage()" class="p-2 text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-colors flex items-center justify-center">
-          <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
         </button>
+        
+        <!-- Dropdown menu -->
+        <div id="plusMenu" class="hidden absolute bottom-full mb-2 left-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <!-- Image upload button -->
+          <label class="flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <span class="text-sm text-gray-700 dark:text-gray-300">Image</span>
+            <input type="file" id="image-upload" accept="image/*" class="hidden">
+          </label>
+          
+          <!-- Emoji button (hidden on mobile) -->
+          <button id="emojiButton" class="hidden md:flex items-center gap-2 w-full px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+              <line x1="9" y1="9" x2="9.01" y2="9"></line>
+              <line x1="15" y1="9" x2="15.01" y2="9"></line>
+            </svg>
+            <span class="text-sm text-gray-700 dark:text-gray-300">Emoji</span>
+          </button>
+        </div>
       </div>
+
+      <div class="flex-1 relative">
+        <input type="text" id="message" 
+          class="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full 
+                 border-0 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 
+                 placeholder-gray-500 dark:placeholder-gray-400"
+          placeholder="Message">
+      </div>
+
+      <button id="sendButton" onclick="sendMessage()" class="p-2 text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-colors flex items-center justify-center">
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
     </div>
   </div>
 </div>
@@ -171,37 +203,127 @@
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 
 <script>
-  // Simplified layout management - no ResizeObserver needed
-  const messageContainer = document.getElementById('messages');
-  const messageInput = document.getElementById('message');
+  // Element selectors for reuse
+const messageContainer = document.getElementById('messages');
+const messageInput = document.getElementById('message');
+const emojiPicker = document.getElementById('emojiPicker');
+const emojiContainer = emojiPicker.querySelector('div');
+const plusButton = document.getElementById('plusButton');
+const plusMenu = document.getElementById('plusMenu');
+const emojiButton = document.getElementById('emojiButton');
 
-  messageInput.addEventListener('focus', () => {
-    requestAnimationFrame(() => {
-      messageContainer.scrollTop = messageContainer.scrollHeight;
-    });
+// Auto-scroll on focus
+messageInput.addEventListener('focus', () => {
+  requestAnimationFrame(() => {
+    messageContainer.scrollTop = messageContainer.scrollHeight;
   });
+});
 
-  function showInviteModal() {
-    document.getElementById('invite-modal').classList.remove('hidden');
-    document.getElementById('invite-modal').classList.add('flex');
-  }
-   
-  function hideInviteModal() {
-    document.getElementById('invite-modal').classList.add('hidden');
-    document.getElementById('invite-modal').classList.remove('flex');
-  }
+// Toggle invite modal visibility
+function toggleInviteModal(show) {
+  const inviteModal = document.getElementById('invite-modal');
+  inviteModal.classList.toggle('hidden', !show);
+  inviteModal.classList.toggle('flex', show);
+}
 
-  function copyRoomCode() {
-    const roomCode = "{{ code }}";
-    navigator.clipboard.writeText(roomCode).then(() => {
-      const toast = document.createElement('div');
-      toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm z-50 transition-opacity duration-300';
-      toast.textContent = 'Room ID copied to clipboard';
-      document.body.appendChild(toast);
-      
-      setTimeout(() => toast.classList.add('opacity-0'), 1500);
-      setTimeout(() => toast.remove(), 1800);
-    });
+// Copy room code to clipboard with toast
+function copyRoomCode() {
+  const roomCode = "{{ code }}";
+  navigator.clipboard.writeText(roomCode).then(() => {
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm z-50 transition-opacity duration-300';
+    toast.textContent = 'Room ID copied to clipboard';
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('opacity-0'), 1500);
+    setTimeout(() => toast.remove(), 1800);
+  });
+}
+
+// Initialize emoji picker
+const commonEmojis = [
+  // Faces
+  '😀', '😂', '🥹', '😊', '😇', '😉', '😍', '🥰', '😎', '🤔', '😅', '😄', '😃', '😌',
+  '🤗', '😋', '🤤', '🤩', '😏', '😢', '😭', '😤', '😠', '😡', '🤯', '😳', '🥵', '🥶', '😱', '😴',
+  '🤒', '🤕', '🤧', '🥴', '🤢', '🤮', '😵', '😇', '🥳', '🙃', '😜', '😝', '😛', '🤪',
+
+  // Gestures
+  '👍', '👎', '👋', '🙌', '👏', '🤝', '🙏', '✌️', '🤞', '🤙', '💪', '🖖', '👌', '✋', '👊', '✊', 
+  '🤘', '🤟', '🖐️', '👆', '👇', '👉', '👈',
+
+  // Hearts and Stars
+  '❤️', '💔', '💖', '💞', '💕', '💓', '💗', '💘', '💝', '💟', '🧡', '💜', '💙', '💚', '🤎',
+  '⭐', '✨', '🌟', '💫', '🔥', '💥', '🌈', '☄️',
+
+  // Objects & Symbols
+  '💡', '💭', '📢', '🎉', '🎊', '🎈', '🎁', '🎂', '🎀', '🍀', '🌹', '🌺', '🌻', '🌼', 
+  '💐', '🌞', '🌙', '💦', '💨', '👑', '🕶️', '🎩', '💍', '🔑', '💼', '📱', '💻', '⌚', 
+
+  // Animals and Nature
+  '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐸', '🐵', '🐤', '🦋', '🐞', '🐝', '🐙',
+  '🐟', '🐬', '🐢', '🦈', '🐍', '🦅', '🌳', '🌴', '🌵', '🍄', '🌷', '🌹', '🌺',
+
+  // Food & Drinks
+  '🍎', '🍌', '🍉', '🍇', '🍓', '🍒', '🥝', '🍍', '🍑', '🍅', '🥥', '🥦', '🍕', '🍔', 
+  '🍟', '🌭', '🍿', '🥤', '🍺', '🍹', '🍻', '☕', '🍫',
+
+  // Transportation
+  '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚜', '🚲', '🚁', '✈️', '🚀', '🛸',
+
+  // Other symbols
+  '🔵', '🔴', '⚫', '⚪', '🟢', '🟡', '🟠', '🟣', '🔺', '🔻', '💠', '💢', '⭕', '✅', '❌', 
+  '⚠️', '🔔', '🔕', '💤', '🎵', '🎶', '📝', '✏️', '✒️', '📖', '📚'
+];
+
+
+commonEmojis.forEach(emoji => {
+  const button = document.createElement('button');
+  button.className = 'w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-xl transition-colors';
+  button.textContent = emoji;
+  button.onclick = () => {
+    messageInput.value += emoji;
+    messageInput.focus();
+  };
+  emojiContainer.appendChild(button);
+});
+
+// Plus button dropdown functionality
+plusButton.onclick = (e) => {
+  e.stopPropagation();
+  plusMenu.classList.toggle('hidden');
+  emojiPicker.classList.add('hidden');
+  emojiPicker.classList.remove('active');
+};
+
+emojiButton.onclick = (e) => {
+  e.stopPropagation();
+  emojiPicker.classList.remove('hidden');
+  setTimeout(() => emojiPicker.classList.add('active'), 0);
+  plusMenu.classList.add('hidden');
+};
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+  if (!plusButton.contains(e.target) && !plusMenu.contains(e.target) && !emojiPicker.contains(e.target)) {
+    plusMenu.classList.add('hidden');
+    emojiPicker.classList.remove('active');
+    setTimeout(() => {
+      if (!emojiPicker.classList.contains('active')) {
+        emojiPicker.classList.add('hidden');
+      }
+    }, 200);
   }
+});
+
+// Close dropdowns when scrolling messages
+messageContainer.addEventListener('scroll', () => {
+  plusMenu.classList.add('hidden');
+  emojiPicker.classList.remove('active');
+  setTimeout(() => {
+    if (!emojiPicker.classList.contains('active')) {
+      emojiPicker.classList.add('hidden');
+    }
+  }, 200);
+});
 </script>
 {% endblock %}
