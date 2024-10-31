@@ -564,7 +564,6 @@ def delete_account():
 @login_required
 def settings():
     if request.method == "POST":
-        new_username = request.form.get("new_username")
         current_password = request.form.get("current_password")
         new_password = request.form.get("new_password")
         confirm_new_password = request.form.get("confirm_new_password")
@@ -589,23 +588,6 @@ def settings():
         if current_password and not check_password_hash(user_data["password"], current_password):
             flash("Current password is incorrect!")
             return redirect(url_for("settings"))
-        
-        # Update username
-        if new_username and new_username != username:
-            if not is_valid_username(new_username):
-                flash("Username can only contain letters, numbers, dots, underscores, and hyphens.")
-                return redirect(url_for("settings"))
-                
-            if users_collection.find_one({"username": new_username}):
-                flash("Username already exists!")
-                return redirect(url_for("settings"))
-                
-            users_collection.update_one(
-                {"username": username},
-                {"$set": {"username": new_username}}
-            )
-            current_user.username = new_username
-            flash("Username updated successfully!")
         
         # Update password
         if new_password:

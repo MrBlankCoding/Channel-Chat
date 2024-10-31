@@ -6,14 +6,6 @@
 2. Fix replies to messages
    - this is a error in chat.js
 
-
-3. Make notifications work better
-   - notification icon
-   - mute chats
-   - vibrate devices
-   - notification icons
-
-
 4. Add profile photos to chats
    - add profile photo cache to service worker
 
@@ -34,9 +26,6 @@
 8. Add basic E2E encryption to messages
 
 
-9. Improve messages bubble.
-
-
 11. Patch security vulnerabilities
 
 
@@ -53,3 +42,33 @@
 
 
 12. Image model
+
+13. Make it so messages are not read when tabbed out
+
+14. Add themes to chats
+   - Toggle in settings
+   - Save to chat room DB
+
+15. Add support for pasting of images and links sent
+
+16. Click on Usernames on homepage for instant chat room with them
+
+17. Make the invite to room display on homepage show better info
+   - Remove room code
+   - Show room name
+   - Show people in it
+   - Show who invited you
+
+18. Correctly display what room your friends are in 
+   - display room name
+
+19. Fix contrast on message icons
+
+
+21. Make account deleteing button more hidden
+   - Also make it so you have to type you account name to delete it
+   - Remove username from rooms your in
+
+22. Add a message for new users joining a room and leaving a room permanly 
+
+23. Allow pasting of messages from websites
