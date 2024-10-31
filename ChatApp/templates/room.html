@@ -46,7 +46,7 @@
         </div>
       </div>
 
-      <button onclick="showInviteModal()" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+      <button onclick="toggleInviteModal(true)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
         <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
           <circle cx="9" cy="7" r="4"/>
@@ -137,6 +137,29 @@
         </svg>
       </button>
     </div>
+  </div>
+</div>
+
+<div id="invite-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+  <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-auto">
+    <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Invite Friends</h3>
+    <div class="space-y-4 max-h-[60vh] overflow-y-auto">
+      {% for friend in friends %}
+      {% if friend.username not in room_data.users %}
+      <div class="flex items-center justify-between">
+        <span class="text-gray-800 dark:text-gray-200">{{ friend.username }}</span>
+        <a href="{{ url_for('invite_to_room', username=friend.username) }}"
+          class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all duration-200 shadow-md hover:shadow-lg">
+          Invite
+        </a>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+    <button onclick="hideInviteModal()" 
+      class="mt-4 w-full px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200">
+      Close
+    </button>
   </div>
 </div>
 
