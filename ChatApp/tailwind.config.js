@@ -2,6 +2,7 @@
 module.exports = {
   content: [
     './templates/**/*.html', 
+    './static/js/**/*.js', 
   ],
   darkMode: 'class',
   theme: {
@@ -15,5 +16,9 @@ module.exports = {
       height: { screen: '100vh', '[100dvh]': '100dvh' },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/aspect-ratio'),
+    require('@tailwindcss/line-clamp'),
+  ],
 }
