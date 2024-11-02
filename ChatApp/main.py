@@ -1433,14 +1433,34 @@ def message(data):
     if not room or not room_data:
         return 
 
+    # Handle reply_to data structure
+    reply_to = None
+    if data.get("replyTo"):
+        if isinstance(data["replyTo"], dict):
+            reply_to = {
+                "id": data["replyTo"]["id"],
+                "message": data["replyTo"]["message"]
+            }
+        else:
+            # If we only got an ID, try to find the message content
+            original_message = rooms_collection.find_one(
+                {"_id": room, "messages.id": data["replyTo"]},
+                {"messages.$": 1}
+            )
+            if original_message and original_message.get("messages"):
+                reply_to = {
+                    "id": data["replyTo"],
+                    "message": original_message["messages"][0]["message"]
+                }
+
     content = {
         "id": str(ObjectId()),
         "name": current_user.username,
         "message": data["data"],
-        "reply_to": data.get("replyTo"),
+        "reply_to": reply_to,  # Store the complete reply information
         "read_by": [session.get("username")],
         "image": data.get("image"),
-        "reactions": {}  # Initialize empty reactions object
+        "reactions": {}
     }
     
     rooms_collection.update_one(

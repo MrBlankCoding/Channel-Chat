@@ -212,8 +212,13 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
         ? 'bg-blue-600/50 border-blue-300'
         : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
     }`;
+    
+    // Store both the ID and the message content
     replyInfo.dataset.replyTo = replyTo.id;
-    replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyTo.message}`;
+    
+    // Check if replyTo has the necessary message content
+    const replyMessage = replyTo.message || "Message not available";
+    replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyMessage}`;
     messageBubble.appendChild(replyInfo);
   }
 
@@ -400,23 +405,22 @@ const sendMessage = () => {
   const message = messageInput.value.trim();
   
   if (message || imageUpload.files.length > 0) {
-    // If there's an image selected, handle it through the image upload event listener
     if (imageUpload.files.length > 0) {
       imageUpload.dispatchEvent(new Event('change'));
     } else {
-      // Otherwise, just send the text message
+      // Include both ID and message content for replies
       const messageData = {
         data: message,
-        replyTo: replyingTo ? replyingTo.id : null
+        replyTo: replyingTo ? {
+          id: replyingTo.id,
+          message: replyingTo.message
+        } : null
       };
       socketio.emit("message", messageData);
     }
 
-    // Clear the input and reply state
     messageInput.value = "";
     cancelReply();
-
-    // Clear the typing indicator
     clearTimeout(typingTimeout);
     socketio.emit("typing", { isTyping: false });
   }
@@ -777,18 +781,113 @@ const highlightMessage = (messageElement) => {
   }, 2000);
 };
 
+const stylessss = document.createElement('style');
+stylessss.textContent = `
+.reply-indicator {
+  position: fixed;
+  bottom: 80px;  /* Adjust based on your input area height */
+  left: 0;
+  right: 0;
+  padding: 8px 16px;
+  background: rgba(59, 130, 246, 0.1);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(59, 130, 246, 0.2);
+  transform: translateY(100%);
+  transition: transform 0.2s ease-out;
+  z-index: 50;
+  display: none;
+}
+
+.reply-indicator.active {
+  transform: translateY(0);
+  display: flex;
+}
+
+.reply-content {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+.replying {
+  border-left: 4px solid rgb(59, 130, 246) !important;
+  padding-left: 12px !important;
+}
+
+.cancel-reply {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.1);
+  color: rgb(239, 68, 68);
+  transition: all 0.2s;
+}
+
+.cancel-reply:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+`;
+document.head.appendChild(stylessss);
+
+// Create reply indicator element
+const replyIndicator = document.createElement('div');
+replyIndicator.className = 'reply-indicator';
+replyIndicator.innerHTML = `
+  <div class="reply-content">
+    <div class="text-sm font-medium text-blue-500">Replying to:</div>
+    <div class="text-sm message-preview"></div>
+  </div>
+  <button class="cancel-reply text-sm font-medium">
+    Cancel
+  </button>
+`;
+document.body.appendChild(replyIndicator);
+
 const startReply = (messageId, message) => {
-  replyingTo = { id: messageId, message: message };
-  messageInput.placeholder = `Replying to: ${message}`;
+  // Store reply information
+  replyingTo = { 
+    id: messageId, 
+    message: message 
+  };
+
+  // Update input placeholder and styling
+  messageInput.placeholder = "Type your reply...";
   messageInput.classList.add('replying');
   messageInput.focus();
+
+  // Show reply indicator
+  const messagePreview = replyIndicator.querySelector('.message-preview');
+  messagePreview.textContent = message;
+  replyIndicator.classList.add('active');
+
+  // Scroll the message into view with highlighting
+  const targetMessage = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (targetMessage) {
+    targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    targetMessage.style.transition = 'background-color 0.3s ease';
+    targetMessage.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+    setTimeout(() => {
+      targetMessage.style.backgroundColor = '';
+    }, 1500);
+  }
 };
 
 const cancelReply = () => {
   replyingTo = null;
   messageInput.placeholder = "Type a message...";
   messageInput.classList.remove('replying');
+  replyIndicator.classList.remove('active');
 };
+
+// Add event listener for cancel button
+replyIndicator.querySelector('.cancel-reply').addEventListener('click', cancelReply);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && replyingTo) {
+    cancelReply();
+  }
+});
 
 
 socketio.on('update_reactions', ({ messageId, reactions }) => {
@@ -951,13 +1050,31 @@ const markMessagesAsRead = () => {
   }
 };
 
+const findMessageById = (messageId) => {
+  const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (messageElement) {
+    const messageContent = messageElement.querySelector('.message-content');
+    return messageContent ? messageContent.textContent : null;
+  }
+  return null;
+};
+
 socketio.on("message", (data) => {
+  // If this message is a reply, we need to properly format the reply_to data
+  let replyToData = null;
+  if (data.reply_to) {
+    replyToData = {
+      id: data.reply_to.id || data.reply_to,  // Handle both object and string formats
+      message: data.reply_to.message || findMessageById(data.reply_to)  // Get message content if available
+    };
+  }
+
   const messageElement = createMessageElement(
     data.name, 
     data.message, 
     data.image, 
     data.id, 
-    data.reply_to,
+    replyToData,  // Pass the properly formatted reply data
     data.edited || false,
     data.reactions || {}
   );

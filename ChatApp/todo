@@ -2,10 +2,6 @@
    -  this is a error in chat.js
    (Also the code can be simplified)
 
-
-2. Fix replies to messages
-   - this is a error in chat.js
-
 4. Add profile photos to chats
    - add profile photo cache to service worker
 
@@ -61,8 +57,6 @@
 
 18. Correctly display what room your friends are in 
    - display room name
-
-19. Fix contrast on message icons
 
 
 21. Make account deleteing button more hidden
