@@ -16,8 +16,13 @@
       <div class="flex-1 min-w-0 flex items-center">
         <div class="relative">
           <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
-            <span class="text-indigo-600 dark:text-indigo-300 text-sm font-medium">
-              {{ room_data.name[:2].upper() }}
+            <span class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+              <img 
+                  id="room-photo"
+                  src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                  alt="Room profile"
+                  class="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-full"
+              />
             </span>
           </div>
           <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>

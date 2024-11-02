@@ -133,8 +133,13 @@
                            <div class="flex items-center justify-between mb-4">
                               <div class="flex items-center">
                                  <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
-                                    {{ room_code[:2] }}
-                                 </div>
+                                    <img 
+                                        id="room-photo"
+                                        src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                                        alt="Room profile"
+                                        class="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-full"
+                                    />
+                                </div>                                
                                  <div class="ml-3">
                                     <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
                                        {{ room_data.name or 'Unnamed Room' }}

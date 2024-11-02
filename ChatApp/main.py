@@ -88,6 +88,10 @@ socketio = SocketIO(app, cors_allowed_origins='*')
 def datetime_to_iso(dt):
     return dt.isoformat() if dt else None
 
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_IMAGE_TYPES']
+
 class NotificationService:
     def __init__(self, users_collection):
         self.users_collection = users_collection
@@ -281,7 +285,7 @@ def save_profile_photo(file, username, current_photo_url=None):
         return None
 
     # Verify file type and size
-    allowed_types = ['png', 'jpg', 'jpeg', 'gif']
+    allowed_types = app.config['ALLOWED_IMAGE_TYPES']
     file_bytes = file.read()
     file_type = imghdr.what(None, h=file_bytes)
     
@@ -1055,6 +1059,13 @@ def delete_room(room_code):
                     failed_deletions += 1
                     print(f"Failed to delete image for message: {message.get('id', 'unknown')}")
                     print(f"Error: {str(e)}")
+                    
+    # Inside delete_room route, before deleting the room
+    if room_data.get("profile_photo"):
+        try:
+            delete_firebase_image(room_data["profile_photo"])
+        except Exception as e:
+            print(f"Failed to delete room profile photo: {str(e)}")
     
     # Remove room from all users who are in it
     users_collection.update_many(
@@ -1369,6 +1380,96 @@ def update_room_name(room_code):
     
     flash("Room name updated successfully.")
     return redirect(url_for("room", code=room_code))
+
+@app.route("/update_room_photo/<room_code>", methods=['POST'])
+@login_required
+def update_room_photo(room_code):
+    # Check if user is room owner
+    room_data = rooms_collection.find_one({"_id": room_code})
+    
+    if not room_data:
+        return jsonify({"error": "Room not found"}), 404
+
+    if 'photo' not in request.files:
+        return jsonify({"error": "No photo provided"}), 400
+        
+    photo = request.files['photo']
+    if photo.filename == '':
+        return jsonify({"error": "No photo selected"}), 400
+        
+    if not allowed_file(photo.filename):
+        return jsonify({"error": "Invalid file type"}), 400
+    
+    try:
+        # Delete existing room photo if it exists
+        existing_photo_url = room_data.get("profile_photo")
+        if existing_photo_url:
+            try:
+                delete_firebase_image(existing_photo_url)
+            except Exception as e:
+                print(f"Error deleting existing room photo: {e}")
+        
+        # Generate unique filename using room code
+        ext = photo.filename.rsplit('.', 1)[1].lower()
+        filename = f"room_profile_photos/{room_code}.{ext}"
+        
+        # Upload to Firebase Storage
+        bucket = storage.bucket()
+        blob = bucket.blob(filename)
+        blob.content_type = f'image/{ext}'
+        
+        # Upload the file
+        blob.upload_from_string(
+            photo.read(),
+            content_type=photo.content_type
+        )
+        
+        # Make the blob publicly accessible
+        blob.make_public()
+        
+        # Get the public URL
+        photo_url = blob.public_url
+        
+        # Update room document with new photo URL
+        rooms_collection.update_one(
+            {"_id": room_code},
+            {"$set": {"profile_photo": photo_url}}
+        )
+        
+        return jsonify({"photo_url": photo_url}), 200
+        
+    except Exception as e:
+        print(f"Error uploading room photo: {e}")
+        return jsonify({"error": "Failed to upload photo"}), 500
+
+
+def delete_firebase_image(photo_url):
+    try:
+        # Ensure the photo URL is valid
+        if not photo_url or not isinstance(photo_url, str):
+            print("Invalid photo URL")
+            return
+
+        # Extract the file path from the URL
+        path = photo_url.split("/o/")[1].split("?")[0] if "/o/" in photo_url else None
+        if not path:
+            print("Error: Unable to extract path from URL")
+            return
+
+        # Decode URL-encoded path
+        path = path.replace('%2F', '/')
+
+        # Delete the file from Firebase Storage
+        bucket = storage.bucket()
+        blob = bucket.blob(path)
+        blob.delete()
+        print("Photo deleted successfully")
+
+    except IndexError:
+        print("Error: List index out of range when parsing URL")
+    except Exception as e:
+        print(f"Failed to delete image: {e}")
+
 
 @socketio.on("toggle_reaction")
 def handle_reaction(data):
