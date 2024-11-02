@@ -588,13 +588,12 @@ function hideModal() {
    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging.js";
    
    const firebaseConfig = {
-       apiKey: "AIzaSyCjJzQGCZ0niMD5tek_0gLSBGJXxW0VLKA",
-       authDomain: "channelchat-7d679.firebaseapp.com",
-       projectId: "channelchat-7d679",
-       storageBucket: "channelchat-7d679.appspot.com",
-       messagingSenderId: "822894243205",
-       appId: "1:822894243205:web:e129bcac94601e183e68ec",
-       measurementId: "G-PL15EEFQDE"
+      apiKey: "AIzaSyCjJzQGCZ0niMD5tek_0gLSBGJXxW0VLKA",
+      authDomain: "channelchat-7d679.firebaseapp.com",
+      projectId: "channelchat-7d679",
+      storageBucket: "channelchat-7d679.appspot.com",
+      messagingSenderId: "822894243205",
+      appId: "1:822894243205:web:e129bcac94601e183e68ec"
    };
    
    class NotificationManager {
@@ -604,7 +603,7 @@ function hideModal() {
            this.auth = getAuth(this.app);
            this.messaging = getMessaging(this.app);
            this.notificationButton = document.getElementById("toggle-notifications");
-           
+   
            this.settings = {
                direct_messages: true,
                mentions: true,
@@ -617,14 +616,11 @@ function hideModal() {
        }
    
        async initialize() {
-           // Initialize button state
            const notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
            this.updateNotificationButton(notificationsEnabled);
-           
-           // Setup click handler
+   
            this.setupNotificationButton();
-           
-           // Check initial permission
+   
            if (notificationsEnabled) {
                await this.requestNotificationPermission();
            }
@@ -634,7 +630,7 @@ function hideModal() {
            this.notificationButton.addEventListener("click", async () => {
                try {
                    const currentlyEnabled = localStorage.getItem('notificationsEnabled') === 'true';
-                   
+   
                    if (currentlyEnabled) {
                        await this.disableNotifications();
                    } else {
@@ -671,31 +667,41 @@ function hideModal() {
    
        async requestNotificationPermission() {
            try {
-               const permission = await Notification.requestPermission();
-               if (permission === 'granted') {
-                   const token = await getToken(this.messaging, { 
-                       vapidKey: 'BFF7GvyyBdEKRjSCNeDKIB0U85iGp7-wUm-mtV7GmBgq5FHqsQmcxTWe9QElWuwhdZEZ6xhGMcCRSreeAq-XSlE' 
-                   });
-                   
-                   if (!token) {
-                       throw new Error('Failed to generate FCM token');
-                   }
-   
-                   console.log('FCM Token:', token);
-                   
-                   const notificationsEnabled = localStorage.getItem('notificationsEnabled') === 'true';
-                   if (notificationsEnabled) {
+               if ('Notification' in window && navigator.userAgent.includes('Android')) {
+                   // Android Web Push
+                   const permission = await Notification.requestPermission();
+                   if (permission === 'granted') {
+                       const token = await getToken(this.messaging, { 
+                        vapidKey: 'BFF7GvyyBdEKRjSCNeDKIB0U85iGp7-wUm-mtV7GmBgq5FHqsQmcxTWe9QElWuwhdZEZ6xhGMcCRSreeAq-XSlE' 
+                       });
+                       if (!token) throw new Error('Failed to generate FCM token');
+                       console.log('FCM Token:', token);
                        await this.registerFCMToken(token);
+                       return true;
                    }
-                   
-                   return true;
+               } else if (navigator.userAgent.includes('iPhone') || navigator.userAgent.includes('iPad')) {
+                   // iOS Setup, must use Safari with Service Worker support
+                   if ('safari' in window && 'pushNotification' in window.safari) {
+                       window.safari.pushNotification.requestPermission(
+                           'https://channelchat.onrender.com/', // Your server URL
+                           'MrBlankCoding.ChannelNotif', // Your website push ID
+                           {}, // Optional custom data
+                           async (permissionData) => {
+                               if (permissionData.permission === 'granted') {
+                                   const token = permissionData.deviceToken;
+                                   console.log('iOS Device Token:', token);
+                                   await this.registerFCMToken(token);
+                               } else {
+                                   console.warn('iOS push notifications denied');
+                               }
+                           }
+                       );
+                       return true;
+                   }
+               } else {
+                   console.warn('Push notifications not supported on this platform.');
+                   return false;
                }
-               
-               console.warn('Notifications permission was denied.');
-               await this.clearNotificationSettings();
-               this.updateNotificationButton(false);
-               return false;
-               
            } catch (error) {
                console.error('Error getting FCM token:', error);
                await this.clearNotificationSettings();
@@ -710,10 +716,7 @@ function hideModal() {
                body: JSON.stringify({ token })
            });
    
-           if (!response.ok) {
-               throw new Error('Failed to register FCM token with server');
-           }
-           
+           if (!response.ok) throw new Error('Failed to register FCM token with server');
            return response.json();
        }
    
@@ -723,10 +726,7 @@ function hideModal() {
                body: JSON.stringify({ token: null, clearAll: true })
            });
    
-           if (!response.ok) {
-               throw new Error('Failed to clear notification settings on server');
-           }
-           
+           if (!response.ok) throw new Error('Failed to clear notification settings on server');
            return response.json();
        }
    
@@ -736,14 +736,11 @@ function hideModal() {
                body: JSON.stringify(settings)
            });
    
-           if (!response.ok) {
-               throw new Error('Failed to update notification settings');
-           }
-           
+           if (!response.ok) throw new Error('Failed to update notification settings');
            return response.json();
        }
    
-       async fetchWithCSRF(url, options = {}) {    
+       async fetchWithCSRF(url, options = {}) {
            return fetch(url, {
                ...options,
                headers: {
@@ -760,9 +757,6 @@ function hideModal() {
            
            this.notificationButton.innerHTML = icon;
            this.notificationButton.style.backgroundColor = backgroundColor;
-           this.notificationButton.style.border = 'none';
-           this.notificationButton.style.padding = '8px';
-           this.notificationButton.style.borderRadius = '50%';
            this.notificationButton.setAttribute('aria-label', 
                isEnabled ? 'Disable notifications' : 'Enable notifications'
            );
@@ -770,7 +764,6 @@ function hideModal() {
        }
    
        showError(message) {
-           // You can replace this with your preferred error display method
            alert(message);
        }
    
@@ -789,7 +782,7 @@ function hideModal() {
    }
    
    // Initialize the notification manager
-   const notificationManager = new NotificationManager();
+   const notificationManager = new NotificationManager();   
    
    // Apply button styling
    notificationManager.notificationButton.style.width = '40px';
