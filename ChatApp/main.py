@@ -142,14 +142,35 @@ class NotificationService:
             # Construct the notification based on type
             notification = self._build_notification(notification_type, content)
             
-            # Send the notification through Firebase
+            # Create the Android notification channel settings
+            android_config = messaging.AndroidConfig(
+                notification=messaging.AndroidNotification(
+                    icon='notification_icon',  # Reference to drawable resource
+                    sound='notification_sound' if settings.get('sound_enabled') else None,
+                    channel_id='default_channel'  # Must match the channel ID created in your Android app
+                )
+            )
+
+            # Create the APNS (iOS) notification settings
+            apns_config = messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        sound='notification_sound.wav' if settings.get('sound_enabled') else None,
+                        badge=1
+                    )
+                )
+            )
+            
+            # Send the notification through Firebase with platform-specific configs
             message = messaging.Message(
                 notification=messaging.Notification(
                     title=notification["title"],
                     body=notification["body"]
                 ),
                 data=notification.get("data", {}),
-                token=fcm_token
+                token=fcm_token,
+                android=android_config,
+                apns=apns_config
             )
             
             response = messaging.send(message)

@@ -12,6 +12,9 @@
     "social",
     "communication"
   ],
+  "permissions": [
+    "notifications"
+  ],
   "icons": [
     {
       "src": "/static/icons/manifest-icon-192.maskable.png",
