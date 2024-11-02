@@ -33,6 +33,7 @@ const imageUpload = document.getElementById('image-upload');
 const username = document.getElementById("username").value;
 const unreadMessages = new Set();
 const originalTitle = document.title;
+const COMMON_EMOJIS = ['👍', '❤️', '😊', '😂'];
 
 // State variables
 let replyingTo = null;
@@ -248,17 +249,9 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   // Reactions
   const reactionsContainer = document.createElement("div");
   reactionsContainer.style.marginTop = `${MESSAGE.text.spacing}px`;
-  reactionsContainer.className = "flex flex-wrap gap-0.5";
+  reactionsContainer.className = "flex flex-wrap gap-0.5 reactions-container";
   
-  if (Object.keys(reactions).length > 0) {
-    Object.entries(reactions).forEach(([emoji, reactionData]) => {
-      if (reactionData.count > 0) {
-        const reactionElement = createReactionElement(emoji, reactionData, messageId);
-        reactionsContainer.appendChild(reactionElement);
-      }
-    });
-  }
-  
+  updateReactionsDisplay(reactionsContainer, reactions, messageId);
   messageBubble.appendChild(reactionsContainer);
 
   // Actions menu
@@ -447,27 +440,185 @@ const updateMessageReadStatus = (messageElement, isRead) => {
   }
 };
 
-const createReactionElement = (emoji, reactionData, messageId) => {
-  const element = document.createElement("button");
-  element.className = `flex items-center space-x-1 text-xs rounded-full px-2 py-0.5 transition-colors ${
-    reactionData.users.includes(currentUser)
-      ? 'bg-gray-200 dark:bg-gray-700'
-      : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'
-  }`;
+const createReactionElement = (emoji, { count, users }, messageId) => {
+  const button = document.createElement("button");
+  const isUserReacted = users.includes(currentUser);
   
-  element.onclick = () => socketio.emit('toggle_reaction', { messageId, emoji });
+  button.className = `
+    flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
+    ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
+  `;
   
-  const emojiSpan = document.createElement("span");
-  emojiSpan.textContent = emoji;
+  button.innerHTML = `<span>${emoji}</span><span>${count}</span>`;
+  button.dataset.emoji = emoji;
+  button.dataset.messageId = messageId;
   
-  const countSpan = document.createElement("span");
-  countSpan.textContent = reactionData.count;
+  button.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Add click feedback animation
+    button.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      button.style.transform = 'scale(1)';
+    }, 100);
+    
+    socketio.emit('toggle_reaction', { messageId, emoji });
+  };
   
-  element.appendChild(emojiSpan);
-  element.appendChild(countSpan);
-  
-  return element;
+  return button;
 };
+
+const updateReactionsDisplay = (container, reactions, messageId) => {
+  const currentReactions = container.querySelectorAll('button');
+  const currentEmojis = new Set([...currentReactions].map(btn => btn.dataset.emoji));
+  const newEmojis = new Set(Object.keys(reactions).filter(emoji => reactions[emoji].count > 0));
+
+  // Handle removals with animation
+  currentReactions.forEach(button => {
+    const emoji = button.dataset.emoji;
+    if (!newEmojis.has(emoji)) {
+      // Animate out and remove
+      button.style.transition = 'all 0.2s ease-out';
+      button.style.transform = 'scale(0)';
+      button.style.opacity = '0';
+      setTimeout(() => button.remove(), 200);
+    }
+  });
+
+  // Update existing reactions and add new ones
+  Object.entries(reactions).forEach(([emoji, data]) => {
+    if (data.count > 0) {
+      const existingButton = container.querySelector(`button[data-emoji="${emoji}"]`);
+      
+      if (existingButton) {
+        // Update existing reaction
+        const countElement = existingButton.querySelector('span:last-child');
+        if (countElement) {
+          // Animate count change
+          countElement.style.transition = 'transform 0.2s ease-out';
+          countElement.style.transform = 'scale(1.2)';
+          countElement.textContent = data.count;
+          setTimeout(() => {
+            countElement.style.transform = 'scale(1)';
+          }, 200);
+        }
+        
+        // Update styling based on user reaction status
+        const isUserReacted = data.users.includes(currentUser);
+        existingButton.className = `
+          flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
+          ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
+        `;
+      } else if (!currentEmojis.has(emoji)) {
+        // Add new reaction with animation
+        const reactionElement = createReactionElement(emoji, data, messageId);
+        reactionElement.style.transform = 'scale(0)';
+        reactionElement.style.opacity = '0';
+        container.appendChild(reactionElement);
+        
+        // Trigger animation
+        requestAnimationFrame(() => {
+          reactionElement.style.transition = 'all 0.2s ease-out';
+          reactionElement.style.transform = 'scale(1)';
+          reactionElement.style.opacity = '1';
+        });
+      }
+    }
+  });
+};
+
+const createReactionPicker = (messageId) => {
+  // Remove any existing picker with animation
+  const existingPicker = document.querySelector('.reaction-picker');
+  if (existingPicker) {
+    existingPicker.style.opacity = '0';
+    existingPicker.style.transform = 'translateX(-50%) translateY(2px)';
+    setTimeout(() => existingPicker.remove(), 200);
+  }
+
+  const picker = document.createElement('div');
+  picker.className = `
+    reaction-picker absolute z-50 bg-white dark:bg-gray-900 
+    rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 
+    p-2 flex gap-1 opacity-0 transform translate-y-2
+  `;
+
+  picker.style.transition = 'all 0.2s ease-out';
+
+  COMMON_EMOJIS.forEach(emoji => {
+    const emojiButton = document.createElement('button');
+    emojiButton.className = `
+      w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 
+      dark:hover:bg-gray-800 transition-all duration-200 text-lg
+      transform hover:scale-110
+    `;
+    emojiButton.textContent = emoji;
+    emojiButton.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Add click feedback
+      emojiButton.style.transform = 'scale(0.9)';
+      setTimeout(() => {
+        socketio.emit('toggle_reaction', { messageId, emoji });
+        picker.style.opacity = '0';
+        picker.style.transform = 'translateX(-50%) translateY(2px)';
+        setTimeout(() => picker.remove(), 200);
+      }, 100);
+    };
+    picker.appendChild(emojiButton);
+  });
+
+  const message = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (!message) return;
+
+  const messageBubble = message.querySelector('.message-content').closest('div');
+  messageBubble.appendChild(picker);
+
+  picker.style.bottom = '100%';
+  picker.style.left = '50%';
+  picker.style.transform = 'translateX(-50%) translateY(2px)';
+  picker.style.marginBottom = '8px';
+
+  requestAnimationFrame(() => {
+    picker.style.opacity = '1';
+    picker.style.transform = 'translateX(-50%) translateY(0)';
+  });
+
+  const handleClickOutside = (event) => {
+    if (!picker.contains(event.target) && !event.target.closest('.action-btn[title="React"]')) {
+      picker.style.opacity = '0';
+      picker.style.transform = 'translateX(-50%) translateY(2px)';
+      setTimeout(() => picker.remove(), 200);
+      document.removeEventListener('click', handleClickOutside);
+    }
+  };
+
+  setTimeout(() => {
+    document.addEventListener('click', handleClickOutside);
+  }, 0);
+
+  return picker;
+};
+
+const styless = document.createElement('style');
+styless.textContent = `
+  .reaction-picker::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 10px;
+    height: 10px;
+    background: inherit;
+    border-right: 1px solid;
+    border-bottom: 1px solid;
+    border-color: inherit;
+  }
+`;
+document.head.appendChild(styless);
 
 const createActionsMenu = (isCurrentUser) => {
   const actionsMenu = document.createElement("div");
@@ -544,69 +695,31 @@ const styles = `
 
 document.head.insertAdjacentHTML('beforeend', `<style>${styles}</style>`);
 
-const createReactionPicker = () => {
-  const picker = document.createElement("div");
-  picker.className = "reaction-picker absolute bottom-full left-0 mb-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-2 z-20";
+function addEventListeners(element, messageId, messageText) {
+  const actionButtons = element.querySelectorAll('.action-btn');
   
-  const commonEmojis = ['👍', '❤️', '😊', '🎉', '🤔', '👀', '🙌', '🔥'];
-  
-  const emojiContainer = document.createElement("div");
-  emojiContainer.className = "flex space-x-1";
-  
-  commonEmojis.forEach(emoji => {
-    const button = document.createElement("button");
-    button.className = "hover:bg-gray-100 dark:hover:bg-gray-700 p-1.5 rounded-lg transition-colors duration-150";
-    button.textContent = emoji;
-    button.onclick = (e) => {
-      e.stopPropagation();
-      const messageId = picker.closest('[data-message-id]').dataset.messageId;
-      socketio.emit('add_reaction', { messageId, emoji });
-      picker.remove();
-    };
-    emojiContainer.appendChild(button);
-  });
-  
-  picker.appendChild(emojiContainer);
-  return picker;
-};
-
-const addEventListeners = (messageBubble, messageId, msg) => {
-  const replyBtn = messageBubble.querySelector('button[title="Reply"]');
-  const editBtn = messageBubble.querySelector('button[title="Edit"]');
-  const deleteBtn = messageBubble.querySelector('button[title="Delete"]');
-  const reactBtn = messageBubble.querySelector('button[title="React"]');
-
-  if (replyBtn) {
-    replyBtn.addEventListener('click', () => startReply(messageId, msg));
-  }
-
-  if (editBtn) {
-    editBtn.addEventListener('click', () => editMessage(messageId));
-  }
-
-  if (deleteBtn) {
-    deleteBtn.addEventListener('click', () => deleteMessage(messageId));
-  }
-
-  if (reactBtn) {
-    reactBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      // Remove any existing reaction pickers
-      document.querySelectorAll('.reaction-picker').forEach(picker => picker.remove());
-      const picker = createReactionPicker();
-      messageBubble.appendChild(picker);
+  actionButtons.forEach(button => {
+    const buttonTitle = button.getAttribute('title');
+    
+    switch(buttonTitle) {
+      case 'Edit':
+        button.addEventListener('click', () => editMessage(messageId));
+        break;
       
-      // Close picker when clicking outside
-      const closePickerOnClickOutside = (e) => {
-        if (!picker.contains(e.target) && !reactBtn.contains(e.target)) {
-          picker.remove();
-          document.removeEventListener('click', closePickerOnClickOutside);
-        }
-      };
-      setTimeout(() => document.addEventListener('click', closePickerOnClickOutside), 0);
-    });
-  }
-};
+      case 'Delete':
+        button.addEventListener('click', () => deleteMessage(messageId));
+        break;
+      
+      case 'Reply':
+        button.addEventListener('click', () => startReply(messageId, messageText));
+        break;
+      
+      case 'React':
+        button.addEventListener('click', () => createReactionPicker(messageId));
+        break;
+    }
+  });
+}
 
 const addMessageToDOM = (element) => {
   let messageContainer = messages.querySelector('.flex.flex-col');
@@ -677,27 +790,16 @@ const cancelReply = () => {
   messageInput.classList.remove('replying');
 };
 
-const addReaction = (messageId, emoji) => {
-  socketio.emit('add_reaction', { messageId, emoji });
-};
 
-socketio.on('update_reactions', (data) => {
-  const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
-  if (!messageElement) return;
+socketio.on('update_reactions', ({ messageId, reactions }) => {
+  const message = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (!message) return;
 
-  const reactionsContainer = messageElement.querySelector('.reactions-container');
-  if (!reactionsContainer) return;
+  const container = message.querySelector('.reactions-container');
+  if (!container) return;
 
-  // Clear existing reactions
-  reactionsContainer.innerHTML = '';
-
-  // Add updated reactions
-  Object.entries(data.reactions).forEach(([emoji, reactionData]) => {
-    if (reactionData.count > 0) {
-      const reactionElement = createReactionElement(emoji, reactionData, data.messageId);
-      reactionsContainer.appendChild(reactionElement);
-    }
-  });
+  // Handle the update with animations
+  updateReactionsDisplay(container, reactions, messageId);
 });
 
 const editMessage = (messageId) => {
@@ -779,43 +881,6 @@ const deleteMessage = async (messageId) => {
   }
 };
 
-socketio.on('update_reactions', (data) => {
-  const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
-  if (!messageElement) return;
-
-  const reactionsContainer = messageElement.querySelector('.reactions-container');
-  if (!reactionsContainer) return;
-
-  // Clear existing reactions
-  reactionsContainer.innerHTML = '';
-
-  // Add updated reactions
-  Object.entries(data.reactions).forEach(([emoji, reactionData]) => {
-    if (reactionData.count > 0) {
-      const reactionElement = createReactionElement(emoji, reactionData, data.messageId);
-      reactionsContainer.appendChild(reactionElement);
-    }
-  });
-});
-
-// Update reactions when receiving socket event
-socketio.on('update_reactions', (data) => {
-  const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
-  if (!messageElement) return;
-
-  const reactionsContainer = messageElement.querySelector('.reactions-container');
-  reactionsContainer.innerHTML = '';
-
-  Object.entries(data.reactions).forEach(([emoji, reactionData]) => {
-    const isSelected = reactionData.users.includes(currentUser);
-    const reactionElement = createReactionElement(emoji, reactionData.count, isSelected);
-    reactionElement.onclick = () => {
-      socketio.emit('add_reaction', { messageId: data.messageId, emoji });
-    };
-    reactionsContainer.appendChild(reactionElement);
-  });
-});
-
 imageUpload.addEventListener('change', async (event) => {
   const file = event.target.files[0];
   if (file) {
@@ -874,24 +939,6 @@ imageUpload.addEventListener('change', async (event) => {
   }
 });
 
-const handleReaction = (emoji, reactionsContainer) => {
-  const existingReaction = reactionsContainer.querySelector(`span[data-emoji="${emoji}"]`);
-  
-  if (existingReaction) {
-    let count = parseInt(existingReaction.getAttribute('data-count'));
-    existingReaction.setAttribute('data-count', ++count);
-    existingReaction.textContent = `${emoji} ${count}`;
-  } else {
-    const newReaction = document.createElement('span');
-    newReaction.className = 'reaction';
-    newReaction.setAttribute('data-emoji', emoji);
-    newReaction.setAttribute('data-count', 1);
-    newReaction.textContent = `${emoji} 1`;
-    reactionsContainer.appendChild(newReaction);
-  }
-};
-
-
 const markMessagesAsRead = () => {
   if (isTabActive && unreadMessages.size > 0) {
     const messageIds = Array.from(unreadMessages);
@@ -926,23 +973,39 @@ socketio.on("message", (data) => {
     }
   }
 
-  const replyInfo = messageElement.querySelector('.reply-info');
+  // Safely handle reply info click events
+  const replyInfo = messageElement.querySelector('[data-reply-to]');
   if (replyInfo) {
-    replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.getAttribute('data-reply-to')));
+    replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
   }
 
-  if (data.name === currentUser) {
-    messageInput.value = "";
-    cancelReply();
-
-    const editBtn = messageElement.querySelector('.edit-btn');
-    const deleteBtn = messageElement.querySelector('.delete-btn');
-    editBtn.addEventListener('click', () => editMessage(data.id));
-    deleteBtn.addEventListener('click', () => deleteMessage(data.id));
-  } else {
-    const replyBtn = messageElement.querySelector('.reply-btn');
-    replyBtn.addEventListener('click', () => startReply(data.id, data.message));
-  }
+  // Find all action buttons within the message element
+  const actionButtons = messageElement.querySelectorAll('.action-btn');
+  actionButtons.forEach(button => {
+    const buttonTitle = button.getAttribute('title');
+    
+    switch(buttonTitle) {
+      case 'Edit':
+        if (data.name === currentUser) {
+          button.addEventListener('click', () => editMessage(data.id));
+        }
+        break;
+      
+      case 'Delete':
+        if (data.name === currentUser) {
+          button.addEventListener('click', () => deleteMessage(data.id));
+        }
+        break;
+      
+      case 'Reply':
+        button.addEventListener('click', () => startReply(data.id, data.message));
+        break;
+      
+      case 'React':
+        button.addEventListener('click', () => createReactionPicker(data.id));
+        break;
+    }
+  });
 });
 
 socketio.on("messages_read", (data) => {

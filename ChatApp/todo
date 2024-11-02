@@ -1,4 +1,4 @@
-1. Fix reactions to messages
+1. Fix removing reactions to messages
    -  this is a error in chat.js
    (Also the code can be simplified)
 
