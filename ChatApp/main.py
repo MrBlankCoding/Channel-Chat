@@ -1349,6 +1349,83 @@ def update_room_name(room_code):
     flash("Room name updated successfully.")
     return redirect(url_for("room", code=room_code))
 
+@socketio.on("toggle_reaction")
+def handle_reaction(data):
+    room = session.get("room")
+    username = current_user.username
+    if not room or not username:
+        return
+
+    message_id = data["messageId"]
+    emoji = data["emoji"]
+
+    # Check if the user has already reacted with this emoji
+    message = rooms_collection.find_one(
+        {
+            "_id": room,
+            "messages.id": message_id
+        },
+        {"messages.$": 1}
+    )
+
+    if not message or not message.get("messages"):
+        return
+
+    current_message = message["messages"][0]
+    current_reactions = current_message.get("reactions", {})
+    current_emoji_data = current_reactions.get(emoji, {"count": 0, "users": []})
+
+    if username in current_emoji_data.get("users", []):
+        # Remove user's reaction
+        rooms_collection.update_one(
+            {"_id": room, "messages.id": message_id},
+            {
+                "$pull": {f"messages.$[msg].reactions.{emoji}.users": username},
+                "$inc": {f"messages.$[msg].reactions.{emoji}.count": -1}
+            },
+            array_filters=[{"msg.id": message_id}]
+        )
+
+        # Clean up empty reactions
+        rooms_collection.update_one(
+            {"_id": room, "messages.id": message_id},
+            {
+                "$unset": {f"messages.$[msg].reactions.{emoji}": ""}
+            },
+            array_filters=[
+                {"msg.id": message_id},
+                {f"msg.reactions.{emoji}.count": 0}
+            ]
+        )
+    else:
+        # Add user's reaction
+        rooms_collection.update_one(
+            {"_id": room, "messages.id": message_id},
+            {
+                "$set": {
+                    f"messages.$[msg].reactions.{emoji}": {
+                        "count": current_emoji_data.get("count", 0) + 1,
+                        "users": current_emoji_data.get("users", []) + [username]
+                    }
+                }
+            },
+            array_filters=[{"msg.id": message_id}]
+        )
+
+    # Emit updated reactions to all users in the room
+    updated_message = rooms_collection.find_one(
+        {"_id": room, "messages.id": message_id},
+        {"messages.$": 1}
+    )
+    
+    if updated_message and updated_message.get("messages"):
+        emit("update_reactions", {
+            "messageId": message_id,
+            "reactions": updated_message["messages"][0].get("reactions", {})
+        }, room=room)
+
+
+
 @socketio.on("message")
 def message(data):
     room = session.get("room")
@@ -1356,13 +1433,34 @@ def message(data):
     if not room or not room_data:
         return 
 
+    # Handle reply_to data structure
+    reply_to = None
+    if data.get("replyTo"):
+        if isinstance(data["replyTo"], dict):
+            reply_to = {
+                "id": data["replyTo"]["id"],
+                "message": data["replyTo"]["message"]
+            }
+        else:
+            # If we only got an ID, try to find the message content
+            original_message = rooms_collection.find_one(
+                {"_id": room, "messages.id": data["replyTo"]},
+                {"messages.$": 1}
+            )
+            if original_message and original_message.get("messages"):
+                reply_to = {
+                    "id": data["replyTo"],
+                    "message": original_message["messages"][0]["message"]
+                }
+
     content = {
         "id": str(ObjectId()),
-        "name": session.get("name"),
+        "name": current_user.username,
         "message": data["data"],
-        "reply_to": data.get("replyTo"),
+        "reply_to": reply_to,  # Store the complete reply information
         "read_by": [session.get("username")],
-        "image": data.get("image")  # Now just storing the Firebase URL
+        "image": data.get("image"),
+        "reactions": {}
     }
     
     rooms_collection.update_one(
@@ -1550,84 +1648,6 @@ def disconnect():
             "isFriend": False
         })
     socketio.emit("update_users", {"users": user_list}, room=room)
-                
-@socketio.on("add_reaction")
-def add_reaction(data):
-    print("received reaction")
-    room = session.get("room")
-    username = session.get("username")
-    if not room or not username:
-        return
-
-    message_id = data["messageId"]
-    emoji = data["emoji"]
-
-    # Find the message and its current reactions
-    room_data = rooms_collection.find_one(
-        {"_id": room, "messages.id": message_id}
-    )
-    
-    if not room_data:
-        return
-
-    # Find the specific message
-    message = next((msg for msg in room_data["messages"] if msg["id"] == message_id), None)
-    if not message:
-        return
-
-    # Initialize reactions if they don't exist
-    current_reactions = message.get("reactions", {})
-    emoji_data = current_reactions.get(emoji, {"count": 0, "users": []})
-    
-    # Toggle reaction
-    if username in emoji_data["users"]:
-        # Remove reaction
-        update_query = {
-            "$pull": {f"messages.$[msg].reactions.{emoji}.users": username}
-        }
-        
-        # If this was the last user, remove the entire emoji entry
-        if len(emoji_data["users"]) == 1:
-            update_query = {
-                "$unset": {f"messages.$[msg].reactions.{emoji}": ""}
-            }
-        else:
-            update_query["$inc"] = {f"messages.$[msg].reactions.{emoji}.count": -1}
-        
-        rooms_collection.update_one(
-            {"_id": room},
-            update_query,
-            array_filters=[{"msg.id": message_id}]
-        )
-    else:
-        # Add reaction
-        update_query = {
-            "$set": {
-                f"messages.$[msg].reactions.{emoji}": {
-                    "count": emoji_data["count"] + 1,
-                    "users": emoji_data["users"] + [username]
-                }
-            }
-        }
-        
-        rooms_collection.update_one(
-            {"_id": room},
-            update_query,
-            array_filters=[{"msg.id": message_id}]
-        )
-
-    # Get updated message data
-    updated_room = rooms_collection.find_one(
-        {"_id": room, "messages.id": message_id}
-    )
-    
-    if updated_room:
-        updated_message = next((msg for msg in updated_room["messages"] if msg["id"] == message_id), None)
-        if updated_message:
-            emit("update_reactions", {
-                "messageId": message_id,
-                "reactions": updated_message.get("reactions", {})
-            }, room=room)
                 
 @app.route("/get_unread_messages")
 @login_required
