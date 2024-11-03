@@ -1424,35 +1424,6 @@ def update_room_photo(room_code):
         print(f"Error uploading room photo: {e}")
         return jsonify({"error": "Failed to upload photo"}), 500
 
-
-def delete_firebase_image(photo_url):
-    try:
-        # Ensure the photo URL is valid
-        if not photo_url or not isinstance(photo_url, str):
-            print("Invalid photo URL")
-            return
-
-        # Extract the file path from the URL
-        path = photo_url.split("/o/")[1].split("?")[0] if "/o/" in photo_url else None
-        if not path:
-            print("Error: Unable to extract path from URL")
-            return
-
-        # Decode URL-encoded path
-        path = path.replace('%2F', '/')
-
-        # Delete the file from Firebase Storage
-        bucket = storage.bucket()
-        blob = bucket.blob(path)
-        blob.delete()
-        print("Photo deleted successfully")
-
-    except IndexError:
-        print("Error: List index out of range when parsing URL")
-    except Exception as e:
-        print(f"Failed to delete image: {e}")
-
-
 @socketio.on("toggle_reaction")
 def handle_reaction(data):
     room = session.get("room")
@@ -1481,7 +1452,7 @@ def handle_reaction(data):
 
     if username in current_emoji_data.get("users", []):
         # Remove user's reaction
-        rooms_collection.update_one(
+        update_result = rooms_collection.update_one(
             {"_id": room, "messages.id": message_id},
             {
                 "$pull": {f"messages.$[msg].reactions.{emoji}.users": username},
@@ -1490,17 +1461,15 @@ def handle_reaction(data):
             array_filters=[{"msg.id": message_id}]
         )
 
-        # Clean up empty reactions
-        rooms_collection.update_one(
-            {"_id": room, "messages.id": message_id},
-            {
-                "$unset": {f"messages.$[msg].reactions.{emoji}": ""}
-            },
-            array_filters=[
-                {"msg.id": message_id},
-                {f"msg.reactions.{emoji}.count": 0}
-            ]
-        )
+        # If the reaction count is now 0, remove the empty reaction in a separate operation
+        if current_emoji_data["count"] == 1:  # This was the last reaction
+            rooms_collection.update_one(
+                {"_id": room, "messages.id": message_id},
+                {
+                    "$unset": {f"messages.$[msg].reactions.{emoji}": ""}
+                },
+                array_filters=[{"msg.id": message_id}]
+            )
     else:
         # Add user's reaction
         rooms_collection.update_one(
@@ -1516,19 +1485,20 @@ def handle_reaction(data):
             array_filters=[{"msg.id": message_id}]
         )
 
-    # Emit updated reactions to all users in the room
-    updated_message = rooms_collection.find_one(
-        {"_id": room, "messages.id": message_id},
-        {"messages.$": 1}
-    )
-    
-    if updated_message and updated_message.get("messages"):
-        emit("update_reactions", {
-            "messageId": message_id,
-            "reactions": updated_message["messages"][0].get("reactions", {})
-        }, room=room)
-
-
+    try:
+        # Emit updated reactions to all users in the room
+        updated_message = rooms_collection.find_one(
+            {"_id": room, "messages.id": message_id},
+            {"messages.$": 1}
+        )
+        
+        if updated_message and updated_message.get("messages"):
+            emit("update_reactions", {
+                "messageId": message_id,
+                "reactions": updated_message["messages"][0].get("reactions", {})
+            }, room=room)
+    except Exception as e:
+        print(f"Error emitting reaction update: {str(e)}")
 
 @socketio.on("message")
 def message(data):

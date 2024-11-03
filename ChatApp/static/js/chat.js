@@ -271,6 +271,94 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   return element;
 };
 
+const createReactionElement = (emoji, { count, users }, messageId) => {
+  const button = document.createElement("button");
+  const isUserReacted = users.includes(currentUser);
+  
+  button.className = `
+    flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
+    ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
+  `;
+  
+  button.innerHTML = `<span>${emoji}</span><span>${count}</span>`;
+  button.dataset.emoji = emoji;
+  button.dataset.messageId = messageId;
+  
+  button.onclick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Add click feedback animation
+    button.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      button.style.transform = 'scale(1)';
+    }, 100);
+    
+    socketio.emit('toggle_reaction', { messageId, emoji });
+  };
+  
+  return button;
+};
+
+const updateReactionsDisplay = (container, reactions, messageId) => {
+  const currentReactions = container.querySelectorAll('button');
+  const currentEmojis = new Set([...currentReactions].map(btn => btn.dataset.emoji));
+  const newEmojis = new Set(Object.keys(reactions).filter(emoji => reactions[emoji].count > 0));
+
+  // Handle removals with animation
+  currentReactions.forEach(button => {
+    const emoji = button.dataset.emoji;
+    if (!newEmojis.has(emoji)) {
+      // Animate out and remove
+      button.style.transition = 'all 0.2s ease-out';
+      button.style.transform = 'scale(0)';
+      button.style.opacity = '0';
+      setTimeout(() => button.remove(), 200);
+    }
+  });
+
+  // Update existing reactions and add new ones
+  Object.entries(reactions).forEach(([emoji, data]) => {
+    if (data.count > 0) {
+      const existingButton = container.querySelector(`button[data-emoji="${emoji}"]`);
+      
+      if (existingButton) {
+        // Update existing reaction
+        const countElement = existingButton.querySelector('span:last-child');
+        if (countElement) {
+          // Animate count change
+          countElement.style.transition = 'transform 0.2s ease-out';
+          countElement.style.transform = 'scale(1.2)';
+          countElement.textContent = data.count;
+          setTimeout(() => {
+            countElement.style.transform = 'scale(1)';
+          }, 200);
+        }
+        
+        // Update styling based on user reaction status
+        const isUserReacted = data.users.includes(currentUser);
+        existingButton.className = `
+          flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
+          ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
+        `;
+      } else if (!currentEmojis.has(emoji)) {
+        // Add new reaction with animation
+        const reactionElement = createReactionElement(emoji, data, messageId);
+        reactionElement.style.transform = 'scale(0)';
+        reactionElement.style.opacity = '0';
+        container.appendChild(reactionElement);
+        
+        // Trigger animation
+        requestAnimationFrame(() => {
+          reactionElement.style.transition = 'all 0.2s ease-out';
+          reactionElement.style.transform = 'scale(1)';
+          reactionElement.style.opacity = '1';
+        });
+      }
+    }
+  });
+};
+
 const createTypingIndicator = (name) => {
   const element = document.createElement("div");
   element.style.padding = `${MESSAGE.padding.vertical}px ${MESSAGE.padding.horizontal}px`;
@@ -442,94 +530,6 @@ const updateMessageReadStatus = (messageElement, isRead) => {
       messageBubble.classList.remove('bg-indigo-700');
     }
   }
-};
-
-const createReactionElement = (emoji, { count, users }, messageId) => {
-  const button = document.createElement("button");
-  const isUserReacted = users.includes(currentUser);
-  
-  button.className = `
-    flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
-    ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
-  `;
-  
-  button.innerHTML = `<span>${emoji}</span><span>${count}</span>`;
-  button.dataset.emoji = emoji;
-  button.dataset.messageId = messageId;
-  
-  button.onclick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Add click feedback animation
-    button.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      button.style.transform = 'scale(1)';
-    }, 100);
-    
-    socketio.emit('toggle_reaction', { messageId, emoji });
-  };
-  
-  return button;
-};
-
-const updateReactionsDisplay = (container, reactions, messageId) => {
-  const currentReactions = container.querySelectorAll('button');
-  const currentEmojis = new Set([...currentReactions].map(btn => btn.dataset.emoji));
-  const newEmojis = new Set(Object.keys(reactions).filter(emoji => reactions[emoji].count > 0));
-
-  // Handle removals with animation
-  currentReactions.forEach(button => {
-    const emoji = button.dataset.emoji;
-    if (!newEmojis.has(emoji)) {
-      // Animate out and remove
-      button.style.transition = 'all 0.2s ease-out';
-      button.style.transform = 'scale(0)';
-      button.style.opacity = '0';
-      setTimeout(() => button.remove(), 200);
-    }
-  });
-
-  // Update existing reactions and add new ones
-  Object.entries(reactions).forEach(([emoji, data]) => {
-    if (data.count > 0) {
-      const existingButton = container.querySelector(`button[data-emoji="${emoji}"]`);
-      
-      if (existingButton) {
-        // Update existing reaction
-        const countElement = existingButton.querySelector('span:last-child');
-        if (countElement) {
-          // Animate count change
-          countElement.style.transition = 'transform 0.2s ease-out';
-          countElement.style.transform = 'scale(1.2)';
-          countElement.textContent = data.count;
-          setTimeout(() => {
-            countElement.style.transform = 'scale(1)';
-          }, 200);
-        }
-        
-        // Update styling based on user reaction status
-        const isUserReacted = data.users.includes(currentUser);
-        existingButton.className = `
-          flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
-          ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
-        `;
-      } else if (!currentEmojis.has(emoji)) {
-        // Add new reaction with animation
-        const reactionElement = createReactionElement(emoji, data, messageId);
-        reactionElement.style.transform = 'scale(0)';
-        reactionElement.style.opacity = '0';
-        container.appendChild(reactionElement);
-        
-        // Trigger animation
-        requestAnimationFrame(() => {
-          reactionElement.style.transition = 'all 0.2s ease-out';
-          reactionElement.style.transform = 'scale(1)';
-          reactionElement.style.opacity = '1';
-        });
-      }
-    }
-  });
 };
 
 const createReactionPicker = (messageId) => {
@@ -951,10 +951,151 @@ const editMessage = (messageId) => {
   input.addEventListener('blur', handleEdit);
 };
 
+const styleSheet = document.createElement("style");
+styleSheet.textContent = `
+@keyframes messageBurst {
+  0% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+    transform: scale(1);
+  }
+  
+  15% {
+    clip-path: polygon(
+      10% 10%, 30% 0, 50% 10%, 70% 0, 90% 10%,
+      100% 30%, 90% 50%, 100% 70%, 90% 90%,
+      70% 100%, 50% 90%, 30% 100%, 10% 90%,
+      0 70%, 10% 50%, 0 30%
+    );
+    transform: scale(1.1);
+  }
+
+  30% {
+    clip-path: polygon(
+      5% 5%, 25% 5%, 50% 20%, 75% 5%, 95% 5%,
+      95% 25%, 80% 50%, 95% 75%, 95% 95%,
+      75% 95%, 50% 80%, 25% 95%, 5% 95%,
+      5% 75%, 20% 50%, 5% 25%
+    );
+    opacity: 0.8;
+    transform: scale(1.2);
+  }
+
+  50% {
+    clip-path: polygon(
+      0 0, 20% 10%, 40% 0, 60% 10%, 80% 0,
+      100% 20%, 90% 40%, 100% 60%, 90% 80%,
+      80% 100%, 60% 90%, 40% 100%, 20% 90%,
+      0 80%, 10% 60%, 0 40%
+    );
+    opacity: 0.6;
+    transform: scale(1.4) translateY(-5px);
+  }
+
+  75% {
+    clip-path: polygon(
+      10% 0, 30% 0, 50% 20%, 70% 0, 90% 0,
+      100% 30%, 80% 50%, 100% 70%, 90% 100%,
+      70% 100%, 50% 80%, 30% 100%, 10% 100%,
+      0 70%, 20% 50%, 0 30%
+    );
+    opacity: 0.3;
+    transform: scale(1.6) translateY(-10px);
+  }
+
+  100% {
+    clip-path: polygon(
+      15% 5%, 25% 0, 40% 10%, 60% 0, 85% 5%,
+      100% 15%, 95% 35%, 100% 60%, 85% 85%,
+      60% 100%, 40% 95%, 25% 100%, 10% 85%,
+      0 60%, 5% 35%, 0 15%
+    );
+    opacity: 0;
+    transform: scale(1.8) translateY(-15px);
+  }
+}
+
+.message-deleting .relative > div:last-child {
+  animation: messageBurst 1s ease-out forwards;
+}
+
+/* Crack line overlays */
+.message-deleting .relative > div:last-child::before,
+.message-deleting .relative > div:last-child::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.message-deleting .relative > div:last-child::before {
+  background: linear-gradient(45deg, 
+    transparent 45%, 
+    rgba(255, 255, 255, 0.2) 45%, 
+    rgba(255, 255, 255, 0.2) 55%, 
+    transparent 55%
+  );
+  animation: burstLines 0.5s ease-in forwards;
+}
+
+.message-deleting .relative > div:last-child::after {
+  background: linear-gradient(-45deg, 
+    transparent 45%, 
+    rgba(0, 0, 0, 0.1) 45%, 
+    rgba(0, 0, 0, 0.1) 55%, 
+    transparent 55%
+  );
+  animation: burstLines 0.5s ease-in 0.1s forwards;
+}
+
+@keyframes burstLines {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .message-deleting .relative > div:last-child::before {
+    background: linear-gradient(45deg, 
+      transparent 45%, 
+      rgba(255, 255, 255, 0.1) 45%, 
+      rgba(255, 255, 255, 0.1) 55%, 
+      transparent 55%
+    );
+  }
+  
+  .message-deleting .relative > div:last-child::after {
+    background: linear-gradient(-45deg, 
+      transparent 45%, 
+      rgba(255, 255, 255, 0.05) 45%, 
+      rgba(255, 255, 255, 0.05) 55%, 
+      transparent 55%
+    );
+  }
+}
+`;
+
+document.head.appendChild(styleSheet);
+
+// Updated delete message function
 const deleteMessage = async (messageId) => {
-  if (confirm('Are you sure you want to delete this message?')) {
-    const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
-    if (!messageElement) return;
+  if (!confirm('Are you sure you want to delete this message?')) return;
+
+  const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
+  if (!messageElement) return;
+
+  try {
+    // Start the deletion animation immediately
+    messageElement.classList.add('message-deleting');
 
     // Check if message contains an image
     const imageElement = messageElement.querySelector('img:not(.profile-photo)');
@@ -977,6 +1118,17 @@ const deleteMessage = async (messageId) => {
 
     // Emit socket event to delete message from database
     socketio.emit('delete_message', { messageId });
+
+    // Remove the element after animation completes
+    messageElement.addEventListener('animationend', () => {
+      messageElement.remove();
+    }, { once: true });
+
+  } catch (error) {
+    console.error('Error during message deletion:', error);
+    // Remove animation class if there's an error
+    messageElement.classList.remove('message-deleting');
+    alert('Failed to delete message. Please try again.');
   }
 };
 
@@ -1299,13 +1451,14 @@ socketio.on("edit_message", (data) => {
 socketio.on("delete_message", (data) => {
   const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
   if (messageElement) {
-    // Check if message had an image and delete the image element reference
-    const imageElement = messageElement.querySelector('img:not(.profile-photo)');
-    if (imageElement) {
-      imageElement.remove();
-    }
-    // Remove the entire message element
-    messageElement.remove();
+    messageElement.classList.add('message-deleting');
+    createShards(messageElement);
+    
+    messageElement.addEventListener('animationend', (e) => {
+      if (e.target === messageElement.firstElementChild) {
+        messageElement.remove();
+      }
+    }, { once: true });
   }
 });
 
