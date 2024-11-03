@@ -25,11 +25,6 @@
    - Use gevenlet for deploying
 
 
-10. Simplify all around code
-   -Add comments
-   -improve structure
-
-
 11. Gif API
 
 
@@ -50,10 +45,6 @@
    - Show room name
    - Show people in it
    - Show who invited you
-
-18. Correctly display what room your friends are in 
-   - display room name
-
 
 21. Make account deleteing button more hidden
    - Also make it so you have to type you account name to delete it

@@ -88,26 +88,6 @@
         {% endif %}
     {% endwith %}
         <form class="mt-8 space-y-6" action="{{ url_for('register') }}" method="POST">
-            <!-- Username Field -->
-            <div>
-                <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Username
-                </label>
-                <input id="username" name="username" type="text" required
-                    class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
-                    placeholder="Enter username">
-
-                <!-- Username Requirements -->
-                <div class="mt-4 space-y-2">
-                    <div class="flex items-center text-sm" id="username-chars">
-                        <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                            <span class="requirement-icon w-5 h-5 mr-2"></span>
-                            Only letters, numbers, dots, underscores, and hyphens
-                        </span>
-                    </div>
-                </div>
-            </div>
-
             <!-- Password Field -->
             <div class="mt-6">
                 <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
