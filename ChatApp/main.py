@@ -415,12 +415,7 @@ def update_user_data(username, data):
         {"$set": data}
     )
 
-def is_valid_username(username):
-    return re.match("^[a-zA-Z0-9_.-]+$", username)
-
-def is_strong_password(password):
-    return len(password) >= 8 and any(c.isdigit() for c in password) and any(c.isalpha() for c in password)
-
+# Flask route
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if current_user.is_authenticated:
@@ -429,23 +424,26 @@ def register():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-        confirm_password = request.form.get("confirm_password")
 
         # Input validation
         if not username or not password:
             flash("Username and password are required!")
             return redirect(url_for("register"))
 
-        if not is_valid_username(username):
-            flash("Username can only contain letters, numbers, dots, underscores, and hyphens.")
+        # Validate username format
+        if not re.match(r'^[a-zA-Z0-9_.-]+$', username):
+            flash("Username can only contain letters, numbers, dots, underscores, and hyphens!")
             return redirect(url_for("register"))
 
-        if not is_strong_password(password):
-            flash("Password must be at least 8 characters long and include letters and numbers.")
+        # Validate password requirements
+        if len(password) < 8:
+            flash("Password must be at least 8 characters long!")
             return redirect(url_for("register"))
-
-        if password != confirm_password:
-            flash("Passwords do not match!")
+        if not re.search(r'[a-zA-Z]', password):
+            flash("Password must contain at least one letter!")
+            return redirect(url_for("register"))
+        if not re.search(r'\d', password):
+            flash("Password must contain at least one number!")
             return redirect(url_for("register"))
 
         if users_collection.find_one({"username": username}):
@@ -462,10 +460,15 @@ def register():
             "online": False,
             "rooms": []
         }
-        users_collection.insert_one(user_data)
-
-        flash("Registration successful! Please login.")
-        return redirect(url_for("login"))
+        
+        try:
+            users_collection.insert_one(user_data)
+            flash("Registration successful! Please login.")
+            return redirect(url_for("login"))
+        except Exception as e:
+            app.logger.error(f"Registration error: {str(e)}")
+            flash("An error occurred during registration. Please try again.")
+            return redirect(url_for("register"))
 
     return render_template("register.html")
 
