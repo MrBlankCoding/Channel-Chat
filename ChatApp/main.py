@@ -1096,13 +1096,18 @@ def delete_firebase_image(image_url):
         print(f"Error deleting image from Firebase Storage: {e}")
         print(f"Attempted to delete path: {path}")
 
-
 @app.route("/invite_to_room/<username>")
 def invite_to_room(username):
     current_room = session.get("room")
 
     if not current_room:
         flash("You're not in a room.")
+        return redirect(url_for("home"))
+
+    # Get the room data to include room name and photo
+    room_data = rooms_collection.find_one({"_id": current_room})
+    if not room_data:
+        flash("Room not found.")
         return redirect(url_for("home"))
 
     # Get the friend's data
@@ -1112,7 +1117,7 @@ def invite_to_room(username):
         return redirect(url_for("room"))
 
     # Get current user's data and ensure current_user is handled correctly
-    current_username = current_user.username  # Extract username from LocalProxy
+    current_username = current_user.username
     user_data = get_user_data(current_username)
 
     if username not in user_data.get("friends", []):
@@ -1125,19 +1130,17 @@ def invite_to_room(username):
 
     # Check if invite already exists
     existing_invite = next(
-        (
-            inv
-            for inv in friend_data["room_invites"]
-            if inv.get("room") == current_room
-        ),
+        (inv for inv in friend_data["room_invites"] if inv.get("room") == current_room),
         None,
     )
 
     if not existing_invite:
-        # Create new invite with proper structure
+        # Create new invite with room name and profile photo
         new_invite = {
             "room": current_room,
-            "from": current_username,  # Use the actual username string here
+            "room_name": room_data.get("name", "Unnamed Room"),
+            "from": current_username,
+            "profile_photo": room_data.get("profile_photo")
         }
         friend_data["room_invites"].append(new_invite)
 
@@ -1148,7 +1151,6 @@ def invite_to_room(username):
         flash(f"{username} already has a pending invite to this room.")
 
     return redirect(url_for("room"))
-
 
 @app.route("/join_friend_room/<friend_username>")
 @login_required
@@ -1571,6 +1573,7 @@ def room(code):
             created_by=room_data["created_by"],
             friends=friends_data,
             room_data=room_data,
+            user_data=user_data  # Add this line to pass user data to template
         )
 
     except Exception as e:
