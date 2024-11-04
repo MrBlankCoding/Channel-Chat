@@ -55,12 +55,7 @@ def utility_processor():
 
 
 app.secret_key = os.getenv("SECRET_KEY")
-app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
-app.config["SESSION_COOKIE_SECURE"] = True
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["ALLOWED_IMAGE_TYPES"] = {"png", "jpeg", "jpg", "gif"}
-app.config["UPLOAD_FOLDER"] = "uploads"
 
 # Initialize MongoDB client using the URI from .env
 client = MongoClient(os.getenv("MONGO_URI"))
@@ -1515,53 +1510,56 @@ def room(code):
 
     try:
         user_data = users_collection.find_one({"username": username})
+        if not user_data:
+            flash("User data not found")
+            return redirect(url_for("home"))
 
+        # Update user's current room
         users_collection.update_one(
-            {"username": username}, {"$set": {"current_room": code}}
+            {"username": username},
+            {"$set": {"current_room": code}}
         )
 
+        # Ensure room data has all required fields
         room_data.setdefault("users", [])
         room_data.setdefault("messages", [])
         room_data.setdefault("created_by", "")
         room_data.setdefault("name", "Unnamed Room")
 
         user_friends = set(user_data.get("friends", []))
+        
+        # Update message friend status
         for message in room_data["messages"]:
             message["is_friend"] = message["name"] in user_friends
 
+        # Prepare user list
         user_list = []
         for user in room_data["users"]:
             user_profile = users_collection.find_one({"username": user})
             if user_profile:
-                user_list.append(
-                    {
-                        "username": user,
-                        "online": user_profile.get("online", False),
-                        "isFriend": user in user_friends,
-                    }
-                )
+                user_list.append({
+                    "username": user,
+                    "online": user_profile.get("online", False),
+                    "isFriend": user in user_friends,
+                })
 
+        # Prepare friends data
         friends_data = []
         for friend in user_friends:
             friend_data = users_collection.find_one({"username": friend})
             if friend_data:
-                # Get room name if friend is in a room
                 room_name = "Unknown Room"
                 if friend_data.get("current_room"):
-                    friend_room_data = get_room_data(
-                        friend_data["current_room"]
-                    )
+                    friend_room_data = get_room_data(friend_data["current_room"])
                     if friend_room_data:
                         room_name = friend_room_data.get("name", "Unnamed Room")
 
-                friends_data.append(
-                    {
-                        "username": friend,
-                        "online": friend_data.get("online", False),
-                        "current_room": friend_data.get("current_room"),
-                        "room_name": room_name,
-                    }
-                )
+                friends_data.append({
+                    "username": friend,
+                    "online": friend_data.get("online", False),
+                    "current_room": friend_data.get("current_room"),
+                    "room_name": room_name,
+                })
 
         return render_template(
             "room.html",
@@ -1576,7 +1574,7 @@ def room(code):
         )
 
     except Exception as e:
-        flash("Error loading room data")
+        flash(f"Error loading room data: {str(e)}")
         return redirect(url_for("home"))
 
 
@@ -1608,9 +1606,24 @@ def exit_room(code):
     # Always remove the user from the room's user list when exiting
     rooms_collection.update_one({"_id": code}, {"$pull": {"users": username}})
 
+    # Add system message about user leaving
+    system_message = {
+        "id": str(ObjectId()),
+        "name": "system",
+        "message": f"{username} has left the room",
+        "type": "system",
+        "read_by": room_data["users"],  # Mark as read by all current users
+    }
+    rooms_collection.update_one(
+        {"_id": code},
+        {"$push": {"messages": system_message}}
+    )
+
+    # Emit the system message to all users in the room
+    socketio.emit("message", system_message, to=code)
+
     flash("You have left the room successfully.")
     return redirect(url_for("home"))
-
 
 @app.route("/update_room_name/<room_code>", methods=["POST"])
 @login_required
@@ -1919,7 +1932,6 @@ def load_more_messages(data):
         room=request.sid,
     )
 
-
 @socketio.on("connect")
 def connect():
     room = session.get("room")
@@ -1929,40 +1941,75 @@ def connect():
 
     join_room(room)
 
+    # Get user and room data
+    room_data = rooms_collection.find_one({"_id": room})
+    user_data = users_collection.find_one({"username": username})
+    
+    if not room_data or not user_data:
+        return
+    
+    # Check if this is the user's first time joining the room
+    # Make sure to check both the rooms array and handle the case where it doesn't exist
+    user_rooms = user_data.get("rooms", [])
+    is_first_join = room not in user_rooms
+
     # Update user's current room and rooms list
     users_collection.update_one(
         {"username": username},
-        {"$set": {"current_room": room}, "$addToSet": {"rooms": room}},
+        {
+            "$set": {"current_room": room},
+            "$addToSet": {"rooms": room}
+        }
     )
 
     # Add user to the room's user list if not already present
     rooms_collection.update_one(
-        {"_id": room}, {"$addToSet": {"users": username}}
+        {"_id": room},
+        {"$addToSet": {"users": username}}
     )
 
-    # Get updated room data
+    # If this is the user's first time joining, add a system message
+    if is_first_join:
+        current_time = datetime.utcnow()
+        system_message = {
+            "id": str(ObjectId()),
+            "name": "system",
+            "message": f"{username} has joined the room for the first time",
+            "type": "system",
+            "read_by": room_data.get("users", []),  # Mark as read by all current users
+        }
+        
+        # Add the system message to the room
+        rooms_collection.update_one(
+            {"_id": room},
+            {"$push": {"messages": system_message}}
+        )
+        
+        # Emit the system message to all users in the room
+        socketio.emit("message", {
+            **system_message,
+        }, to=room)
+
+    # Get updated room data for user list
     room_data = rooms_collection.find_one({"_id": room})
     user_data = users_collection.find_one({"username": username})
 
     # Send updated user list with online status and friend information
     user_list = []
-    for user in room_data["users"]:
+    for user in room_data.get("users", []):
         user_profile = users_collection.find_one({"username": user})
-        user_list.append(
-            {
+        if user_profile:
+            user_list.append({
                 "username": user,
                 "online": user_profile.get("online", False),
                 "isFriend": user in user_data.get("friends", []),
-            }
-        )
+            })
 
     socketio.emit(
         "update_users",
         {
             "users": user_list,
-            "room_name": room_data.get(
-                "name", "Unnamed Room"
-            ),  # Send room name
+            "room_name": room_data.get("name", "Unnamed Room"),
         },
         room=room,
     )
@@ -1983,13 +2030,10 @@ def connect():
         {
             "messages": messages_with_read_status,
             "has_more": len(messages) < len(room_data.get("messages", [])),
-            "room_name": room_data.get(
-                "name", "Unnamed Room"
-            ),  # Send room name
+            "room_name": room_data.get("name", "Unnamed Room"),
         },
         room=request.sid,
     )
-
 
 @socketio.on("disconnect")
 def disconnect():
@@ -2087,8 +2131,6 @@ def mark_messages_read(data):
     username = current_user.username
     if not room or not username:
         return
-
-    current_time = datetime.utcnow()
 
     # Update the read status of messages in the room
     rooms_collection.update_many(

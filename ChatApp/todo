@@ -53,3 +53,6 @@
 22. Add a message for new users joining a room and leaving a room permanly 
 
 23. Allow pasting of messages from websites
+
+24. Make it broadcast a user joining a room for the first time
+   - System Message

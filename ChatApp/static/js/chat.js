@@ -137,7 +137,44 @@ const getResponsiveMaxWidth = () => {
   return MESSAGE.maxWidth.largeDesktop; // Large desktop screens
 };
 
-const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = []) => {
+const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal') => {
+  // Handle system messages differently
+  if (type === 'system') {
+    const element = document.createElement("div");
+    element.className = 'message group py-2 flex justify-center';
+    element.dataset.messageId = messageId;
+
+    const systemMessage = document.createElement("div");
+    systemMessage.className = 'px-4 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full inline-flex items-center gap-2';
+
+    // System icon
+    const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    iconSvg.setAttribute("class", "w-3.5 h-3.5 text-gray-400 dark:text-gray-500");
+    iconSvg.setAttribute("fill", "none");
+    iconSvg.setAttribute("viewBox", "0 0 24 24");
+    iconSvg.setAttribute("stroke", "currentColor");
+    iconSvg.setAttribute("stroke-width", "2");
+    
+    // Info circle icon
+    const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    iconPath.setAttribute("stroke-linecap", "round");
+    iconPath.setAttribute("stroke-linejoin", "round");
+    iconPath.setAttribute("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z");
+    
+    iconSvg.appendChild(iconPath);
+    systemMessage.appendChild(iconSvg);
+
+    const messageText = document.createElement("span");
+    messageText.className = 'text-sm text-gray-500 dark:text-gray-400';
+    messageText.textContent = msg;
+    
+    systemMessage.appendChild(messageText);
+    element.appendChild(systemMessage);
+    
+    return element;
+  }
+
+  // Regular message handling continues below
   const isCurrentUser = name === currentUser;
   const validReaders = readBy.filter(reader => reader !== null && reader !== name);
   const isRead = validReaders.length > 0;
@@ -1212,7 +1249,24 @@ const findMessageById = (messageId) => {
 };
 
 socketio.on("message", (data) => {
-  // If this message is a reply, we need to properly format the reply_to data
+  // Handle system messages
+  if (data.type === 'system') {
+    const messageElement = createMessageElement(
+      data.name,
+      data.message,
+      null,  // system messages don't have images
+      data.id,
+      null,  // system messages don't have replies
+      false, // system messages can't be edited
+      {},    // system messages don't have reactions
+      data.read_by || [],
+      'system' // specify type as system
+    );
+    addMessageToDOM(messageElement);
+    return;
+  }
+
+  // Handle regular messages
   let replyToData = null;
   if (data.reply_to) {
     replyToData = {
@@ -1226,9 +1280,10 @@ socketio.on("message", (data) => {
     data.message, 
     data.image, 
     data.id, 
-    replyToData,  // Pass the properly formatted reply data
+    replyToData,
     data.edited || false,
-    data.reactions || {}
+    data.reactions || {},
+    data.read_by || []
   );
   addMessageToDOM(messageElement);
 
@@ -1248,7 +1303,7 @@ socketio.on("message", (data) => {
     replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
   }
 
-  // Find all action buttons within the message element
+  // Only add action buttons for non-system messages
   const actionButtons = messageElement.querySelectorAll('.action-btn');
   actionButtons.forEach(button => {
     const buttonTitle = button.getAttribute('title');
@@ -1299,20 +1354,43 @@ socketio.on("chat_history", (data) => {
   messageContainer.className = 'flex flex-col space-y-4 p-4';
   
   data.messages.forEach((message) => {
+    // Handle system messages
+    if (message.type === 'system') {
+      const messageElement = createMessageElement(
+        message.name,
+        message.message,
+        null,  // system messages don't have images
+        message.id,
+        null,  // system messages don't have replies
+        false, // system messages can't be edited
+        {},    // system messages don't have reactions
+        [],    // system messages don't track read status
+        'system'
+      );
+      messageContainer.appendChild(messageElement);
+      return;
+    }
+
+    // Handle regular messages
     const validReaders = (message.read_by || []).filter(reader => 
       reader !== null && 
       reader !== message.name
     );
     
+    const replyToData = message.reply_to ? {
+      id: message.reply_to.id || message.reply_to,
+      message: message.reply_to.message || findMessageById(message.reply_to)
+    } : null;
+
     const messageElement = createMessageElement(
       message.name, 
       message.message, 
       message.image, 
       message.id, 
-      message.reply_to,
+      replyToData,
       message.edited || false,
       message.reactions || {},
-      validReaders // Pass the valid readers to createMessageElement
+      validReaders
     );
     messageContainer.appendChild(messageElement);
 
@@ -1350,20 +1428,43 @@ socketio.on("more_messages", (data) => {
   const fragment = document.createDocumentFragment();
   
   data.messages.forEach((message) => {
+    // Handle system messages
+    if (message.type === 'system') {
+      const messageElement = createMessageElement(
+        message.name,
+        message.message,
+        null,  // system messages don't have images
+        message.id,
+        null,  // system messages don't have replies
+        false, // system messages can't be edited
+        {},    // system messages don't have reactions
+        [],    // system messages don't track read status
+        'system'
+      );
+      fragment.appendChild(messageElement);
+      return;
+    }
+
+    // Handle regular messages
     const validReaders = (message.read_by || []).filter(reader => 
       reader !== null && 
       reader !== message.name
     );
+    
+    const replyToData = message.reply_to ? {
+      id: message.reply_to.id || message.reply_to,
+      message: message.reply_to.message || findMessageById(message.reply_to)
+    } : null;
     
     const messageElement = createMessageElement(
       message.name, 
       message.message, 
       message.image, 
       message.id, 
-      message.reply_to,
+      replyToData,
       message.edited || false,
       message.reactions || {},
-      validReaders // Pass the valid readers to createMessageElement
+      validReaders
     );
     fragment.appendChild(messageElement);
 
