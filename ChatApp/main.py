@@ -738,6 +738,7 @@ def delete_account():
 
     return redirect(url_for("register"))
 
+
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
@@ -778,7 +779,11 @@ def settings():
         # Update password
         if new_password:
             # Inline password strength check
-            if len(new_password) < 8 or not any(char.isdigit() for char in new_password) or not any(char.isalpha() for char in new_password):
+            if (
+                len(new_password) < 8
+                or not any(char.isdigit() for char in new_password)
+                or not any(char.isalpha() for char in new_password)
+            ):
                 flash(
                     "Password must be at least 8 characters long and include letters and numbers."
                 )
@@ -798,6 +803,7 @@ def settings():
 
     user_data = users_collection.find_one({"username": current_user.username})
     return render_template("settings.html", user_data=user_data)
+
 
 def handle_friend_request(username, friend_username):
     friend_data = users_collection.find_one({"username": friend_username})
@@ -1096,54 +1102,59 @@ def delete_firebase_image(image_url):
         print(f"Error deleting image from Firebase Storage: {e}")
         print(f"Attempted to delete path: {path}")
 
+
 @app.route("/pending_room_invites")
 def pending_room_invites():
     if not current_user:
         flash("Please login to view pending invites.")
         return redirect(url_for("login"))
-    
+
     # Get current user's data
     current_username = current_user.username
     user_data = get_user_data(current_username)
-    
+
     # Initialize pending_invites if it doesn't exist
     if "pending_invites" not in user_data:
         user_data["pending_invites"] = []
-    
+
     return render_template("room_invites.html", user_data=user_data)
+
 
 @app.route("/cancel_room_invite/<username>/<room_code>")
 def cancel_room_invite(username, room_code):
     if not current_user:
         flash("Please login to cancel invites.")
         return redirect(url_for("login"))
-    
+
     # Get the invited user's data
     friend_data = get_user_data(username)
     if not friend_data:
         flash("User not found.")
         return redirect(url_for("room"))
-    
+
     # Remove the invite from their room_invites
     if "room_invites" in friend_data:
         friend_data["room_invites"] = [
-            inv for inv in friend_data["room_invites"] 
+            inv
+            for inv in friend_data["room_invites"]
             if inv.get("room") != room_code
         ]
         update_user_data(username, friend_data)
-        
+
     # Remove from current user's pending_invites
     current_username = current_user.username
     user_data = get_user_data(current_username)
     if "pending_invites" in user_data:
         user_data["pending_invites"] = [
-            inv for inv in user_data["pending_invites"]
+            inv
+            for inv in user_data["pending_invites"]
             if inv.get("username") != username or inv.get("room") != room_code
         ]
         update_user_data(current_username, user_data)
-    
+
     flash(f"Cancelled room invitation to {username}.")
     return redirect(url_for("room"))
+
 
 # Modified invite_to_room route to include pending_invites
 @app.route("/invite_to_room/<username>")
@@ -1184,7 +1195,11 @@ def invite_to_room(username):
 
     # Check if invite already exists
     existing_invite = next(
-        (inv for inv in friend_data["room_invites"] if inv.get("room") == current_room),
+        (
+            inv
+            for inv in friend_data["room_invites"]
+            if inv.get("room") == current_room
+        ),
         None,
     )
 
@@ -1194,16 +1209,16 @@ def invite_to_room(username):
             "room": current_room,
             "room_name": room_data.get("name", "Unnamed Room"),
             "from": current_username,
-            "profile_photo": room_data.get("profile_photo")
+            "profile_photo": room_data.get("profile_photo"),
         }
         friend_data["room_invites"].append(new_invite)
-        
+
         # Add to pending_invites for current user
         pending_invite = {
             "username": username,
             "room": current_room,
             "room_name": room_data.get("name", "Unnamed Room"),
-            "profile_photo": room_data.get("profile_photo")
+            "profile_photo": room_data.get("profile_photo"),
         }
         user_data["pending_invites"].append(pending_invite)
 
@@ -1215,6 +1230,7 @@ def invite_to_room(username):
         flash(f"{username} already has a pending invite to this room.")
 
     return redirect(url_for("room"))
+
 
 @app.route("/join_friend_room/<friend_username>")
 @login_required
@@ -1582,8 +1598,7 @@ def room(code):
 
         # Update user's current room
         users_collection.update_one(
-            {"username": username},
-            {"$set": {"current_room": code}}
+            {"username": username}, {"$set": {"current_room": code}}
         )
 
         # Ensure room data has all required fields
@@ -1593,7 +1608,7 @@ def room(code):
         room_data.setdefault("name", "Unnamed Room")
 
         user_friends = set(user_data.get("friends", []))
-        
+
         # Update message friend status
         for message in room_data["messages"]:
             message["is_friend"] = message["name"] in user_friends
@@ -1603,11 +1618,13 @@ def room(code):
         for user in room_data["users"]:
             user_profile = users_collection.find_one({"username": user})
             if user_profile:
-                user_list.append({
-                    "username": user,
-                    "online": user_profile.get("online", False),
-                    "isFriend": user in user_friends,
-                })
+                user_list.append(
+                    {
+                        "username": user,
+                        "online": user_profile.get("online", False),
+                        "isFriend": user in user_friends,
+                    }
+                )
 
         # Prepare friends data
         friends_data = []
@@ -1616,16 +1633,20 @@ def room(code):
             if friend_data:
                 room_name = "Unknown Room"
                 if friend_data.get("current_room"):
-                    friend_room_data = get_room_data(friend_data["current_room"])
+                    friend_room_data = get_room_data(
+                        friend_data["current_room"]
+                    )
                     if friend_room_data:
                         room_name = friend_room_data.get("name", "Unnamed Room")
 
-                friends_data.append({
-                    "username": friend,
-                    "online": friend_data.get("online", False),
-                    "current_room": friend_data.get("current_room"),
-                    "room_name": room_name,
-                })
+                friends_data.append(
+                    {
+                        "username": friend,
+                        "online": friend_data.get("online", False),
+                        "current_room": friend_data.get("current_room"),
+                        "room_name": room_name,
+                    }
+                )
 
         return render_template(
             "room.html",
@@ -1637,7 +1658,7 @@ def room(code):
             created_by=room_data["created_by"],
             friends=friends_data,
             room_data=room_data,
-            user_data=user_data  # Add this line to pass user data to template
+            user_data=user_data,  # Add this line to pass user data to template
         )
 
     except Exception as e:
@@ -1682,8 +1703,7 @@ def exit_room(code):
         "read_by": room_data["users"],  # Mark as read by all current users
     }
     rooms_collection.update_one(
-        {"_id": code},
-        {"$push": {"messages": system_message}}
+        {"_id": code}, {"$push": {"messages": system_message}}
     )
 
     # Emit the system message to all users in the room
@@ -1691,6 +1711,7 @@ def exit_room(code):
 
     flash("You have left the room successfully.")
     return redirect(url_for("home"))
+
 
 @app.route("/update_room_name/<room_code>", methods=["POST"])
 @login_required
@@ -1777,7 +1798,6 @@ def update_room_photo(room_code):
     except Exception as e:
         print(f"Error uploading room photo: {e}")
         return jsonify({"error": "Failed to upload photo"}), 500
-
 
 @socketio.on("toggle_reaction")
 def handle_reaction(data):
@@ -1999,6 +2019,7 @@ def load_more_messages(data):
         room=request.sid,
     )
 
+
 @socketio.on("connect")
 def connect():
     room = session.get("room")
@@ -2011,10 +2032,10 @@ def connect():
     # Get user and room data
     room_data = rooms_collection.find_one({"_id": room})
     user_data = users_collection.find_one({"username": username})
-    
+
     if not room_data or not user_data:
         return
-    
+
     # Check if this is the user's first time joining the room
     # Make sure to check both the rooms array and handle the case where it doesn't exist
     user_rooms = user_data.get("rooms", [])
@@ -2023,16 +2044,12 @@ def connect():
     # Update user's current room and rooms list
     users_collection.update_one(
         {"username": username},
-        {
-            "$set": {"current_room": room},
-            "$addToSet": {"rooms": room}
-        }
+        {"$set": {"current_room": room}, "$addToSet": {"rooms": room}},
     )
 
     # Add user to the room's user list if not already present
     rooms_collection.update_one(
-        {"_id": room},
-        {"$addToSet": {"users": username}}
+        {"_id": room}, {"$addToSet": {"users": username}}
     )
 
     # If this is the user's first time joining, add a system message
@@ -2043,19 +2060,24 @@ def connect():
             "name": "system",
             "message": f"{username} has joined the room for the first time",
             "type": "system",
-            "read_by": room_data.get("users", []),  # Mark as read by all current users
+            "read_by": room_data.get(
+                "users", []
+            ),  # Mark as read by all current users
         }
-        
+
         # Add the system message to the room
         rooms_collection.update_one(
-            {"_id": room},
-            {"$push": {"messages": system_message}}
+            {"_id": room}, {"$push": {"messages": system_message}}
         )
-        
+
         # Emit the system message to all users in the room
-        socketio.emit("message", {
-            **system_message,
-        }, to=room)
+        socketio.emit(
+            "message",
+            {
+                **system_message,
+            },
+            to=room,
+        )
 
     # Get updated room data for user list
     room_data = rooms_collection.find_one({"_id": room})
@@ -2066,11 +2088,13 @@ def connect():
     for user in room_data.get("users", []):
         user_profile = users_collection.find_one({"username": user})
         if user_profile:
-            user_list.append({
-                "username": user,
-                "online": user_profile.get("online", False),
-                "isFriend": user in user_data.get("friends", []),
-            })
+            user_list.append(
+                {
+                    "username": user,
+                    "online": user_profile.get("online", False),
+                    "isFriend": user in user_data.get("friends", []),
+                }
+            )
 
     socketio.emit(
         "update_users",
@@ -2101,6 +2125,7 @@ def connect():
         },
         room=request.sid,
     )
+
 
 @socketio.on("disconnect")
 def disconnect():

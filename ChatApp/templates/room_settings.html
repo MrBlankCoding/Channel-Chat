@@ -1,191 +1,187 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-  <!-- Simplified Header with Better Spacing -->
-  <header class="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-    <div class="container mx-auto px-6 py-4 flex items-center justify-between max-w-3xl">
+<!-- Simplified Header with Better Spacing -->
+<header class="sticky top-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+   <div class="container mx-auto px-6 py-4 flex items-center justify-between max-w-3xl">
       <div class="flex items-center gap-4">
-        <a href="{{ url_for('room', code=room_code) }}" 
-           class="inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-          <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-          </svg>
-        </a>
-        <div>
-          <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Room Settings</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">Manage your room preferences and users</p>
-        </div>
+         <a href="{{ url_for('room', code=room_code) }}" 
+            class="inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+         </a>
+         <div>
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Room Settings</h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Manage your room preferences and users</p>
+         </div>
       </div>
-    </div>
-  </header>
-
-  <div class="container mx-auto px-6 py-8 max-w-3xl">
-    <div class="grid gap-6">
+   </div>
+</header>
+<div class="container mx-auto px-6 py-8 max-w-3xl">
+   <div class="grid gap-6">
       <!-- Room Identity Section -->
       <div class="grid md:grid-cols-2 gap-6">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Room Photo</h2>
-          <div class="flex flex-col items-center gap-4">
-            <div class="relative group">
-              <div class="w-40 h-40 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 shadow-md">
-                <img 
-                  id="room-photo"
-                  src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
-                  alt="Room profile"
-                  class="w-full h-full object-cover transition-transform group-hover:scale-105"
-                />
-              </div>
-              <label for="photo-upload" 
+         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Room Photo</h2>
+            <div class="flex flex-col items-center gap-4">
+               <div class="relative group">
+                  <div class="w-40 h-40 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 shadow-md">
+                     <img 
+                        id="room-photo"
+                        src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                        alt="Room profile"
+                        class="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        />
+                  </div>
+                  <label for="photo-upload" 
                      class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 
-                            transition-all cursor-pointer rounded-xl backdrop-blur-sm">
-                <span class="text-white flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
-                  </svg>
-                  Change Photo
-                </span>
-              </label>
-              <input type="file" id="photo-upload" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+                     transition-all cursor-pointer rounded-xl backdrop-blur-sm">
+                     <span class="text-white flex items-center gap-2 px-4 py-2 bg-white/10 rounded-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Change Photo
+                     </span>
+                  </label>
+                  <input type="file" id="photo-upload" accept="image/*" class="hidden" onchange="handlePhotoUpload(event)">
+               </div>
+               <div id="upload-status" class="hidden">
+                  <div class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                     <svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                     </svg>
+                     Uploading...
+                  </div>
+               </div>
+               <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Recommended: Square image, at least 500x500 pixels
+               </p>
             </div>
-            <div id="upload-status" class="hidden">
-              <div class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                <svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                Uploading...
-              </div>
-            </div>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              Recommended: Square image, at least 500x500 pixels
-            </p>
-          </div>
-        </div>
-
-        <!-- Room Name with Live Preview -->
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Room Name</h2>
-          <form id="room-name-form" action="{{ url_for('update_room_name', room_code=room_code) }}" method="POST" class="space-y-4">
-            <div class="space-y-3">
-              <div class="relative">
-                <input type="text" 
-                       name="room_name" 
-                       id="room-name-input"
-                       value="{{ room_data.name }}" 
-                       class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
-                              focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
-                              dark:bg-gray-700 dark:text-white pr-24 transition-shadow"
-                       maxlength="50">
-                <div class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-                  <span id="char-count">0</span>/50
-                </div>
-              </div>
-              <div id="name-preview" class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <span class="text-sm text-gray-600 dark:text-gray-400">Preview: </span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ room_data.name }}</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-4">
-              <button type="submit" 
-                      class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
-                             transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-                             focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                      id="update-name-btn">
-                Update Name
-              </button>
-              <div id="save-indicator" class="hidden items-center px-3 py-2 bg-green-50 dark:bg-green-900/50 text-green-600 dark:text-green-400 rounded-lg">
-                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                Saved
-              </div>
-            </div>
-          </form>
-        </div>
+         </div>
+         <!-- Room Name with Live Preview -->
+         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Room Name</h2>
+            <form id="room-name-form" action="{{ url_for('update_room_name', room_code=room_code) }}" method="POST" class="space-y-4">
+               <div class="space-y-3">
+                  <div class="relative">
+                     <input type="text" 
+                        name="room_name" 
+                        id="room-name-input"
+                        value="{{ room_data.name }}" 
+                        class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg 
+                        focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+                        dark:bg-gray-700 dark:text-white pr-24 transition-shadow"
+                        maxlength="50">
+                     <div class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                        <span id="char-count">0</span>/50
+                     </div>
+                  </div>
+                  <div id="name-preview" class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                     <span class="text-sm text-gray-600 dark:text-gray-400">Preview: </span>
+                     <span class="font-medium text-gray-900 dark:text-white">{{ room_data.name }}</span>
+                  </div>
+               </div>
+               <div class="flex items-center gap-4">
+                  <button type="submit" 
+                     class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 
+                     transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                     focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                     id="update-name-btn">
+                  Update Name
+                  </button>
+                  <div id="save-indicator" class="hidden items-center px-3 py-2 bg-green-50 dark:bg-green-900/50 text-green-600 dark:text-green-400 rounded-lg">
+                     <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                     </svg>
+                     Saved
+                  </div>
+               </div>
+            </form>
+         </div>
       </div>
-
       <!-- Message Search with Enhanced Results -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Search Messages</h2>
-        <div class="space-y-4">
-          <div class="relative">
-            <input type="text" 
-                   id="message-search" 
-                   placeholder="Search messages..." 
-                   class="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg
-                          focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
-                          dark:bg-gray-700 dark:text-white transition-shadow">
-            <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-            </svg>
-            <div id="search-status" class="absolute right-4 top-1/2 -translate-y-1/2 hidden">
-              <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                Searching...
-              </div>
+         <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-6">Search Messages</h2>
+         <div class="space-y-4">
+            <div class="relative">
+               <input type="text" 
+                  id="message-search" 
+                  placeholder="Search messages..." 
+                  class="w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg
+                  focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 
+                  dark:bg-gray-700 dark:text-white transition-shadow">
+               <svg class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+               </svg>
+               <div id="search-status" class="absolute right-4 top-1/2 -translate-y-1/2 hidden">
+                  <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                     <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                     </svg>
+                     Searching...
+                  </div>
+               </div>
             </div>
-          </div>
-          <div id="search-results" class="space-y-2 max-h-[400px] overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700 rounded-lg">
-            <!-- Results will be dynamically inserted here -->
-          </div>
-        </div>
+            <div id="search-results" class="space-y-2 max-h-[400px] overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700 rounded-lg">
+               <!-- Results will be dynamically inserted here -->
+            </div>
+         </div>
       </div>
-
       <!-- User Management with Enhanced UI -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6">
-        <div class="flex items-center justify-between mb-6">
-          <div>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Manage Users</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400">
-              <span id="online-count">0</span> users currently online
-            </p>
-          </div>
-        </div>
-        <div class="space-y-3" id="user-list">
-          {% for user in room_users %}
+         <div class="flex items-center justify-between mb-6">
+            <div>
+               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Manage Users</h2>
+               <p class="text-sm text-gray-500 dark:text-gray-400">
+                  <span id="online-count">0</span> users currently online
+               </p>
+            </div>
+         </div>
+         <div class="space-y-3" id="user-list">
+            {% for user in room_users %}
             {% if user.username != current_user.username and user.username != room_data.created_by %}
-              <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg 
-                          transition-all hover:scale-[1.01] hover:shadow-md group"
-                   data-username="{{ user.username }}">
-                <div class="flex items-center gap-4">
+            <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg 
+               transition-all hover:scale-[1.01] hover:shadow-md group"
+               data-username="{{ user.username }}">
+               <div class="flex items-center gap-4">
                   <div class="relative">
-                    <div class="w-12 h-12 rounded-full overflow-hidden shadow-sm">
-                      <img 
-                        src="{{ url_for('profile_photo', username=user.username) }}"
-                        alt="{{ user.username }}'s profile"
-                        class="w-full h-full object-cover"
-                        onerror="this.onerror=null; this.innerHTML='{{ user.username[0] | upper }}'; this.classList.add('bg-indigo-100', 'dark:bg-indigo-900', 'flex', 'items-center', 'justify-center', 'text-indigo-600', 'dark:text-indigo-400', 'font-medium');"
-                      />
-                    </div>
-                    <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 
-                                {{ 'bg-green-500' if user.online else 'bg-gray-400' }}"></span>
+                     <div class="w-12 h-12 rounded-full overflow-hidden shadow-sm">
+                        <img 
+                           src="{{ url_for('profile_photo', username=user.username) }}"
+                           alt="{{ user.username }}'s profile"
+                           class="w-full h-full object-cover"
+                           onerror="this.onerror=null; this.innerHTML='{{ user.username[0] | upper }}'; this.classList.add('bg-indigo-100', 'dark:bg-indigo-900', 'flex', 'items-center', 'justify-center', 'text-indigo-600', 'dark:text-indigo-400', 'font-medium');"
+                           />
+                     </div>
+                     <span class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white dark:border-gray-800 
+                        {{ 'bg-green-500' if user.online else 'bg-gray-400' }}"></span>
                   </div>
                   <div>
-                    <p class="font-medium text-gray-900 dark:text-white">{{ user.username }}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ 'Online' if user.online else 'Offline' }}
-                    </p>
+                     <p class="font-medium text-gray-900 dark:text-white">{{ user.username }}</p>
+                     <p class="text-sm text-gray-500 dark:text-gray-400">
+                        {{ 'Online' if user.online else 'Offline' }}
+                     </p>
                   </div>
-                </div>
-                <button onclick="showKickConfirmation('{{ user.username }}')" 
-                        class="px-4 py-2 bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg 
-                               hover:bg-red-600 hover:text-white dark:hover:bg-red-600 
-                               transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100
-                               focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+               </div>
+               <button onclick="showKickConfirmation('{{ user.username }}')" 
+                  class="px-4 py-2 bg-red-50 dark:bg-red-900/50 text-red-600 dark:text-red-400 rounded-lg 
+                  hover:bg-red-600 hover:text-white dark:hover:bg-red-600 
+                  transition-all duration-200 opacity-0 group-hover:opacity-100 focus:opacity-100
+                  focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
                   <span class="hidden sm:inline">Remove User</span>
                   <svg class="w-5 h-5 sm:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
                   </svg>
-                </button>
-              </div>
+               </button>
+            </div>
             {% endif %}
-          {% endfor %}
-        </div>
+            {% endfor %}
+         </div>
       </div>
       <!-- Delete Room Section with Enhanced Confirmation -->
       {% if is_owner %}

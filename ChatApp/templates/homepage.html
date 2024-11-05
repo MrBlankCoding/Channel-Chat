@@ -1,439 +1,430 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Header Section -->
-      <header class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
-         <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <div class="md:flex md:items-center md:justify-between">
-               <div class="flex-1 min-w-0">
-                  <div class="flex items-center">
-                     <img class="h-16 w-16 rounded-full border-4 border-white dark:border-gray-700 shadow-lg" 
-                     id="profile-photo" 
-                     src="{{ url_for('profile_photo', username=current_user.username) }}" 
-                     alt="Profile photo" 
-                     onerror="this.onerror=null; this.src='{{ url_for('default_profile') }}'; console.log('Fallback to default profile image');">                           
-                     <div class="ml-4">
-                        <h1 class="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:text-3xl sm:truncate">
-                           Welcome back, {{ username }}
-                        </h1>
-                        <div class="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:mt-0 sm:space-x-6">
-                           <div class="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-300">
-                              <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                 <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                              </svg>
-                              {{ user_data.get('rooms', [])|length }} {{ 'Room' if user_data.get('rooms', [])|length == 1 else 'Rooms' }}
-                           </div>
-                           <div class="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-300">
-                              <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd" />
-                              </svg>
-                              {{ friends|length }} {{ 'Friend' if friends|length == 1 else 'Friends' }}
-                           </div>
-                        </div>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<!-- Header Section -->
+<header class="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
+   <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div class="md:flex md:items-center md:justify-between">
+         <div class="flex-1 min-w-0">
+            <div class="flex items-center">
+               <img class="h-16 w-16 rounded-full border-4 border-white dark:border-gray-700 shadow-lg" 
+                  id="profile-photo" 
+                  src="{{ url_for('profile_photo', username=current_user.username) }}" 
+                  alt="Profile photo" 
+                  onerror="this.onerror=null; this.src='{{ url_for('default_profile') }}'; console.log('Fallback to default profile image');">                           
+               <div class="ml-4">
+                  <h1 class="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:text-3xl sm:truncate">
+                     Welcome back, {{ username }}
+                  </h1>
+                  <div class="mt-1 flex flex-col sm:flex-row sm:flex-wrap sm:mt-0 sm:space-x-6">
+                     <div class="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-300">
+                        <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                           <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                        </svg>
+                        {{ user_data.get('rooms', [])|length }} {{ 'Room' if user_data.get('rooms', [])|length == 1 else 'Rooms' }}
+                     </div>
+                     <div class="mt-2 flex items-center text-sm text-gray-500 dark:text-gray-300">
+                        <svg class="flex-shrink-0 mr-1.5 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                           <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clip-rule="evenodd" />
+                        </svg>
+                        {{ friends|length }} {{ 'Friend' if friends|length == 1 else 'Friends' }}
                      </div>
                   </div>
                </div>
-               <div class="mt-4 flex md:mt-0 md:ml-4">
-                  <button id="toggle-notifications" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-                      </svg>
-                  </button>
-                  
-                  <a href="{{ url_for('settings') }}" class="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-                          <circle cx="12" cy="12" r="3"></circle>
-                      </svg>
-                  </a>
-              
-                  <a href="{{ url_for('logout') }}" class="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                          <polyline points="16 17 21 12 16 7"></polyline>
-                          <line x1="21" y1="12" x2="9" y2="12"></line>
-                      </svg>
-                  </a>
-              </div>
             </div>
          </div>
-      </header>
-      <div class="md:flex md:space-x-8">
-         <!-- Main Content -->
-         <main class="flex-1">
-            <!-- Room Management Section -->
-            <section class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-8">
-               <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                  <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                     Room Management
-                  </h3>
-               </div>
-               <div class="px-4 py-5 sm:p-6">
-                  <!-- Create/Join Room Tabs -->
-                  <div class="border-b border-gray-200 dark:border-gray-700">
-                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="join-tab" onclick="switchTab('join')">
-                        Join Room
-                        </button>
-                        <button class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="create-tab" onclick="switchTab('create')">
-                        Create Room
-                        </button>
-                     </nav>
+         <div class="mt-4 flex md:mt-0 md:ml-4">
+            <button id="toggle-notifications" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+               </svg>
+            </button>
+            <a href="{{ url_for('settings') }}" class="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+               </svg>
+            </a>
+            <a href="{{ url_for('logout') }}" class="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+               </svg>
+            </a>
+         </div>
+      </div>
+   </div>
+</header>
+<div class="md:flex md:space-x-8">
+<!-- Main Content -->
+<main class="flex-1">
+   <!-- Room Management Section -->
+   <section class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-8">
+      <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+            Room Management
+         </h3>
+      </div>
+      <div class="px-4 py-5 sm:p-6">
+         <!-- Create/Join Room Tabs -->
+         <div class="border-b border-gray-200 dark:border-gray-700">
+            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+               <button class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="join-tab" onclick="switchTab('join')">
+               Join Room
+               </button>
+               <button class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="create-tab" onclick="switchTab('create')">
+               Create Room
+               </button>
+            </nav>
+         </div>
+         <!-- Join Room Tab -->
+         <div id="join-content" class="tab-content mt-6">
+            <form method="POST" class="space-y-6">
+               <div>
+                  <label for="code" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Room Code</label>
+                  <div class="mt-1">
+                     <input type="text" name="code" id="code" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Enter room code to join">
                   </div>
-                  <!-- Join Room Tab -->
-                  <div id="join-content" class="tab-content mt-6">
-                     <form method="POST" class="space-y-6">
-                        <div>
-                           <label for="code" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Room Code</label>
-                           <div class="mt-1">
-                              <input type="text" name="code" id="code" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Enter room code to join">
-                           </div>
-                        </div>
-                        <div>
-                           <button type="submit" name="join" value="true" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                           Join Room
-                           </button>
-                        </div>
-                     </form>
-                  </div>
-                  <div id="create-content" class="tab-content hidden mt-6">
-                     <form method="POST" class="space-y-6">
-                        <div>
-                           <label for="room_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Room Name</label>
-                           <div class="mt-1">
-                              <input type="text" name="room_name" id="room_name" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Enter a name for your room" required>
-                           </div>
-                        </div>
-                        <div>
-                           <button type="submit" name="create" value="true" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                           Create New Room
-                           </button>
-                        </div>
-                     </form>
+               </div>
+               <div>
+                  <button type="submit" name="join" value="true" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Join Room
+                  </button>
+               </div>
+            </form>
+         </div>
+         <div id="create-content" class="tab-content hidden mt-6">
+            <form method="POST" class="space-y-6">
+               <div>
+                  <label for="room_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Room Name</label>
+                  <div class="mt-1">
+                     <input type="text" name="room_name" id="room_name" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Enter a name for your room" required>
                   </div>
                </div>
-            </section>
-            <!-- Your Rooms Section -->
-            <section class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-               <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                  <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                     Your Rooms
-                  </h3>
+               <div>
+                  <button type="submit" name="create" value="true" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Create New Room
+                  </button>
                </div>
-               <div class="px-4 py-5 sm:p-6">
-                  {% if user_data.get('rooms') %}
-                  <div class="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-3">
-                     {% for room_code in user_data.get('rooms') %}
-                     {% set room_data = get_room_data(room_code) %}
-                     {% if room_data %}
-                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-                        <div class="p-5">
-                           <div class="flex items-center justify-between mb-4">
-                              <div class="flex items-center">
-                                 <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
-                                    {{ room_code[:2] }}
-                                 </div>
-                                 <div class="ml-3">
-                                    <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
-                                       {{ room_data.name or 'Unnamed Room' }}
-                                    </h3>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                                       Room ID: {{ room_code }}
-                                    </p>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                                       Created by: {{ room_data.created_by }}
-                                    </p>
-                                 </div>
-                              </div>
-                              {% if room_data.created_by == username %}
-                              <button onclick="showEditRoomName('{{ room_code }}')" class="text-sm text-indigo-600 hover:text-indigo-500">
-                              Edit Name
-                              </button>
-                              {% endif %}
-                           </div>
-                           <div id="edit-room-name-{{ room_code }}" class="hidden mt-4">
-                              <form action="{{ url_for('update_room_name', room_code=room_code) }}" method="POST" class="flex items-center">
-                                 <input type="text" name="room_name" value="{{ room_data.name or '' }}" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-                                 <button type="submit" class="ml-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                 Save
-                                 </button>
-                              </form>
-                           </div>
-                           <div class="mt-4 flex flex-wrap gap-2">
-                              {% for user in room_data.get('users', []) %}
-                              <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">
-                              {{ user }}
-                              </span>
-                              {% endfor %}
-                           </div>
-                           <div class="mt-6 flex items-center justify-between">
-                              <a href="{{ url_for('room', code=room_code) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                              Join Room
-                              <span id="unread-{{ room_code }}" class="ml-2 items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hidden">0</span>
-                              </a>
-                              {% if room_data.created_by == username %}
-                              <button onclick="confirmDeleteRoom('{{ room_code }}')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                              Delete
-                              </button>
-                              {% else %}
-                              <a href="{{ url_for('exit_room', code=room_code) }}" onclick="return confirm('Are you sure you want to exit this room?')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                              Exit Room
-                              </a>
-                              {% endif %}
-                           </div>
+            </form>
+         </div>
+      </div>
+   </section>
+   <!-- Your Rooms Section -->
+   <section class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+      <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+            Your Rooms
+         </h3>
+      </div>
+      <div class="px-4 py-5 sm:p-6">
+         {% if user_data.get('rooms') %}
+         <div class="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-3">
+            {% for room_code in user_data.get('rooms') %}
+            {% set room_data = get_room_data(room_code) %}
+            {% if room_data %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+               <div class="p-5">
+                  <div class="flex items-center justify-between mb-4">
+                     <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+                           {{ room_code[:2] }}
+                        </div>
+                        <div class="ml-3">
+                           <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
+                              {{ room_data.name or 'Unnamed Room' }}
+                           </h3>
+                           <p class="text-sm text-gray-500 dark:text-gray-400">
+                              Room ID: {{ room_code }}
+                           </p>
+                           <p class="text-sm text-gray-500 dark:text-gray-400">
+                              Created by: {{ room_data.created_by }}
+                           </p>
                         </div>
                      </div>
+                     {% if room_data.created_by == username %}
+                     <button onclick="showEditRoomName('{{ room_code }}')" class="text-sm text-indigo-600 hover:text-indigo-500">
+                     Edit Name
+                     </button>
                      {% endif %}
-                     {% endfor %}
                   </div>
-                  {% else %}
-                  <div class="text-center py-16">
-                     <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z M12 11v4 M15 13h-6" />
-                     </svg>
-                     <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No rooms</h3>
-                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new room or joining one.</p>
-                  </div>
-                  {% endif %}
-               </div>
-            </section>
-         </main>
-         <!-- Sidebar -->
-         <aside class="w-full md:w-80 mt-8 md:mt-0">
-            <!-- Friends Management Section -->
-            <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-8">
-               <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-                  <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                     Friends Management
-                  </h3>
-               </div>
-               <div class="px-4 py-5 sm:p-6">
-                  <!-- Friends Management Tabs -->
-                  <div class="border-b border-gray-200 dark:border-gray-700">
-                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="friends-list-tab" onclick="switchFriendsTab('friends-list')">
-                        Friends
+                  <div id="edit-room-name-{{ room_code }}" class="hidden mt-4">
+                     <form action="{{ url_for('update_room_name', room_code=room_code) }}" method="POST" class="flex items-center">
+                        <input type="text" name="room_name" value="{{ room_data.name or '' }}" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                        <button type="submit" class="ml-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save
                         </button>
-                        <button class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="add-friend-tab" onclick="switchFriendsTab('add-friend')">
-                        Add Friend
-                        </button>
-                        {% if friend_requests %}
-                        <button class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm relative" id="requests-tab" onclick="switchFriendsTab('requests')">
-                        Requests
-                        <span class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
-                        {{ friend_requests|length }}
-                        </span>
-                        </button>
-                        {% endif %}
-                     </nav>
-                  </div>
-               <!-- Friends List Tab -->
-               <div id="friends-list-content" class="friends-tab-content mt-6">
-                  {% if friends %}
-                  <!-- Search Bar -->
-                  <div class="mb-4">
-                     <input type="text" id="friends-search" placeholder="Search friends..."
-                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        aria-label="Search friends">
-                  </div>
-
-                  <!-- Friends List -->
-                  <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-                     {% for friend in friends %}
-                     <li class="py-4 friend-item hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-150 rounded-lg">
-                        <div class="flex items-center justify-between space-x-4">
-                              <!-- Profile Photo -->
-                              <div class="flex-shrink-0">
-                                 <img class="h-10 w-10 rounded-full" src="{{ url_for('profile_photo', username=friend.username) }}" alt="{{ friend.username }}">
-                              </div>
-
-                              <!-- Username and Status -->
-                              <div class="flex-1 min-w-0">
-                                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate friend-name">
-                                    {{ friend.username }}
-                                 </p>
-                                 <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
-                                    {% if friend.online %}
-                                          {% if friend.current_room and friend.current_room in user_data.get('rooms', []) %}
-                                             In Room: {{ friend.current_room }}
-                                          {% else %}
-                                             Online
-                                          {% endif %}
-                                    {% else %}
-                                          Offline
-                                    {% endif %}
-                                 </p>
-                              </div>
-
-                              <!-- Status Indicator (Color-coded circle) -->
-                              <div class="flex items-center space-x-2">
-                                 <div class="w-3 h-3 rounded-full 
-                                    {% if friend.online %}
-                                    bg-green-500
-                                    {% else %}
-                                    bg-red-500
-                                    {% endif %}
-                                 "></div>
-                                 <span class="sr-only">
-                                    {% if friend.online %}Online{% else %}Offline{% endif %}
-                                 </span>
-                              </div>
-
-                              <!-- Action Button (Icon for interaction) -->
-                              <button onclick="showConfirmationModal('{{ friend.username }}')" 
-                                 class="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" 
-                                 aria-label="Remove friend {{ friend.username }}">
-                                 <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                 </svg>
-                              </button>
-                        </div>
-                     </li>
-                     {% endfor %}
-                  </ul>
-
-                  {% else %}
-                  <!-- No Friends Message -->
-                  <div class="text-center py-4">
-                     <p class="text-sm text-gray-500 dark:text-gray-400">Connect with your friends! :)</p>
-                  </div>
-                  {% endif %}
-               </div>
-
-                  <!-- Add Friend Tab -->
-                  <div id="add-friend-content" class="friends-tab-content hidden mt-6">
-                     <form method="POST" class="space-y-6">
-                        <div>
-                           <label for="friend_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
-                           <div class="mt-1">
-                              <input type="text" name="friend_username" id="friend_username" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Enter username to add">
-                           </div>
-                        </div>
-                        <div>
-                           <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                           Send Friend Request
-                           </button>
-                        </div>
                      </form>
                   </div>
-                  <!-- Friend Requests Tab -->
-                  {% if friend_requests %}
-                  <div id="requests-content" class="friends-tab-content hidden mt-6">
-                     <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-                        {% for request in friend_requests %}
-                        <li class="py-4">
-                           <div class="flex items-center justify-between">
-                              <div class="flex items-center">
-                                 <img class="h-10 w-10 rounded-full" src="{{ url_for('profile_photo', username=request) }}" alt="{{ request }}">
-                                 <p class="ml-4 text-sm font-medium text-gray-900 dark:text-white">{{ request }}</p>
-                              </div>
-                              <div class="flex space-x-2">
-                                 <a href="{{ url_for('accept_friend', username=request) }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                 Accept
-                                 </a>
-                                 <a href="{{ url_for('decline_friend', username=request) }}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                                 Decline
-                                 </a>
-                              </div>
-                           </div>
-                        </li>
-                        {% endfor %}
-                     </ul>
+                  <div class="mt-4 flex flex-wrap gap-2">
+                     {% for user in room_data.get('users', []) %}
+                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">
+                     {{ user }}
+                     </span>
+                     {% endfor %}
                   </div>
-                  {% endif %}
+                  <div class="mt-6 flex items-center justify-between">
+                     <a href="{{ url_for('room', code=room_code) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Join Room
+                     <span id="unread-{{ room_code }}" class="ml-2 items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hidden">0</span>
+                     </a>
+                     {% if room_data.created_by == username %}
+                     <button onclick="confirmDeleteRoom('{{ room_code }}')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Delete
+                     </button>
+                     {% else %}
+                     <a href="{{ url_for('exit_room', code=room_code) }}" onclick="return confirm('Are you sure you want to exit this room?')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Exit Room
+                     </a>
+                     {% endif %}
+                  </div>
                </div>
             </div>
+            {% endif %}
+            {% endfor %}
+         </div>
+         {% else %}
+         <div class="text-center py-16">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z M12 11v4 M15 13h-6" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No rooms</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new room or joining one.</p>
+         </div>
+         {% endif %}
+      </div>
+   </section>
+</main>
+<!-- Sidebar -->
+<aside class="w-full md:w-80 mt-8 md:mt-0">
+<!-- Friends Management Section -->
+<div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-8">
+   <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+         Friends Management
+      </h3>
+   </div>
+   <div class="px-4 py-5 sm:p-6">
+      <!-- Friends Management Tabs -->
+      <div class="border-b border-gray-200 dark:border-gray-700">
+         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="friends-list-tab" onclick="switchFriendsTab('friends-list')">
+            Friends
+            </button>
+            <button class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" id="add-friend-tab" onclick="switchFriendsTab('add-friend')">
+            Add Friend
+            </button>
+            {% if friend_requests %}
+            <button class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm relative" id="requests-tab" onclick="switchFriendsTab('requests')">
+            Requests
+            <span class="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
+            {{ friend_requests|length }}
+            </span>
+            </button>
+            {% endif %}
+         </nav>
+      </div>
+      <!-- Friends List Tab -->
+      <div id="friends-list-content" class="friends-tab-content mt-6">
+         {% if friends %}
+         <!-- Search Bar -->
+         <div class="mb-4">
+            <input type="text" id="friends-search" placeholder="Search friends..."
+               class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+               aria-label="Search friends">
+         </div>
+         <!-- Friends List -->
+         <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+            {% for friend in friends %}
+            <li class="py-4 friend-item hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-150 rounded-lg">
+               <div class="flex items-center justify-between space-x-4">
+                  <!-- Profile Photo -->
+                  <div class="flex-shrink-0">
+                     <img class="h-10 w-10 rounded-full" src="{{ url_for('profile_photo', username=friend.username) }}" alt="{{ friend.username }}">
+                  </div>
+                  <!-- Username and Status -->
+                  <div class="flex-1 min-w-0">
+                     <p class="text-sm font-medium text-gray-900 dark:text-white truncate friend-name">
+                        {{ friend.username }}
+                     </p>
+                     <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        {% if friend.online %}
+                        {% if friend.current_room and friend.current_room in user_data.get('rooms', []) %}
+                        In Room: {{ friend.current_room }}
+                        {% else %}
+                        Online
+                        {% endif %}
+                        {% else %}
+                        Offline
+                        {% endif %}
+                     </p>
+                  </div>
+                  <!-- Status Indicator (Color-coded circle) -->
+                  <div class="flex items-center space-x-2">
+                     <div class="w-3 h-3 rounded-full 
+                        {% if friend.online %}
+                        bg-green-500
+                        {% else %}
+                        bg-red-500
+                        {% endif %}
+                        "></div>
+                     <span class="sr-only">
+                     {% if friend.online %}Online{% else %}Offline{% endif %}
+                     </span>
+                  </div>
+                  <!-- Action Button (Icon for interaction) -->
+                  <button onclick="showConfirmationModal('{{ friend.username }}')" 
+                     class="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" 
+                     aria-label="Remove friend {{ friend.username }}">
+                     <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                     </svg>
+                  </button>
+               </div>
+            </li>
+            {% endfor %}
+         </ul>
+         {% else %}
+         <!-- No Friends Message -->
+         <div class="text-center py-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Connect with your friends! :)</p>
+         </div>
+         {% endif %}
+      </div>
+      <!-- Add Friend Tab -->
+      <div id="add-friend-content" class="friends-tab-content hidden mt-6">
+         <form method="POST" class="space-y-6">
+            <div>
+               <label for="friend_username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+               <div class="mt-1">
+                  <input type="text" name="friend_username" id="friend_username" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Enter username to add">
+               </div>
+            </div>
+            <div>
+               <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+               Send Friend Request
+               </button>
+            </div>
+         </form>
+      </div>
+      <!-- Friend Requests Tab -->
+      {% if friend_requests %}
+      <div id="requests-content" class="friends-tab-content hidden mt-6">
+         <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+            {% for request in friend_requests %}
+            <li class="py-4">
+               <div class="flex items-center justify-between">
+                  <div class="flex items-center">
+                     <img class="h-10 w-10 rounded-full" src="{{ url_for('profile_photo', username=request) }}" alt="{{ request }}">
+                     <p class="ml-4 text-sm font-medium text-gray-900 dark:text-white">{{ request }}</p>
+                  </div>
+                  <div class="flex space-x-2">
+                     <a href="{{ url_for('accept_friend', username=request) }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Accept
+                     </a>
+                     <a href="{{ url_for('decline_friend', username=request) }}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Decline
+                     </a>
+                  </div>
+               </div>
+            </li>
+            {% endfor %}
+         </ul>
+      </div>
+      {% endif %}
+   </div>
+</div>
 <!-- Room Invites Section -->
 {% if user_data.get('room_invites') or user_data.get('pending_invites') %}
 <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-    <!-- Received Invites -->
-    {% if user_data.get('room_invites') %}
-    <button onclick="toggleRoomInvites('received')" class="w-full px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-            Received Room Invites
-        </h3>
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
-            {{ user_data.get('room_invites')|length }}
-        </span>
-    </button>
-    <div id="receivedInvitesContent" class="hidden px-4 py-5 sm:p-6">
-        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-            {% for invite in user_data.get('room_invites') %}
-            <li class="py-4">
-                <div class="flex items-center space-x-4">
-                    <div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
-                        <img 
-                            src="{{ invite.profile_photo if invite.profile_photo else url_for('static', filename='images/default_room.png') }}"
-                            alt="Room photo"
-                            class="w-full h-full object-cover"
-                        />
-                    </div>
-                    <div class="flex-grow">
-                        <h4 class="text-lg font-medium text-gray-900 dark:text-white">
-                            {{ invite.room_name }}
-                        </h4>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            Invited by {{ invite.from }}
-                        </p>
-                    </div>
-                    <div class="flex-shrink-0 flex space-x-2">
-                        <a href="{{ url_for('accept_room_invite', room_code=invite.room) }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Accept
-                        </a>
-                        <a href="{{ url_for('decline_room_invite', room_code=invite.room) }}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Decline
-                        </a>
-                    </div>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
-
-    <!-- Pending Invites -->
-    {% if user_data.get('pending_invites') %}
-    <button onclick="toggleRoomInvites('pending')" class="w-full px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-            Pending Room Invites
-        </h3>
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
-            {{ user_data.get('pending_invites')|length }}
-        </span>
-    </button>
-    <div id="pendingInvitesContent" class="hidden px-4 py-5 sm:p-6">
-        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-            {% for invite in user_data.get('pending_invites') %}
-            <li class="py-4">
-                <div class="flex items-center space-x-4">
-                    <div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
-                        <img 
-                            src="{{ invite.profile_photo if invite.profile_photo else url_for('static', filename='images/default_room.png') }}"
-                            alt="Room photo"
-                            class="w-full h-full object-cover"
-                        />
-                    </div>
-                    <div class="flex-grow">
-                        <h4 class="text-lg font-medium text-gray-900 dark:text-white">
-                            {{ invite.room_name }}
-                        </h4>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">
-                            Waiting for {{ invite.username }} to respond
-                        </p>
-                    </div>
-                    <div class="flex-shrink-0">
-                        <a href="{{ url_for('cancel_room_invite', username=invite.username, room_code=invite.room) }}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Cancel
-                        </a>
-                    </div>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-    {% endif %}
+   <!-- Received Invites -->
+   {% if user_data.get('room_invites') %}
+   <button onclick="toggleRoomInvites('received')" class="w-full px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+         Received Room Invites
+      </h3>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100">
+      {{ user_data.get('room_invites')|length }}
+      </span>
+   </button>
+   <div id="receivedInvitesContent" class="hidden px-4 py-5 sm:p-6">
+      <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+         {% for invite in user_data.get('room_invites') %}
+         <li class="py-4">
+            <div class="flex items-center space-x-4">
+               <div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
+                  <img 
+                     src="{{ invite.profile_photo if invite.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                     alt="Room photo"
+                     class="w-full h-full object-cover"
+                     />
+               </div>
+               <div class="flex-grow">
+                  <h4 class="text-lg font-medium text-gray-900 dark:text-white">
+                     {{ invite.room_name }}
+                  </h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                     Invited by {{ invite.from }}
+                  </p>
+               </div>
+               <div class="flex-shrink-0 flex space-x-2">
+                  <a href="{{ url_for('accept_room_invite', room_code=invite.room) }}" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Accept
+                  </a>
+                  <a href="{{ url_for('decline_room_invite', room_code=invite.room) }}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Decline
+                  </a>
+               </div>
+            </div>
+         </li>
+         {% endfor %}
+      </ul>
+   </div>
+   {% endif %}
+   <!-- Pending Invites -->
+   {% if user_data.get('pending_invites') %}
+   <button onclick="toggleRoomInvites('pending')" class="w-full px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+      <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+         Pending Room Invites
+      </h3>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100">
+      {{ user_data.get('pending_invites')|length }}
+      </span>
+   </button>
+   <div id="pendingInvitesContent" class="hidden px-4 py-5 sm:p-6">
+      <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+         {% for invite in user_data.get('pending_invites') %}
+         <li class="py-4">
+            <div class="flex items-center space-x-4">
+               <div class="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
+                  <img 
+                     src="{{ invite.profile_photo if invite.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                     alt="Room photo"
+                     class="w-full h-full object-cover"
+                     />
+               </div>
+               <div class="flex-grow">
+                  <h4 class="text-lg font-medium text-gray-900 dark:text-white">
+                     {{ invite.room_name }}
+                  </h4>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                     Waiting for {{ invite.username }} to respond
+                  </p>
+               </div>
+               <div class="flex-shrink-0">
+                  <a href="{{ url_for('cancel_room_invite', username=invite.username, room_code=invite.room) }}" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  Cancel
+                  </a>
+               </div>
+            </div>
+         </li>
+         {% endfor %}
+      </ul>
+   </div>
+   {% endif %}
 </div>
 {% endif %}
 <!-- Confirmation Modal -->
@@ -484,7 +475,6 @@
       </div>
       <button onclick="this.parentElement.remove()" class="ml-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300">
          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
          </svg>
       </button>
@@ -501,6 +491,19 @@
    .custom-scrollbar::-webkit-scrollbar-track {
    background-color: #f1f1f1;
    border-radius: 3px;
+   }
+   @keyframes fade-in {
+   0% {
+   opacity: 0;
+   transform: translateY(20px);
+   }
+   100% {
+   opacity: 1;
+   transform: translateY(0);
+   }
+   }
+   .animate-fade-in {
+   animation: fade-in 0.3s ease-in-out;
    }
    .custom-scrollbar::-webkit-scrollbar-thumb {
    background-color: #888;
@@ -550,8 +553,8 @@
    function removeFriend(username) {
       friendToRemove = username;
       showConfirmationModal(username);
-  }
-  function showConfirmationModal(username) {
+   }
+   function showConfirmationModal(username) {
    const modal = document.getElementById('confirmationModal');
    const confirmBtn = modal.querySelector('#confirmDelete');
    const cancelBtn = modal.querySelector('button:first-of-type');
@@ -597,13 +600,13 @@
    
    modal.querySelector('#confirmDelete').addEventListener('click', handleConfirm);
    modal.querySelector('button:first-of-type').addEventListener('click', handleCancel);
-}
-
-function hideModal() {
+   }
+   
+   function hideModal() {
    const modal = document.getElementById('confirmationModal');
    modal.classList.remove('flex');
    modal.classList.add('hidden');
-}
+   }
     // =========================================
     // Notifications
     // =========================================
@@ -631,7 +634,7 @@ function hideModal() {
       setTimeout(() => {
           notificationContainer.remove();
       }, 3000);
-  }
+   }
 </script>
 <script type="module">
    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";

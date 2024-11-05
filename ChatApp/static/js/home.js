@@ -99,82 +99,82 @@ document.addEventListener('DOMContentLoaded', function() {
         const suggestionsList = document.createElement('ul');
         suggestionsList.className = 'absolute z-10 w-full bg-white dark:bg-gray-800 shadow-lg rounded-md mt-1 border border-gray-200 dark:border-gray-700 hidden max-h-64 overflow-y-auto';
         elements.friendUsernameInput?.parentNode.appendChild(suggestionsList);
-        
+
         let debounceTimeout;
-        
+
         function highlightMatch(username, query) {
             if (!query) return username;
-            
+
             const lowerUsername = username.toLowerCase();
             const lowerQuery = query.toLowerCase();
-            
+
             // First try to highlight exact matches
             const exactMatches = lowerUsername.indexOf(lowerQuery);
             if (exactMatches !== -1) {
                 return username.substring(0, exactMatches) +
-                       `<span class="bg-yellow-200 dark:bg-yellow-600">${username.substring(exactMatches, exactMatches + query.length)}</span>` +
-                       username.substring(exactMatches + query.length);
+                    `<span class="bg-yellow-200 dark:bg-yellow-600">${username.substring(exactMatches, exactMatches + query.length)}</span>` +
+                    username.substring(exactMatches + query.length);
             }
-            
+
             // If no exact match, highlight first letter for single-character queries
             if (query.length === 1 && lowerUsername.startsWith(lowerQuery)) {
                 return `<span class="bg-yellow-200 dark:bg-yellow-600">${username.charAt(0)}</span>${username.slice(1)}`;
             }
-            
+
             return username;
         }
-        
+
         function handleUserSearch(e) {
             clearTimeout(debounceTimeout);
             const query = e.target.value.trim();
-        
+
             if (!query) {
                 suggestionsList.innerHTML = '';
                 suggestionsList.classList.add('hidden');
                 return;
             }
-        
+
             debounceTimeout = setTimeout(() => {
                 fetch(`/search_users?q=${encodeURIComponent(query)}`)
                     .then(response => response.json())
                     .then(suggestions => {
                         suggestionsList.innerHTML = '';
-        
+
                         if (suggestions.length > 0) {
                             suggestions.forEach(user => {
                                 const li = document.createElement('li');
                                 li.className = 'px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center justify-between';
-        
+
                                 const leftContent = document.createElement('div');
                                 leftContent.className = 'flex items-center';
-                                
+
                                 // Create image element
                                 const img = document.createElement('img');
                                 img.src = user.profile_photo_url;
                                 img.alt = user.username;
                                 img.className = 'h-6 w-6 rounded-full mr-2';
-                                
+
                                 // Add onerror handler to handle failed image loads
                                 img.onerror = function() {
                                     this.src = '/static/images/default_profile.png'; // Adjust path to your default image
                                 };
-        
+
                                 const usernameSpan = document.createElement('span');
                                 usernameSpan.className = 'text-gray-900 dark:text-white';
                                 usernameSpan.innerHTML = highlightMatch(user.username, query);
-        
+
                                 leftContent.appendChild(img);
                                 leftContent.appendChild(usernameSpan);
-        
+
                                 const matchScore = document.createElement('div');
                                 matchScore.className = 'text-xs text-gray-500 dark:text-gray-400';
                                 if (query.length > 1) {
                                     matchScore.textContent = `${user.similarity}% match`;
                                 }
-        
+
                                 li.appendChild(leftContent);
                                 li.appendChild(matchScore);
-        
+
                                 li.addEventListener('click', () => {
                                     elements.friendUsernameInput.value = user.username;
                                     suggestionsList.classList.add('hidden');
@@ -186,9 +186,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             // Show "no results" message
                             const li = document.createElement('li');
                             li.className = 'px-4 py-2 text-gray-500 dark:text-gray-400 text-sm';
-                            li.textContent = query.length === 1 
-                                ? `No usernames starting with "${query}"` 
-                                : 'No matching users found';
+                            li.textContent = query.length === 1 ?
+                                `No usernames starting with "${query}"` :
+                                'No matching users found';
                             suggestionsList.appendChild(li);
                             suggestionsList.classList.remove('hidden');
                         }
@@ -203,15 +203,17 @@ document.addEventListener('DOMContentLoaded', function() {
         function handleKeyboardNavigation(e) {
             const items = Array.from(suggestionsList.getElementsByTagName('li'));
             const currentIndex = items.findIndex(item => item.classList.contains('bg-gray-100'));
-            
-            switch(e.key) {
+
+            switch (e.key) {
                 case 'ArrowDown':
                     e.preventDefault();
                     if (items.length > 0) {
                         if (currentIndex >= 0) items[currentIndex].classList.remove('bg-gray-100');
                         const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
                         items[nextIndex].classList.add('bg-gray-100');
-                        items[nextIndex].scrollIntoView({ block: 'nearest' });
+                        items[nextIndex].scrollIntoView({
+                            block: 'nearest'
+                        });
                     }
                     break;
                 case 'ArrowUp':
@@ -220,7 +222,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (currentIndex >= 0) items[currentIndex].classList.remove('bg-gray-100');
                         const nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
                         items[nextIndex].classList.add('bg-gray-100');
-                        items[nextIndex].scrollIntoView({ block: 'nearest' });
+                        items[nextIndex].scrollIntoView({
+                            block: 'nearest'
+                        });
                     }
                     break;
                 case 'Enter':
@@ -235,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Event Listeners for User Search
         elements.friendUsernameInput?.addEventListener('input', handleUserSearch);
         elements.friendUsernameInput?.addEventListener('keydown', handleKeyboardNavigation);
-        
+
         // Hide suggestions when clicking outside
         document.addEventListener('click', function(e) {
             if (!elements.friendUsernameInput?.contains(e.target) && !suggestionsList.contains(e.target)) {

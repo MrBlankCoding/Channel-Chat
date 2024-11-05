@@ -67,7 +67,6 @@ self.addEventListener('notificationclick', (event) => {
 
   // Handle different actions
   if (action === 'view') {
-    // Open the specific chat or message
     const urlToOpen = new URL(notificationData.click_action || '/', self.location.origin).href;
 
     event.waitUntil(
@@ -76,64 +75,31 @@ self.addEventListener('notificationclick', (event) => {
         includeUncontrolled: true
       })
       .then((windowClients) => {
-        // Check if there's already a window open
         for (const client of windowClients) {
           if (client.url === urlToOpen) {
             return client.focus();
           }
         }
-        // If no window is open, open a new one
         return clients.openWindow(urlToOpen);
       })
     );
   }
-  // 'close' action is handled automatically by closing the notification
 });
 
 // Handle notification close events
 self.addEventListener('notificationclose', (event) => {
   const dismissedNotification = event.notification;
   const notificationData = dismissedNotification.data;
-  
-  // You could send analytics data here if needed
   console.log('Notification was dismissed', notificationData);
 });
 
-// Cache strategy for notification assets
-workbox.routing.registerRoute(
-  ({request}) => request.destination === 'image',
-  new workbox.strategies.CacheFirst({
-    cacheName: 'notification-images',
-    plugins: [
-      new workbox.expiration.ExpirationPlugin({
-        maxEntries: 60,
-        maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
-      }),
-    ],
-  })
-);
-
-// Handle errors
-self.addEventListener('error', (event) => {
-  console.error('Service Worker error:', event.error);
-});
-
-// Optional: Handle service worker updates
+// Remove notification images cache and clear all caches on activate
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    Promise.all([
-      // Clear old caches if needed
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cache => {
-            if (cache !== 'notification-images') {
-              return caches.delete(cache);
-            }
-          })
-        );
-      }),
-      // Claim clients
-      clients.claim()
-    ])
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cache) => caches.delete(cache))
+      );
+    }).then(() => clients.claim())
   );
 });

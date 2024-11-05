@@ -1,130 +1,118 @@
 <!DOCTYPE html>
 <html lang="en" class="h-full">
-
-<head>
-    <meta charset="UTF-8">
-    <title>Channel</title>
-    <link href="/static/styles/output.css" rel="stylesheet">    
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Channel - a simple, modern chatroom-based messaging app for real-time conversations. Join and connect instantly.">
-    <meta name="keywords" content="Chat app, messaging app, real-time chat, chatroom, social app">
-    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    
-    <!-- Open Graph (OG) Tags for Social Sharing -->
-    <meta property="og:title" content="Channel - Modern Chat App">
-    <meta property="og:description" content="Connect instantly with Channel, a modern chatroom-based messaging app for real-time conversations.">
-    <meta property="og:image" content="{{ url_for('static', filename='images/preview.png') }}">
-    <meta property="og:url" content="{{ request.url }}">
-    <meta property="og:type" content="website">
-
-    <!-- Twitter Card Tags -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Channel - Modern Chat App">
-    <meta name="twitter:description" content="A simple, real-time chatroom app for seamless communication.">
-    <meta name="twitter:image" content="{{ url_for('static', filename='images/preview.png') }}">
-
-    <!-- Canonical Tag -->
-    <link rel="canonical" href="{{ request.url }}">
-
-    <!-- Robots Meta Tag -->
-    <meta name="robots" content="index, follow">
-
-    <!-- Structured Data (JSON-LD) for SEO -->
-    <script type="application/ld+json">
-
-    {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "Channel",
-        "operatingSystem": "Web",
-        "applicationCategory": "CommunicationApplication",
-        "description": "A modern chatroom-based messaging app for real-time conversations.",
-        "url": "{{ request.url }}",
-        "image": "{{ url_for('static', filename='images/preview.png') }}",
-        "softwareVersion": "1.0.0",
-        "inLanguage": "en",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        }
-    }
-    </script>
-</head>
-
-<body class="h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
-
-    <!-- Main Content Area -->
-    <div class="content">
-        {% block content %} 
-        {% endblock %}
-    </div>
-
-    <!-- Dark Mode Script based on localStorage and System Preference -->
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const html = document.documentElement;
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-            if (localStorage.getItem('darkMode') === 'dark' || (!localStorage.getItem('darkMode') && prefersDark)) {
-                html.classList.add('dark');
-            } else {
-                html.classList.remove('dark');
-            }
-        });
-    </script>
-
-    <!-- Service Worker Registration -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/firebase-messaging-sw.js')
-                    .then(registration => console.log('Service Worker registered with scope:', registration.scope))
-                    .catch(err => console.log('Service Worker registration failed:', err));
-            }
-        });
-    </script>
-
-    <!-- Heartbeat Logic for Server Connection -->
-    <script>
-        let heartbeatInterval;
-
-        function sendHeartbeat() {
-            fetch('/heartbeat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            }).then(response => {
-                if (!response.ok) console.error('Heartbeat failed');
-            }).catch(error => console.error('Error:', error));
-        }
-
-        function startHeartbeat() {
-            sendHeartbeat();
-            console.log("Initial heartbeat sent!");
-            heartbeatInterval = setInterval(sendHeartbeat, 4 * 60 * 1000); // Every 4 minutes
-        }
-
-        function stopHeartbeat() {
-            clearInterval(heartbeatInterval);
-            fetch('/stop_heartbeat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            }).then(response => {
-                if (!response.ok) console.error('Failed to stop heartbeat');
-            }).catch(error => console.error('Error:', error));
-        }
-
-        startHeartbeat();
-        window.addEventListener('beforeunload', stopHeartbeat);
-    </script>
-
-    <!-- Additional Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.2/babel.min.js" crossorigin></script>
-    
-
-</body>
-
+   <head>
+      <meta charset="UTF-8" />
+      <title>Channel</title>
+      <link href="/static/styles/output.css" rel="stylesheet" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <meta name="description" content="Channel - a simple, modern chatroom-based messaging app for real-time conversations. Join and connect instantly." />
+      <meta name="keywords" content="Chat app, messaging app, real-time chat, chatroom, social app" />
+      <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+      <!-- Open Graph (OG) Tags for Social Sharing -->
+      <meta property="og:title" content="Channel - Modern Chat App" />
+      <meta property="og:description" content="Connect instantly with Channel, a modern chatroom-based messaging app for real-time conversations." />
+      <meta property="og:image" content="{{ url_for('static', filename='images/preview.png') }}" />
+      <meta property="og:url" content="{{ request.url }}" />
+      <meta property="og:type" content="website" />
+      <!-- Twitter Card Tags -->
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="Channel - Modern Chat App" />
+      <meta name="twitter:description" content="A simple, real-time chatroom app for seamless communication." />
+      <meta name="twitter:image" content="{{ url_for('static', filename='images/preview.png') }}" />
+      <!-- Canonical Tag -->
+      <link rel="canonical" href="{{ request.url }}" />
+      <!-- Robots Meta Tag -->
+      <meta name="robots" content="index, follow" />
+      <!-- Structured Data (JSON-LD) for SEO -->
+      <script type="application/ld+json">
+         {
+             "@context": "https://schema.org",
+             "@type": "SoftwareApplication",
+             "name": "Channel",
+             "operatingSystem": "Web",
+             "applicationCategory": "CommunicationApplication",
+             "description": "A modern chatroom-based messaging app for real-time conversations.",
+             "url": "{{ request.url }}",
+             "image": "{{ url_for('static', filename='images/preview.png') }}",
+             "softwareVersion": "1.0.0",
+             "inLanguage": "en",
+             "offers": {
+                 "@type": "Offer",
+                 "price": "0",
+                 "priceCurrency": "USD"
+             }
+         }
+      </script>
+   </head>
+   <body class="h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors duration-300">
+      <!-- Main Content Area -->
+      <div class="content">
+         {% block content %} {% endblock %}
+      </div>
+      <!-- Dark Mode Script based on localStorage and System Preference -->
+      <script>
+         document.addEventListener("DOMContentLoaded", () => {
+             const html = document.documentElement;
+             const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+         
+             if (localStorage.getItem("darkMode") === "dark" || (!localStorage.getItem("darkMode") && prefersDark)) {
+                 html.classList.add("dark");
+             } else {
+                 html.classList.remove("dark");
+             }
+         });
+      </script>
+      <!-- Service Worker Registration -->
+      <script>
+         document.addEventListener("DOMContentLoaded", function () {
+             if ("serviceWorker" in navigator) {
+                 navigator.serviceWorker
+                     .register("/firebase-messaging-sw.js")
+                     .then((registration) => console.log("Service Worker registered with scope:", registration.scope))
+                     .catch((err) => console.log("Service Worker registration failed:", err));
+             }
+         });
+      </script>
+      <!-- Heartbeat Logic for Server Connection -->
+      <script>
+         let heartbeatInterval;
+         
+         function sendHeartbeat() {
+             fetch("/heartbeat", {
+                 method: "POST",
+                 headers: { "Content-Type": "application/json" },
+             })
+                 .then((response) => {
+                     if (!response.ok) console.error("Heartbeat failed");
+                 })
+                 .catch((error) => console.error("Error:", error));
+         }
+         
+         function startHeartbeat() {
+             sendHeartbeat();
+             console.log("Initial heartbeat sent!");
+             heartbeatInterval = setInterval(sendHeartbeat, 4 * 60 * 1000); // Every 4 minutes
+         }
+         
+         function stopHeartbeat() {
+             clearInterval(heartbeatInterval);
+             fetch("/stop_heartbeat", {
+                 method: "POST",
+                 headers: { "Content-Type": "application/json" },
+             })
+                 .then((response) => {
+                     if (!response.ok) console.error("Failed to stop heartbeat");
+                 })
+                 .catch((error) => console.error("Error:", error));
+         }
+         
+         startHeartbeat();
+         window.addEventListener("beforeunload", stopHeartbeat);
+      </script>
+      <!-- Additional Libraries -->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js" defer></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.2/babel.min.js" crossorigin></script>
+   </body>
 </html>

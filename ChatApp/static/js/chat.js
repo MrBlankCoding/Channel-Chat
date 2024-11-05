@@ -1,9 +1,11 @@
 // Import the Firebase SDK
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { 
-  getStorage, 
-  ref, 
-  uploadBytesResumable, 
+import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
   getDownloadURL,
   deleteObject
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
@@ -55,30 +57,30 @@ const LS_KEYS = {
 };
 
 var socketio = io({
-  transports: ['websocket']  // Ensure only WebSocket is used
+  transports: ['websocket'] // Ensure only WebSocket is used
 });
 
 // Helper functions
 
 const updatePageTitle = () => {
   if (unreadCount > 0) {
-    document.title = `(${unreadCount}) ${originalTitle}`;
+      document.title = `(${unreadCount}) ${originalTitle}`;
   } else {
-    document.title = originalTitle;
+      document.title = originalTitle;
   }
   updateLocalStorage(LS_KEYS.UNREAD_COUNT, unreadCount.toString());
 };
 
 const handleVisibilityChange = () => {
   if (document.hidden) {
-    isTabActive = false;
+      isTabActive = false;
   } else {
-    isTabActive = true;
-    if (unreadCount > 0) {
-      markMessagesAsRead();
-      unreadCount = 0;
-      updatePageTitle();
-    }
+      isTabActive = true;
+      if (unreadCount > 0) {
+          markMessagesAsRead();
+          unreadCount = 0;
+          updatePageTitle();
+      }
   }
 };
 
@@ -108,23 +110,23 @@ document.addEventListener("visibilitychange", handleVisibilityChange);
 // Responsive message spacing variables
 let MESSAGE = {
   padding: {
-    vertical: 4,    // Controls space between messages
-    horizontal: 16, // Side padding of message container
-    bubble: 6       // Padding inside message bubble
+      vertical: 4, // Controls space between messages
+      horizontal: 16, // Side padding of message container
+      bubble: 6 // Padding inside message bubble
   },
   text: {
-    size: 14,       // Main message text size
-    spacing: 2      // Space between elements (header to content)
+      size: 14, // Main message text size
+      spacing: 2 // Space between elements (header to content)
   },
-  maxWidth: {       // Maximum width based on screen size
-    default: '85%', // Default maximum width for mobile screens
-    tablet: '70%',  // Width for tablet-sized screens
-    desktop: '60%', // Width for desktop screens
-    largeDesktop: '50%' // Width for larger desktop screens
+  maxWidth: { // Maximum width based on screen size
+      default: '85%', // Default maximum width for mobile screens
+      tablet: '70%', // Width for tablet-sized screens
+      desktop: '60%', // Width for desktop screens
+      largeDesktop: '50%' // Width for larger desktop screens
   },
   photo: {
-    size: 24,       // Profile photo dimensions
-    gap: 8          // Space between photo and message
+      size: 24, // Profile photo dimensions
+      gap: 8 // Space between photo and message
   }
 };
 
@@ -140,38 +142,38 @@ const getResponsiveMaxWidth = () => {
 const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal') => {
   // Handle system messages differently
   if (type === 'system') {
-    const element = document.createElement("div");
-    element.className = 'message group py-2 flex justify-center';
-    element.dataset.messageId = messageId;
+      const element = document.createElement("div");
+      element.className = 'message group py-2 flex justify-center';
+      element.dataset.messageId = messageId;
 
-    const systemMessage = document.createElement("div");
-    systemMessage.className = 'px-4 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full inline-flex items-center gap-2';
+      const systemMessage = document.createElement("div");
+      systemMessage.className = 'px-4 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full inline-flex items-center gap-2';
 
-    // System icon
-    const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    iconSvg.setAttribute("class", "w-3.5 h-3.5 text-gray-400 dark:text-gray-500");
-    iconSvg.setAttribute("fill", "none");
-    iconSvg.setAttribute("viewBox", "0 0 24 24");
-    iconSvg.setAttribute("stroke", "currentColor");
-    iconSvg.setAttribute("stroke-width", "2");
-    
-    // Info circle icon
-    const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    iconPath.setAttribute("stroke-linecap", "round");
-    iconPath.setAttribute("stroke-linejoin", "round");
-    iconPath.setAttribute("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z");
-    
-    iconSvg.appendChild(iconPath);
-    systemMessage.appendChild(iconSvg);
+      // System icon
+      const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      iconSvg.setAttribute("class", "w-3.5 h-3.5 text-gray-400 dark:text-gray-500");
+      iconSvg.setAttribute("fill", "none");
+      iconSvg.setAttribute("viewBox", "0 0 24 24");
+      iconSvg.setAttribute("stroke", "currentColor");
+      iconSvg.setAttribute("stroke-width", "2");
 
-    const messageText = document.createElement("span");
-    messageText.className = 'text-sm text-gray-500 dark:text-gray-400';
-    messageText.textContent = msg;
-    
-    systemMessage.appendChild(messageText);
-    element.appendChild(systemMessage);
-    
-    return element;
+      // Info circle icon
+      const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      iconPath.setAttribute("stroke-linecap", "round");
+      iconPath.setAttribute("stroke-linejoin", "round");
+      iconPath.setAttribute("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z");
+
+      iconSvg.appendChild(iconPath);
+      systemMessage.appendChild(iconSvg);
+
+      const messageText = document.createElement("span");
+      messageText.className = 'text-sm text-gray-500 dark:text-gray-400';
+      messageText.textContent = msg;
+
+      systemMessage.appendChild(messageText);
+      element.appendChild(systemMessage);
+
+      return element;
   }
 
   // Regular message handling continues below
@@ -190,19 +192,19 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
 
   // Profile photo section
   if (!isCurrentUser) {
-    const profilePhotoContainer = document.createElement("div");
-    profilePhotoContainer.style.flexShrink = '0';
-    const profilePhoto = document.createElement("img");
-    profilePhoto.src = `/profile_photos/${name}`;
-    profilePhoto.alt = `${name}'s profile`;
-    profilePhoto.style.width = `${MESSAGE.photo.size}px`;
-    profilePhoto.style.height = `${MESSAGE.photo.size}px`;
-    profilePhoto.className = "rounded-full object-cover ring-1 ring-white dark:ring-gray-800 shadow-sm";
-    profilePhoto.onerror = function() {
-      this.src = '/static/images/default-profile.png';
-    };
-    profilePhotoContainer.appendChild(profilePhoto);
-    element.appendChild(profilePhotoContainer);
+      const profilePhotoContainer = document.createElement("div");
+      profilePhotoContainer.style.flexShrink = '0';
+      const profilePhoto = document.createElement("img");
+      profilePhoto.src = `/profile_photos/${name}`;
+      profilePhoto.alt = `${name}'s profile`;
+      profilePhoto.style.width = `${MESSAGE.photo.size}px`;
+      profilePhoto.style.height = `${MESSAGE.photo.size}px`;
+      profilePhoto.className = "rounded-full object-cover ring-1 ring-white dark:ring-gray-800 shadow-sm";
+      profilePhoto.onerror = function() {
+          this.src = '/static/images/default-profile.png';
+      };
+      profilePhotoContainer.appendChild(profilePhoto);
+      element.appendChild(profilePhotoContainer);
   }
 
   const messageContainer = document.createElement("div");
@@ -216,14 +218,14 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   messageHeader.style.gap = `${MESSAGE.text.spacing}px`;
   messageHeader.style.marginBottom = `${MESSAGE.text.spacing}px`;
   messageHeader.style.justifyContent = isCurrentUser ? 'flex-end' : 'flex-start';
-  
+
   if (!isCurrentUser) {
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "text-xs font-medium text-gray-700 dark:text-gray-300";
-    nameSpan.textContent = name;
-    messageHeader.appendChild(nameSpan);
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "text-xs font-medium text-gray-700 dark:text-gray-300";
+      nameSpan.textContent = name;
+      messageHeader.appendChild(nameSpan);
   }
-  
+
   messageContainer.appendChild(messageHeader);
 
   // Message bubble
@@ -231,32 +233,32 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   messageBubble.style.padding = `${MESSAGE.padding.bubble}px`;
   messageBubble.style.fontSize = `${MESSAGE.text.size}px`;
   messageBubble.className = `relative ${
-    isCurrentUser 
-      ? 'bg-blue-500 text-white rounded-t-2xl rounded-l-2xl rounded-br-lg' 
-      : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-t-2xl rounded-r-2xl rounded-bl-lg'
-  }`;
+  isCurrentUser 
+    ? 'bg-blue-500 text-white rounded-t-2xl rounded-l-2xl rounded-br-lg' 
+    : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-t-2xl rounded-r-2xl rounded-bl-lg'
+}`;
 
   if (isCurrentUser && isRead) {
-    messageBubble.classList.add('bg-indigo-700');
+      messageBubble.classList.add('bg-indigo-700');
   }
 
   // Reply section
   if (replyTo) {
-    const replyInfo = document.createElement("div");
-    replyInfo.style.marginBottom = `${MESSAGE.text.spacing}px`;
-    replyInfo.className = `text-xs rounded px-2 py-0.5 border-l-2 ${
-      isCurrentUser
-        ? 'bg-blue-600/50 border-blue-300'
-        : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
-    }`;
-    
-    // Store both the ID and the message content
-    replyInfo.dataset.replyTo = replyTo.id;
-    
-    // Check if replyTo has the necessary message content
-    const replyMessage = replyTo.message || "Message not available";
-    replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyMessage}`;
-    messageBubble.appendChild(replyInfo);
+      const replyInfo = document.createElement("div");
+      replyInfo.style.marginBottom = `${MESSAGE.text.spacing}px`;
+      replyInfo.className = `text-xs rounded px-2 py-0.5 border-l-2 ${
+    isCurrentUser
+      ? 'bg-blue-600/50 border-blue-300'
+      : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+  }`;
+
+      // Store both the ID and the message content
+      replyInfo.dataset.replyTo = replyTo.id;
+
+      // Check if replyTo has the necessary message content
+      const replyMessage = replyTo.message || "Message not available";
+      replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyMessage}`;
+      messageBubble.appendChild(replyInfo);
   }
 
   // Message content
@@ -265,34 +267,34 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   messageContent.textContent = msg || "Sent an image";
 
   if (isEdited) {
-    const editedIndicator = document.createElement("span");
-    editedIndicator.className = "ml-1 text-xs opacity-75";
-    editedIndicator.textContent = "(edited)";
-    messageContent.appendChild(editedIndicator);
+      const editedIndicator = document.createElement("span");
+      editedIndicator.className = "ml-1 text-xs opacity-75";
+      editedIndicator.textContent = "(edited)";
+      messageContent.appendChild(editedIndicator);
   }
 
   messageBubble.appendChild(messageContent);
 
   // Image handling
   if (image) {
-    const img = document.createElement("img");
-    img.src = image;
-    img.alt = "Uploaded image";
-    img.style.marginTop = `${MESSAGE.text.spacing}px`;
-    img.className = "max-w-[120px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 opacity-50";
-    img.onload = () => img.classList.remove('opacity-50');
-    img.onerror = () => {
-      img.src = '/static/images/image-error.png';
-      img.classList.remove('opacity-50');
-    };
-    messageBubble.appendChild(img);
+      const img = document.createElement("img");
+      img.src = image;
+      img.alt = "Uploaded image";
+      img.style.marginTop = `${MESSAGE.text.spacing}px`;
+      img.className = "max-w-[120px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 opacity-50";
+      img.onload = () => img.classList.remove('opacity-50');
+      img.onerror = () => {
+          img.src = '/static/images/image-error.png';
+          img.classList.remove('opacity-50');
+      };
+      messageBubble.appendChild(img);
   }
 
   // Reactions
   const reactionsContainer = document.createElement("div");
   reactionsContainer.style.marginTop = `${MESSAGE.text.spacing}px`;
   reactionsContainer.className = "flex flex-wrap gap-0.5 reactions-container";
-  
+
   updateReactionsDisplay(reactionsContainer, reactions, messageId);
   messageBubble.appendChild(reactionsContainer);
 
@@ -308,32 +310,38 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   return element;
 };
 
-const createReactionElement = (emoji, { count, users }, messageId) => {
+const createReactionElement = (emoji, {
+  count,
+  users
+}, messageId) => {
   const button = document.createElement("button");
   const isUserReacted = users.includes(currentUser);
-  
+
   button.className = `
-    flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
-    ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
-  `;
-  
+  flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
+  ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
+`;
+
   button.innerHTML = `<span>${emoji}</span><span>${count}</span>`;
   button.dataset.emoji = emoji;
   button.dataset.messageId = messageId;
-  
+
   button.onclick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Add click feedback animation
-    button.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      button.style.transform = 'scale(1)';
-    }, 100);
-    
-    socketio.emit('toggle_reaction', { messageId, emoji });
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Add click feedback animation
+      button.style.transform = 'scale(0.95)';
+      setTimeout(() => {
+          button.style.transform = 'scale(1)';
+      }, 100);
+
+      socketio.emit('toggle_reaction', {
+          messageId,
+          emoji
+      });
   };
-  
+
   return button;
 };
 
@@ -344,55 +352,55 @@ const updateReactionsDisplay = (container, reactions, messageId) => {
 
   // Handle removals with animation
   currentReactions.forEach(button => {
-    const emoji = button.dataset.emoji;
-    if (!newEmojis.has(emoji)) {
-      // Animate out and remove
-      button.style.transition = 'all 0.2s ease-out';
-      button.style.transform = 'scale(0)';
-      button.style.opacity = '0';
-      setTimeout(() => button.remove(), 200);
-    }
+      const emoji = button.dataset.emoji;
+      if (!newEmojis.has(emoji)) {
+          // Animate out and remove
+          button.style.transition = 'all 0.2s ease-out';
+          button.style.transform = 'scale(0)';
+          button.style.opacity = '0';
+          setTimeout(() => button.remove(), 200);
+      }
   });
 
   // Update existing reactions and add new ones
   Object.entries(reactions).forEach(([emoji, data]) => {
-    if (data.count > 0) {
-      const existingButton = container.querySelector(`button[data-emoji="${emoji}"]`);
-      
-      if (existingButton) {
-        // Update existing reaction
-        const countElement = existingButton.querySelector('span:last-child');
-        if (countElement) {
-          // Animate count change
-          countElement.style.transition = 'transform 0.2s ease-out';
-          countElement.style.transform = 'scale(1.2)';
-          countElement.textContent = data.count;
-          setTimeout(() => {
-            countElement.style.transform = 'scale(1)';
-          }, 200);
-        }
-        
-        // Update styling based on user reaction status
-        const isUserReacted = data.users.includes(currentUser);
-        existingButton.className = `
-          flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
-          ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
-        `;
-      } else if (!currentEmojis.has(emoji)) {
-        // Add new reaction with animation
-        const reactionElement = createReactionElement(emoji, data, messageId);
-        reactionElement.style.transform = 'scale(0)';
-        reactionElement.style.opacity = '0';
-        container.appendChild(reactionElement);
-        
-        // Trigger animation
-        requestAnimationFrame(() => {
-          reactionElement.style.transition = 'all 0.2s ease-out';
-          reactionElement.style.transform = 'scale(1)';
-          reactionElement.style.opacity = '1';
-        });
+      if (data.count > 0) {
+          const existingButton = container.querySelector(`button[data-emoji="${emoji}"]`);
+
+          if (existingButton) {
+              // Update existing reaction
+              const countElement = existingButton.querySelector('span:last-child');
+              if (countElement) {
+                  // Animate count change
+                  countElement.style.transition = 'transform 0.2s ease-out';
+                  countElement.style.transform = 'scale(1.2)';
+                  countElement.textContent = data.count;
+                  setTimeout(() => {
+                      countElement.style.transform = 'scale(1)';
+                  }, 200);
+              }
+
+              // Update styling based on user reaction status
+              const isUserReacted = data.users.includes(currentUser);
+              existingButton.className = `
+        flex items-center gap-1 text-xs rounded-full px-2 py-0.5 transition-colors
+        ${isUserReacted ? 'bg-gray-200 dark:bg-gray-700' : 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700'}
+      `;
+          } else if (!currentEmojis.has(emoji)) {
+              // Add new reaction with animation
+              const reactionElement = createReactionElement(emoji, data, messageId);
+              reactionElement.style.transform = 'scale(0)';
+              reactionElement.style.opacity = '0';
+              container.appendChild(reactionElement);
+
+              // Trigger animation
+              requestAnimationFrame(() => {
+                  reactionElement.style.transition = 'all 0.2s ease-out';
+                  reactionElement.style.transform = 'scale(1)';
+                  reactionElement.style.opacity = '1';
+              });
+          }
       }
-    }
   });
 };
 
@@ -414,7 +422,7 @@ const createTypingIndicator = (name) => {
   profilePhoto.style.height = `${MESSAGE.photo.size}px`;
   profilePhoto.className = "rounded-full object-cover ring-1 ring-white dark:ring-gray-800 shadow-sm";
   profilePhoto.onerror = function() {
-    this.src = '/static/images/default-profile.png';
+      this.src = '/static/images/default-profile.png';
   };
   profilePhotoContainer.appendChild(profilePhoto);
   element.appendChild(profilePhotoContainer);
@@ -441,11 +449,11 @@ const createTypingIndicator = (name) => {
 
   // Create three dots with animation
   for (let i = 0; i < 3; i++) {
-    const dot = document.createElement("div");
-    dot.className = "w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500";
-    dot.style.animation = `typingAnimation 1.4s infinite`;
-    dot.style.animationDelay = `${i * 0.2}s`;
-    dotsContainer.appendChild(dot);
+      const dot = document.createElement("div");
+      dot.className = "w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500";
+      dot.style.animation = `typingAnimation 1.4s infinite`;
+      dot.style.animationDelay = `${i * 0.2}s`;
+      dotsContainer.appendChild(dot);
   }
 
   typingBubble.appendChild(dotsContainer);
@@ -458,16 +466,16 @@ const createTypingIndicator = (name) => {
 // Add CSS animation
 const style = document.createElement('style');
 style.textContent = `
-  @keyframes typingAnimation {
-    0%, 60%, 100% {
-      transform: translateY(0);
-      opacity: 0.4;
-    }
-    30% {
-      transform: translateY(-4px);
-      opacity: 1;
-    }
+@keyframes typingAnimation {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
   }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
 `;
 document.head.appendChild(style);
 
@@ -476,36 +484,36 @@ let typingIndicators = new Map(); // Map to store typing indicators by user
 
 const updateTypingIndicators = () => {
   const typingContainer = document.getElementById('typing-indicators-container') || (() => {
-    const container = document.createElement('div');
-    container.id = 'typing-indicators-container';
-    messages.parentNode.insertBefore(container, messages.nextSibling);
-    return container;
+      const container = document.createElement('div');
+      container.id = 'typing-indicators-container';
+      messages.parentNode.insertBefore(container, messages.nextSibling);
+      return container;
   })();
 
   // Clear existing indicators for users who stopped typing
   for (const [user, indicator] of typingIndicators.entries()) {
-    if (!typingUsers.has(user)) {
-      indicator.remove();
-      typingIndicators.delete(user);
-    }
+      if (!typingUsers.has(user)) {
+          indicator.remove();
+          typingIndicators.delete(user);
+      }
   }
 
   // Add indicators for new typing users
   for (const user of typingUsers) {
-    if (!typingIndicators.has(user)) {
-      const indicator = createTypingIndicator(user);
-      typingIndicators.set(user, indicator);
-      typingContainer.appendChild(indicator);
-    }
+      if (!typingIndicators.has(user)) {
+          const indicator = createTypingIndicator(user);
+          typingIndicators.set(user, indicator);
+          typingContainer.appendChild(indicator);
+      }
   }
 };
 
 // Modified socket event handler
 socketio.on("typing", (data) => {
   if (data.isTyping) {
-    typingUsers.add(data.name);
+      typingUsers.add(data.name);
   } else {
-    typingUsers.delete(data.name);
+      typingUsers.delete(data.name);
   }
   updateTypingIndicators();
 });
@@ -513,59 +521,65 @@ socketio.on("typing", (data) => {
 // Modified input event handler
 messageInput.addEventListener("keyup", (event) => {
   if (event.key === "Enter") {
-    sendMessage();
+      sendMessage();
   } else {
-    if (!typingTimeout) {
-      socketio.emit("typing", { isTyping: true });
-    }
-    clearTimeout(typingTimeout);
-    typingTimeout = setTimeout(() => {
-      socketio.emit("typing", { isTyping: false });
-      typingTimeout = null;
-    }, TYPING_TIMEOUT);
+      if (!typingTimeout) {
+          socketio.emit("typing", {
+              isTyping: true
+          });
+      }
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => {
+          socketio.emit("typing", {
+              isTyping: false
+          });
+          typingTimeout = null;
+      }, TYPING_TIMEOUT);
   }
 });
 
 const sendMessage = () => {
   const message = messageInput.value.trim();
-  
-  if (message || imageUpload.files.length > 0) {
-    if (imageUpload.files.length > 0) {
-      imageUpload.dispatchEvent(new Event('change'));
-    } else {
-      // Include both ID and message content for replies
-      const messageData = {
-        data: message,
-        replyTo: replyingTo ? {
-          id: replyingTo.id,
-          message: replyingTo.message
-        } : null
-      };
-      socketio.emit("message", messageData);
-    }
 
-    messageInput.value = "";
-    cancelReply();
-    clearTimeout(typingTimeout);
-    socketio.emit("typing", { isTyping: false });
+  if (message || imageUpload.files.length > 0) {
+      if (imageUpload.files.length > 0) {
+          imageUpload.dispatchEvent(new Event('change'));
+      } else {
+          // Include both ID and message content for replies
+          const messageData = {
+              data: message,
+              replyTo: replyingTo ? {
+                  id: replyingTo.id,
+                  message: replyingTo.message
+              } : null
+          };
+          socketio.emit("message", messageData);
+      }
+
+      messageInput.value = "";
+      cancelReply();
+      clearTimeout(typingTimeout);
+      socketio.emit("typing", {
+          isTyping: false
+      });
   }
 };
 
 // Event listener to adjust max width on window resize
 window.addEventListener('resize', () => {
   document.querySelectorAll('.message-container').forEach(container => {
-    container.style.maxWidth = getResponsiveMaxWidth();
+      container.style.maxWidth = getResponsiveMaxWidth();
   });
 });
 
 const updateMessageReadStatus = (messageElement, isRead) => {
   if (messageElement) {
-    const messageBubble = messageElement.querySelector('.message-content').parentElement;
-    if (isRead) {
-      messageBubble.classList.add('bg-indigo-800');
-    } else {
-      messageBubble.classList.remove('bg-indigo-700');
-    }
+      const messageBubble = messageElement.querySelector('.message-content').parentElement;
+      if (isRead) {
+          messageBubble.classList.add('bg-indigo-800');
+      } else {
+          messageBubble.classList.remove('bg-indigo-700');
+      }
   }
 };
 
@@ -573,42 +587,45 @@ const createReactionPicker = (messageId) => {
   // Remove any existing picker with animation
   const existingPicker = document.querySelector('.reaction-picker');
   if (existingPicker) {
-    existingPicker.style.opacity = '0';
-    existingPicker.style.transform = 'translateX(-50%) translateY(2px)';
-    setTimeout(() => existingPicker.remove(), 200);
+      existingPicker.style.opacity = '0';
+      existingPicker.style.transform = 'translateX(-50%) translateY(2px)';
+      setTimeout(() => existingPicker.remove(), 200);
   }
 
   const picker = document.createElement('div');
   picker.className = `
-    reaction-picker absolute z-50 bg-white dark:bg-gray-900 
-    rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 
-    p-2 flex gap-1 opacity-0 transform translate-y-2
-  `;
+  reaction-picker absolute z-50 bg-white dark:bg-gray-900 
+  rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 
+  p-2 flex gap-1 opacity-0 transform translate-y-2
+`;
 
   picker.style.transition = 'all 0.2s ease-out';
 
   COMMON_EMOJIS.forEach(emoji => {
-    const emojiButton = document.createElement('button');
-    emojiButton.className = `
-      w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 
-      dark:hover:bg-gray-800 transition-all duration-200 text-lg
-      transform hover:scale-110
-    `;
-    emojiButton.textContent = emoji;
-    emojiButton.onclick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Add click feedback
-      emojiButton.style.transform = 'scale(0.9)';
-      setTimeout(() => {
-        socketio.emit('toggle_reaction', { messageId, emoji });
-        picker.style.opacity = '0';
-        picker.style.transform = 'translateX(-50%) translateY(2px)';
-        setTimeout(() => picker.remove(), 200);
-      }, 100);
-    };
-    picker.appendChild(emojiButton);
+      const emojiButton = document.createElement('button');
+      emojiButton.className = `
+    w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 
+    dark:hover:bg-gray-800 transition-all duration-200 text-lg
+    transform hover:scale-110
+  `;
+      emojiButton.textContent = emoji;
+      emojiButton.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Add click feedback
+          emojiButton.style.transform = 'scale(0.9)';
+          setTimeout(() => {
+              socketio.emit('toggle_reaction', {
+                  messageId,
+                  emoji
+              });
+              picker.style.opacity = '0';
+              picker.style.transform = 'translateX(-50%) translateY(2px)';
+              setTimeout(() => picker.remove(), 200);
+          }, 100);
+      };
+      picker.appendChild(emojiButton);
   });
 
   const message = document.querySelector(`[data-message-id="${messageId}"]`);
@@ -623,21 +640,21 @@ const createReactionPicker = (messageId) => {
   picker.style.marginBottom = '8px';
 
   requestAnimationFrame(() => {
-    picker.style.opacity = '1';
-    picker.style.transform = 'translateX(-50%) translateY(0)';
+      picker.style.opacity = '1';
+      picker.style.transform = 'translateX(-50%) translateY(0)';
   });
 
   const handleClickOutside = (event) => {
-    if (!picker.contains(event.target) && !event.target.closest('.action-btn[title="React"]')) {
-      picker.style.opacity = '0';
-      picker.style.transform = 'translateX(-50%) translateY(2px)';
-      setTimeout(() => picker.remove(), 200);
-      document.removeEventListener('click', handleClickOutside);
-    }
+      if (!picker.contains(event.target) && !event.target.closest('.action-btn[title="React"]')) {
+          picker.style.opacity = '0';
+          picker.style.transform = 'translateX(-50%) translateY(2px)';
+          setTimeout(() => picker.remove(), 200);
+          document.removeEventListener('click', handleClickOutside);
+      }
   };
 
   setTimeout(() => {
-    document.addEventListener('click', handleClickOutside);
+      document.addEventListener('click', handleClickOutside);
   }, 0);
 
   return picker;
@@ -645,65 +662,64 @@ const createReactionPicker = (messageId) => {
 
 const styless = document.createElement('style');
 styless.textContent = `
-  .reaction-picker::after {
-    content: '';
-    position: absolute;
-    bottom: -5px;
-    left: 50%;
-    transform: translateX(-50%) rotate(45deg);
-    width: 10px;
-    height: 10px;
-    background: inherit;
-    border-right: 1px solid;
-    border-bottom: 1px solid;
-    border-color: inherit;
-  }
+.reaction-picker::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-right: 1px solid;
+  border-bottom: 1px solid;
+  border-color: inherit;
+}
 `;
 document.head.appendChild(styless);
 
 const createActionsMenu = (isCurrentUser) => {
   const actionsMenu = document.createElement("div");
   actionsMenu.className = `actions-menu opacity-0 group-hover:opacity-100 absolute -top-8 ${
-    isCurrentUser ? 'right-0' : 'left-0'
-  } flex items-center space-x-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-1 transition-all duration-200 z-10`;
+  isCurrentUser ? 'right-0' : 'left-0'
+} flex items-center space-x-1 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-1 transition-all duration-200 z-10`;
 
-  const actions = [
-    { 
-      title: "React", 
-      icon: "M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-      className: "hover:bg-gray-100 dark:hover:bg-gray-700"
-    },
-    { 
-      title: "Reply", 
-      icon: "M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6",
-      className: "hover:bg-gray-100 dark:hover:bg-gray-700"
-    },
-    { 
-      title: "Edit", 
-      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
-      onlyCurrentUser: true,
-      className: "hover:bg-gray-100 dark:hover:bg-gray-700"
-    },
-    { 
-      title: "Delete", 
-      icon: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
-      onlyCurrentUser: true,
-      className: "hover:bg-red-100 dark:hover:bg-red-900 text-red-600"
-    }
+  const actions = [{
+          title: "React",
+          icon: "M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+          className: "hover:bg-gray-100 dark:hover:bg-gray-700"
+      },
+      {
+          title: "Reply",
+          icon: "M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6",
+          className: "hover:bg-gray-100 dark:hover:bg-gray-700"
+      },
+      {
+          title: "Edit",
+          icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z",
+          onlyCurrentUser: true,
+          className: "hover:bg-gray-100 dark:hover:bg-gray-700"
+      },
+      {
+          title: "Delete",
+          icon: "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16",
+          onlyCurrentUser: true,
+          className: "hover:bg-red-100 dark:hover:bg-red-900 text-red-600"
+      }
   ];
 
   actions.forEach(action => {
-    if (!action.onlyCurrentUser || (action.onlyCurrentUser && isCurrentUser)) {
-      const button = document.createElement("button");
-      button.className = `action-btn p-1.5 rounded transition-colors duration-150 ${action.className}`;
-      button.title = action.title;
-      button.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${action.icon}" />
-        </svg>
-      `;
-      actionsMenu.appendChild(button);
-    }
+      if (!action.onlyCurrentUser || (action.onlyCurrentUser && isCurrentUser)) {
+          const button = document.createElement("button");
+          button.className = `action-btn p-1.5 rounded transition-colors duration-150 ${action.className}`;
+          button.title = action.title;
+          button.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${action.icon}" />
+      </svg>
+    `;
+          actionsMenu.appendChild(button);
+      }
   });
 
   return actionsMenu;
@@ -711,81 +727,83 @@ const createActionsMenu = (isCurrentUser) => {
 
 const styles = `
 
-  .highlight-animation {
-    animation: highlightFade 2s ease-out;
-  }
+.highlight-animation {
+  animation: highlightFade 2s ease-out;
+}
 
-  @keyframes highlightFade {
-    0% {
-      background-color: rgba(79, 70, 229, 0.2);
-    }
-    100% {
-      background-color: transparent;
-    }
+@keyframes highlightFade {
+  0% {
+    background-color: rgba(79, 70, 229, 0.2);
   }
+  100% {
+    background-color: transparent;
+  }
+}
 
-  /* Update hover background for better contrast with highlight */
-  .message:hover {
-    background-color: rgba(0, 0, 0, 0.03);
-  }
+/* Update hover background for better contrast with highlight */
+.message:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
 
-  .dark .message:hover {
-    background-color: rgba(255, 255, 255, 0.03);
-  }
+.dark .message:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
 `;
 
 document.head.insertAdjacentHTML('beforeend', `<style>${styles}</style>`);
 
 function addEventListeners(element, messageId, messageText) {
   const actionButtons = element.querySelectorAll('.action-btn');
-  
+
   actionButtons.forEach(button => {
-    const buttonTitle = button.getAttribute('title');
-    
-    switch(buttonTitle) {
-      case 'Edit':
-        button.addEventListener('click', () => editMessage(messageId));
-        break;
-      
-      case 'Delete':
-        button.addEventListener('click', () => deleteMessage(messageId));
-        break;
-      
-      case 'Reply':
-        button.addEventListener('click', () => startReply(messageId, messageText));
-        break;
-      
-      case 'React':
-        button.addEventListener('click', () => createReactionPicker(messageId));
-        break;
-    }
+      const buttonTitle = button.getAttribute('title');
+
+      switch (buttonTitle) {
+          case 'Edit':
+              button.addEventListener('click', () => editMessage(messageId));
+              break;
+
+          case 'Delete':
+              button.addEventListener('click', () => deleteMessage(messageId));
+              break;
+
+          case 'Reply':
+              button.addEventListener('click', () => startReply(messageId, messageText));
+              break;
+
+          case 'React':
+              button.addEventListener('click', () => createReactionPicker(messageId));
+              break;
+      }
   });
 }
 
 const addMessageToDOM = (element) => {
   let messageContainer = messages.querySelector('.flex.flex-col');
   if (!messageContainer) {
-    messageContainer = document.createElement('div');
-    messageContainer.className = 'flex flex-col space-y-4 p-4';
-    messages.appendChild(messageContainer);
+      messageContainer = document.createElement('div');
+      messageContainer.className = 'flex flex-col space-y-4 p-4';
+      messages.appendChild(messageContainer);
   }
-  
+
   // Always append new messages to the end of the container
   messageContainer.appendChild(element);
-  
+
   messages.scrollTop = messages.scrollHeight;
 
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const messageId = entry.target.getAttribute('data-message-id');
-        if (unreadMessages.has(messageId)) {
-          markMessagesAsRead();
-        }
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 1.0 });
+      entries.forEach(entry => {
+          if (entry.isIntersecting) {
+              const messageId = entry.target.getAttribute('data-message-id');
+              if (unreadMessages.has(messageId)) {
+                  markMessagesAsRead();
+              }
+              observer.unobserve(entry.target);
+          }
+      });
+  }, {
+      threshold: 1.0
+  });
 
   observer.observe(element);
 };
@@ -793,76 +811,79 @@ const addMessageToDOM = (element) => {
 const scrollToMessage = (messageId) => {
   const targetMessage = document.querySelector(`[data-message-id="${messageId}"]`);
   if (targetMessage) {
-    // Add a slight delay to ensure the DOM is ready
-    setTimeout(() => {
-      targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      
-      // Add highlight animation
-      targetMessage.classList.add('highlight-message');
-      
-      // Remove highlight after animation
+      // Add a slight delay to ensure the DOM is ready
       setTimeout(() => {
-        targetMessage.classList.remove('highlight-message');
-      }, 2000);
-    }, 100);
+          targetMessage.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center'
+          });
+
+          // Add highlight animation
+          targetMessage.classList.add('highlight-message');
+
+          // Remove highlight after animation
+          setTimeout(() => {
+              targetMessage.classList.remove('highlight-message');
+          }, 2000);
+      }, 100);
   }
 };
 
 const highlightMessage = (messageElement) => {
   // Add a temporary highlight class
   messageElement.classList.add('highlight-animation');
-  
+
   // Remove the highlight after animation completes
   setTimeout(() => {
-    messageElement.classList.remove('highlight-animation');
+      messageElement.classList.remove('highlight-animation');
   }, 2000);
 };
 
 const stylessss = document.createElement('style');
 stylessss.textContent = `
 .reply-indicator {
-  position: fixed;
-  bottom: 80px;  /* Adjust based on your input area height */
-  left: 0;
-  right: 0;
-  padding: 8px 16px;
-  background: rgba(59, 130, 246, 0.1);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(59, 130, 246, 0.2);
-  transform: translateY(100%);
-  transition: transform 0.2s ease-out;
-  z-index: 50;
-  display: none;
+position: fixed;
+bottom: 80px;  /* Adjust based on your input area height */
+left: 0;
+right: 0;
+padding: 8px 16px;
+background: rgba(59, 130, 246, 0.1);
+backdrop-filter: blur(8px);
+border-top: 1px solid rgba(59, 130, 246, 0.2);
+transform: translateY(100%);
+transition: transform 0.2s ease-out;
+z-index: 50;
+display: none;
 }
 
 .reply-indicator.active {
-  transform: translateY(0);
-  display: flex;
+transform: translateY(0);
+display: flex;
 }
 
 .reply-content {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-right: 8px;
+flex: 1;
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+margin-right: 8px;
 }
 
 .replying {
-  border-left: 4px solid rgb(59, 130, 246) !important;
-  padding-left: 12px !important;
+border-left: 4px solid rgb(59, 130, 246) !important;
+padding-left: 12px !important;
 }
 
 .cancel-reply {
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: rgba(239, 68, 68, 0.1);
-  color: rgb(239, 68, 68);
-  transition: all 0.2s;
+padding: 4px 8px;
+border-radius: 4px;
+background: rgba(239, 68, 68, 0.1);
+color: rgb(239, 68, 68);
+transition: all 0.2s;
 }
 
 .cancel-reply:hover {
-  background: rgba(239, 68, 68, 0.2);
+background: rgba(239, 68, 68, 0.2);
 }
 `;
 document.head.appendChild(stylessss);
@@ -871,21 +892,21 @@ document.head.appendChild(stylessss);
 const replyIndicator = document.createElement('div');
 replyIndicator.className = 'reply-indicator';
 replyIndicator.innerHTML = `
-  <div class="reply-content">
-    <div class="text-sm font-medium text-blue-500">Replying to:</div>
-    <div class="text-sm message-preview"></div>
-  </div>
-  <button class="cancel-reply text-sm font-medium">
-    Cancel
-  </button>
+<div class="reply-content">
+  <div class="text-sm font-medium text-blue-500">Replying to:</div>
+  <div class="text-sm message-preview"></div>
+</div>
+<button class="cancel-reply text-sm font-medium">
+  Cancel
+</button>
 `;
 document.body.appendChild(replyIndicator);
 
 const startReply = (messageId, message) => {
   // Store reply information
-  replyingTo = { 
-    id: messageId, 
-    message: message 
+  replyingTo = {
+      id: messageId,
+      message: message
   };
 
   // Update input placeholder and styling
@@ -901,12 +922,15 @@ const startReply = (messageId, message) => {
   // Scroll the message into view with highlighting
   const targetMessage = document.querySelector(`[data-message-id="${messageId}"]`);
   if (targetMessage) {
-    targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    targetMessage.style.transition = 'background-color 0.3s ease';
-    targetMessage.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-    setTimeout(() => {
-      targetMessage.style.backgroundColor = '';
-    }, 1500);
+      targetMessage.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+      });
+      targetMessage.style.transition = 'background-color 0.3s ease';
+      targetMessage.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+      setTimeout(() => {
+          targetMessage.style.backgroundColor = '';
+      }, 1500);
   }
 };
 
@@ -922,12 +946,15 @@ replyIndicator.querySelector('.cancel-reply').addEventListener('click', cancelRe
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && replyingTo) {
-    cancelReply();
+      cancelReply();
   }
 });
 
 
-socketio.on('update_reactions', ({ messageId, reactions }) => {
+socketio.on('update_reactions', ({
+  messageId,
+  reactions
+}) => {
   const message = document.querySelector(`[data-message-id="${messageId}"]`);
   if (!message) return;
 
@@ -941,10 +968,10 @@ socketio.on('update_reactions', ({ messageId, reactions }) => {
 const editMessage = (messageId) => {
   const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
   if (!messageElement) return;
-  
+
   const messageContent = messageElement.querySelector('.message-content');
   if (!messageContent) return;
-  
+
   const currentText = messageContent.textContent;
   const isCurrentUser = messageElement.classList.contains('bg-indigo-700');
 
@@ -953,11 +980,11 @@ const editMessage = (messageId) => {
   input.type = 'text';
   input.value = currentText;
   input.className = `rounded-md p-1 w-full ${
-      isCurrentUser 
-          ? 'bg-indigo-700 text-white placeholder-indigo-300 border border-indigo-400' 
-          : 'bg-white text-gray-900 border border-gray-300'
-  }`;
-  
+    isCurrentUser 
+        ? 'bg-indigo-700 text-white placeholder-indigo-300 border border-indigo-400' 
+        : 'bg-white text-gray-900 border border-gray-300'
+}`;
+
   messageContent.replaceWith(input);
   input.focus();
 
@@ -965,7 +992,10 @@ const editMessage = (messageId) => {
       if (event.key === 'Enter' || event.type === 'blur') {
           const newText = input.value.trim();
           if (newText !== '' && newText !== currentText) {
-              socketio.emit('edit_message', { messageId, newText });
+              socketio.emit('edit_message', {
+                  messageId,
+                  newText
+              });
           }
           finishEdit(newText || currentText, isCurrentUser);
       } else if (event.key === 'Escape') {
@@ -980,7 +1010,7 @@ const editMessage = (messageId) => {
       const newMessageContent = document.createElement('div');
       newMessageContent.className = `message-content ${isCurrentUser ? 'text-white' : 'text-gray-900'}`;
       newMessageContent.textContent = text;
-      
+
       input.replaceWith(newMessageContent);
   };
 
@@ -991,133 +1021,133 @@ const editMessage = (messageId) => {
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
 @keyframes messageBurst {
-  0% {
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-    opacity: 1;
-    transform: scale(1);
-  }
-  
-  15% {
-    clip-path: polygon(
-      10% 10%, 30% 0, 50% 10%, 70% 0, 90% 10%,
-      100% 30%, 90% 50%, 100% 70%, 90% 90%,
-      70% 100%, 50% 90%, 30% 100%, 10% 90%,
-      0 70%, 10% 50%, 0 30%
-    );
-    transform: scale(1.1);
-  }
+0% {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+  opacity: 1;
+  transform: scale(1);
+}
 
-  30% {
-    clip-path: polygon(
-      5% 5%, 25% 5%, 50% 20%, 75% 5%, 95% 5%,
-      95% 25%, 80% 50%, 95% 75%, 95% 95%,
-      75% 95%, 50% 80%, 25% 95%, 5% 95%,
-      5% 75%, 20% 50%, 5% 25%
-    );
-    opacity: 0.8;
-    transform: scale(1.2);
-  }
+15% {
+  clip-path: polygon(
+    10% 10%, 30% 0, 50% 10%, 70% 0, 90% 10%,
+    100% 30%, 90% 50%, 100% 70%, 90% 90%,
+    70% 100%, 50% 90%, 30% 100%, 10% 90%,
+    0 70%, 10% 50%, 0 30%
+  );
+  transform: scale(1.1);
+}
 
-  50% {
-    clip-path: polygon(
-      0 0, 20% 10%, 40% 0, 60% 10%, 80% 0,
-      100% 20%, 90% 40%, 100% 60%, 90% 80%,
-      80% 100%, 60% 90%, 40% 100%, 20% 90%,
-      0 80%, 10% 60%, 0 40%
-    );
-    opacity: 0.6;
-    transform: scale(1.4) translateY(-5px);
-  }
+30% {
+  clip-path: polygon(
+    5% 5%, 25% 5%, 50% 20%, 75% 5%, 95% 5%,
+    95% 25%, 80% 50%, 95% 75%, 95% 95%,
+    75% 95%, 50% 80%, 25% 95%, 5% 95%,
+    5% 75%, 20% 50%, 5% 25%
+  );
+  opacity: 0.8;
+  transform: scale(1.2);
+}
 
-  75% {
-    clip-path: polygon(
-      10% 0, 30% 0, 50% 20%, 70% 0, 90% 0,
-      100% 30%, 80% 50%, 100% 70%, 90% 100%,
-      70% 100%, 50% 80%, 30% 100%, 10% 100%,
-      0 70%, 20% 50%, 0 30%
-    );
-    opacity: 0.3;
-    transform: scale(1.6) translateY(-10px);
-  }
+50% {
+  clip-path: polygon(
+    0 0, 20% 10%, 40% 0, 60% 10%, 80% 0,
+    100% 20%, 90% 40%, 100% 60%, 90% 80%,
+    80% 100%, 60% 90%, 40% 100%, 20% 90%,
+    0 80%, 10% 60%, 0 40%
+  );
+  opacity: 0.6;
+  transform: scale(1.4) translateY(-5px);
+}
 
-  100% {
-    clip-path: polygon(
-      15% 5%, 25% 0, 40% 10%, 60% 0, 85% 5%,
-      100% 15%, 95% 35%, 100% 60%, 85% 85%,
-      60% 100%, 40% 95%, 25% 100%, 10% 85%,
-      0 60%, 5% 35%, 0 15%
-    );
-    opacity: 0;
-    transform: scale(1.8) translateY(-15px);
-  }
+75% {
+  clip-path: polygon(
+    10% 0, 30% 0, 50% 20%, 70% 0, 90% 0,
+    100% 30%, 80% 50%, 100% 70%, 90% 100%,
+    70% 100%, 50% 80%, 30% 100%, 10% 100%,
+    0 70%, 20% 50%, 0 30%
+  );
+  opacity: 0.3;
+  transform: scale(1.6) translateY(-10px);
+}
+
+100% {
+  clip-path: polygon(
+    15% 5%, 25% 0, 40% 10%, 60% 0, 85% 5%,
+    100% 15%, 95% 35%, 100% 60%, 85% 85%,
+    60% 100%, 40% 95%, 25% 100%, 10% 85%,
+    0 60%, 5% 35%, 0 15%
+  );
+  opacity: 0;
+  transform: scale(1.8) translateY(-15px);
+}
 }
 
 .message-deleting .relative > div:last-child {
-  animation: messageBurst 1s ease-out forwards;
+animation: messageBurst 1s ease-out forwards;
 }
 
 /* Crack line overlays */
 .message-deleting .relative > div:last-child::before,
 .message-deleting .relative > div:last-child::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
+content: '';
+position: absolute;
+inset: 0;
+pointer-events: none;
+opacity: 0;
+transition: opacity 0.2s ease-in-out;
 }
 
 .message-deleting .relative > div:last-child::before {
+background: linear-gradient(45deg, 
+  transparent 45%, 
+  rgba(255, 255, 255, 0.2) 45%, 
+  rgba(255, 255, 255, 0.2) 55%, 
+  transparent 55%
+);
+animation: burstLines 0.5s ease-in forwards;
+}
+
+.message-deleting .relative > div:last-child::after {
+background: linear-gradient(-45deg, 
+  transparent 45%, 
+  rgba(0, 0, 0, 0.1) 45%, 
+  rgba(0, 0, 0, 0.1) 55%, 
+  transparent 55%
+);
+animation: burstLines 0.5s ease-in 0.1s forwards;
+}
+
+@keyframes burstLines {
+0% {
+  opacity: 0;
+}
+50% {
+  opacity: 1;
+}
+100% {
+  opacity: 0;
+}
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+.message-deleting .relative > div:last-child::before {
   background: linear-gradient(45deg, 
     transparent 45%, 
-    rgba(255, 255, 255, 0.2) 45%, 
-    rgba(255, 255, 255, 0.2) 55%, 
+    rgba(255, 255, 255, 0.1) 45%, 
+    rgba(255, 255, 255, 0.1) 55%, 
     transparent 55%
   );
-  animation: burstLines 0.5s ease-in forwards;
 }
 
 .message-deleting .relative > div:last-child::after {
   background: linear-gradient(-45deg, 
     transparent 45%, 
-    rgba(0, 0, 0, 0.1) 45%, 
-    rgba(0, 0, 0, 0.1) 55%, 
+    rgba(255, 255, 255, 0.05) 45%, 
+    rgba(255, 255, 255, 0.05) 55%, 
     transparent 55%
   );
-  animation: burstLines 0.5s ease-in 0.1s forwards;
 }
-
-@keyframes burstLines {
-  0% {
-    opacity: 0;
-  }
-  50% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .message-deleting .relative > div:last-child::before {
-    background: linear-gradient(45deg, 
-      transparent 45%, 
-      rgba(255, 255, 255, 0.1) 45%, 
-      rgba(255, 255, 255, 0.1) 55%, 
-      transparent 55%
-    );
-  }
-  
-  .message-deleting .relative > div:last-child::after {
-    background: linear-gradient(-45deg, 
-      transparent 45%, 
-      rgba(255, 255, 255, 0.05) 45%, 
-      rgba(255, 255, 255, 0.05) 55%, 
-      transparent 55%
-    );
-  }
 }
 `;
 
@@ -1131,119 +1161,125 @@ const deleteMessage = async (messageId) => {
   if (!messageElement) return;
 
   try {
-    // Start the deletion animation immediately
-    messageElement.classList.add('message-deleting');
+      // Start the deletion animation immediately
+      messageElement.classList.add('message-deleting');
 
-    // Check if message contains an image
-    const imageElement = messageElement.querySelector('img:not(.profile-photo)');
-    if (imageElement) {
-      try {
-        // Extract the image path from the URL
-        const imageUrl = imageElement.src;
-        // Convert the full URL to a storage reference path
-        const imagePath = decodeURIComponent(imageUrl.split('/o/')[1].split('?')[0]);
-        const imageRef = ref(storage, imagePath);
-        
-        // Delete the image from Firebase Storage
-        await deleteObject(imageRef);
-        console.log('Image deleted successfully from storage');
-      } catch (error) {
-        console.error('Error deleting image from storage:', error);
-        // Continue with message deletion even if image deletion fails
+      // Check if message contains an image
+      const imageElement = messageElement.querySelector('img:not(.profile-photo)');
+      if (imageElement) {
+          try {
+              // Extract the image path from the URL
+              const imageUrl = imageElement.src;
+              // Convert the full URL to a storage reference path
+              const imagePath = decodeURIComponent(imageUrl.split('/o/')[1].split('?')[0]);
+              const imageRef = ref(storage, imagePath);
+
+              // Delete the image from Firebase Storage
+              await deleteObject(imageRef);
+              console.log('Image deleted successfully from storage');
+          } catch (error) {
+              console.error('Error deleting image from storage:', error);
+              // Continue with message deletion even if image deletion fails
+          }
       }
-    }
 
-    // Emit socket event to delete message from database
-    socketio.emit('delete_message', { messageId });
+      // Emit socket event to delete message from database
+      socketio.emit('delete_message', {
+          messageId
+      });
 
-    // Remove the element after animation completes
-    messageElement.addEventListener('animationend', () => {
-      messageElement.remove();
-    }, { once: true });
+      // Remove the element after animation completes
+      messageElement.addEventListener('animationend', () => {
+          messageElement.remove();
+      }, {
+          once: true
+      });
 
   } catch (error) {
-    console.error('Error during message deletion:', error);
-    // Remove animation class if there's an error
-    messageElement.classList.remove('message-deleting');
-    alert('Failed to delete message. Please try again.');
+      console.error('Error during message deletion:', error);
+      // Remove animation class if there's an error
+      messageElement.classList.remove('message-deleting');
+      alert('Failed to delete message. Please try again.');
   }
 };
 
 imageUpload.addEventListener('change', async (event) => {
   const file = event.target.files[0];
   if (file) {
-    try {
-      // Create a storage reference with a unique filename
-      const storageRef = ref(storage, `chat-images/${Date.now()}_${file.name}`);
-      
-      // Show upload progress
-      const progressIndicator = document.createElement('div');
-      progressIndicator.className = 'upload-progress bg-gray-200 rounded-full h-2 mx-4 mb-4';
-      progressIndicator.innerHTML = '<div class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>';
-      messages.insertAdjacentElement('beforeend', progressIndicator);
-      
-      // Upload file with progress tracking
-      const uploadTask = uploadBytesResumable(storageRef, file);
-      
-      // Monitor upload progress
-      uploadTask.on('state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          progressIndicator.querySelector('div').style.width = progress + '%';
-        },
-        (error) => {
-          console.error("Upload failed:", error);
-          progressIndicator.remove();
-          alert('Failed to upload image. Please try again.');
-        },
-        async () => {
-          try {
-            // Get the download URL
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            
-            // Remove progress indicator
-            progressIndicator.remove();
-            
-            // Emit socket event with the image URL and any reply reference
-            socketio.emit("message", {
-              data: "Sent an image",
-              image: downloadURL,
-              replyTo: replyingTo ? replyingTo.id : null
-            });
+      try {
+          // Create a storage reference with a unique filename
+          const storageRef = ref(storage, `chat-images/${Date.now()}_${file.name}`);
 
-            // Clear the file input value so the same file can be sent again if needed
-            imageUpload.value = '';
-            
-          } catch (error) {
-            console.error("Error getting download URL:", error);
-            alert('Failed to get image URL. Please try again.');
-          }
-        }
-      );
-    } catch (error) {
-      console.error("Error handling file upload:", error);
-      alert('Failed to process image. Please try again.');
-    }
+          // Show upload progress
+          const progressIndicator = document.createElement('div');
+          progressIndicator.className = 'upload-progress bg-gray-200 rounded-full h-2 mx-4 mb-4';
+          progressIndicator.innerHTML = '<div class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>';
+          messages.insertAdjacentElement('beforeend', progressIndicator);
+
+          // Upload file with progress tracking
+          const uploadTask = uploadBytesResumable(storageRef, file);
+
+          // Monitor upload progress
+          uploadTask.on('state_changed',
+              (snapshot) => {
+                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                  progressIndicator.querySelector('div').style.width = progress + '%';
+              },
+              (error) => {
+                  console.error("Upload failed:", error);
+                  progressIndicator.remove();
+                  alert('Failed to upload image. Please try again.');
+              },
+              async () => {
+                  try {
+                      // Get the download URL
+                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+                      // Remove progress indicator
+                      progressIndicator.remove();
+
+                      // Emit socket event with the image URL and any reply reference
+                      socketio.emit("message", {
+                          data: "Sent an image",
+                          image: downloadURL,
+                          replyTo: replyingTo ? replyingTo.id : null
+                      });
+
+                      // Clear the file input value so the same file can be sent again if needed
+                      imageUpload.value = '';
+
+                  } catch (error) {
+                      console.error("Error getting download URL:", error);
+                      alert('Failed to get image URL. Please try again.');
+                  }
+              }
+          );
+      } catch (error) {
+          console.error("Error handling file upload:", error);
+          alert('Failed to process image. Please try again.');
+      }
   }
 });
 
 const markMessagesAsRead = () => {
   if (isTabActive && unreadMessages.size > 0) {
-    const messageIds = Array.from(unreadMessages);
-    socketio.emit("mark_messages_read", { message_ids: messageIds });
-    unreadMessages.clear();
-    unreadCount = 0;
-    updatePageTitle();
-    lastReadMessageId = messageIds[messageIds.length - 1];
-    updateLocalStorage(LS_KEYS.LAST_READ_MESSAGE_ID, lastReadMessageId);
+      const messageIds = Array.from(unreadMessages);
+      socketio.emit("mark_messages_read", {
+          message_ids: messageIds
+      });
+      unreadMessages.clear();
+      unreadCount = 0;
+      updatePageTitle();
+      lastReadMessageId = messageIds[messageIds.length - 1];
+      updateLocalStorage(LS_KEYS.LAST_READ_MESSAGE_ID, lastReadMessageId);
   }
 };
 
 const findMessageById = (messageId) => {
   const messageElement = document.querySelector(`[data-message-id="${messageId}"]`);
   if (messageElement) {
-    const messageContent = messageElement.querySelector('.message-content');
-    return messageContent ? messageContent.textContent : null;
+      const messageContent = messageElement.querySelector('.message-content');
+      return messageContent ? messageContent.textContent : null;
   }
   return null;
 };
@@ -1251,243 +1287,246 @@ const findMessageById = (messageId) => {
 socketio.on("message", (data) => {
   // Handle system messages
   if (data.type === 'system') {
-    const messageElement = createMessageElement(
-      data.name,
-      data.message,
-      null,  // system messages don't have images
-      data.id,
-      null,  // system messages don't have replies
-      false, // system messages can't be edited
-      {},    // system messages don't have reactions
-      data.read_by || [],
-      'system' // specify type as system
-    );
-    addMessageToDOM(messageElement);
-    return;
+      const messageElement = createMessageElement(
+          data.name,
+          data.message,
+          null, // system messages don't have images
+          data.id,
+          null, // system messages don't have replies
+          false, // system messages can't be edited
+          {}, // system messages don't have reactions
+          data.read_by || [],
+          'system' // specify type as system
+      );
+      addMessageToDOM(messageElement);
+      return;
   }
 
   // Handle regular messages
   let replyToData = null;
   if (data.reply_to) {
-    replyToData = {
-      id: data.reply_to.id || data.reply_to,  // Handle both object and string formats
-      message: data.reply_to.message || findMessageById(data.reply_to)  // Get message content if available
-    };
+      replyToData = {
+          id: data.reply_to.id || data.reply_to, // Handle both object and string formats
+          message: data.reply_to.message || findMessageById(data.reply_to) // Get message content if available
+      };
   }
 
   const messageElement = createMessageElement(
-    data.name, 
-    data.message, 
-    data.image, 
-    data.id, 
-    replyToData,
-    data.edited || false,
-    data.reactions || {},
-    data.read_by || []
+      data.name,
+      data.message,
+      data.image,
+      data.id,
+      replyToData,
+      data.edited || false,
+      data.reactions || {},
+      data.read_by || []
   );
   addMessageToDOM(messageElement);
 
   if (data.name !== currentUser) {
-    unreadMessages.add(data.id);
-    if (isTabActive) {
-      markMessagesAsRead();
-    } else {
-      unreadCount++;
-      updatePageTitle();
-    }
+      unreadMessages.add(data.id);
+      if (isTabActive) {
+          markMessagesAsRead();
+      } else {
+          unreadCount++;
+          updatePageTitle();
+      }
   }
 
   // Safely handle reply info click events
   const replyInfo = messageElement.querySelector('[data-reply-to]');
   if (replyInfo) {
-    replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
+      replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
   }
 
   // Only add action buttons for non-system messages
   const actionButtons = messageElement.querySelectorAll('.action-btn');
   actionButtons.forEach(button => {
-    const buttonTitle = button.getAttribute('title');
-    
-    switch(buttonTitle) {
-      case 'Edit':
-        if (data.name === currentUser) {
-          button.addEventListener('click', () => editMessage(data.id));
-        }
-        break;
-      
-      case 'Delete':
-        if (data.name === currentUser) {
-          button.addEventListener('click', () => deleteMessage(data.id));
-        }
-        break;
-      
-      case 'Reply':
-        button.addEventListener('click', () => startReply(data.id, data.message));
-        break;
-      
-      case 'React':
-        button.addEventListener('click', () => createReactionPicker(data.id));
-        break;
-    }
+      const buttonTitle = button.getAttribute('title');
+
+      switch (buttonTitle) {
+          case 'Edit':
+              if (data.name === currentUser) {
+                  button.addEventListener('click', () => editMessage(data.id));
+              }
+              break;
+
+          case 'Delete':
+              if (data.name === currentUser) {
+                  button.addEventListener('click', () => deleteMessage(data.id));
+              }
+              break;
+
+          case 'Reply':
+              button.addEventListener('click', () => startReply(data.id, data.message));
+              break;
+
+          case 'React':
+              button.addEventListener('click', () => createReactionPicker(data.id));
+              break;
+      }
   });
 });
 
 socketio.on("messages_read", (data) => {
-  const { reader, message_ids } = data;
-  
+  const {
+      reader,
+      message_ids
+  } = data;
+
   message_ids.forEach(id => {
-    const messageContainer = document.querySelector(`[data-message-id="${id}"]`);
-    if (messageContainer) {
-      const messageSender = messageContainer.querySelector('.text-sm.font-medium')?.textContent;
-      
-      // Only update the visual status if the message was sent by the current user
-      // and was read by someone else
-      if ((!messageSender || messageSender === currentUser) && reader !== currentUser) {
-        updateMessageReadStatus(messageContainer, true);
+      const messageContainer = document.querySelector(`[data-message-id="${id}"]`);
+      if (messageContainer) {
+          const messageSender = messageContainer.querySelector('.text-sm.font-medium')?.textContent;
+
+          // Only update the visual status if the message was sent by the current user
+          // and was read by someone else
+          if ((!messageSender || messageSender === currentUser) && reader !== currentUser) {
+              updateMessageReadStatus(messageContainer, true);
+          }
       }
-    }
   });
 });
 
 socketio.on("chat_history", (data) => {
   const messageContainer = document.createElement('div');
   messageContainer.className = 'flex flex-col space-y-4 p-4';
-  
+
   data.messages.forEach((message) => {
-    // Handle system messages
-    if (message.type === 'system') {
+      // Handle system messages
+      if (message.type === 'system') {
+          const messageElement = createMessageElement(
+              message.name,
+              message.message,
+              null, // system messages don't have images
+              message.id,
+              null, // system messages don't have replies
+              false, // system messages can't be edited
+              {}, // system messages don't have reactions
+              [], // system messages don't track read status
+              'system'
+          );
+          messageContainer.appendChild(messageElement);
+          return;
+      }
+
+      // Handle regular messages
+      const validReaders = (message.read_by || []).filter(reader =>
+          reader !== null &&
+          reader !== message.name
+      );
+
+      const replyToData = message.reply_to ? {
+          id: message.reply_to.id || message.reply_to,
+          message: message.reply_to.message || findMessageById(message.reply_to)
+      } : null;
+
       const messageElement = createMessageElement(
-        message.name,
-        message.message,
-        null,  // system messages don't have images
-        message.id,
-        null,  // system messages don't have replies
-        false, // system messages can't be edited
-        {},    // system messages don't have reactions
-        [],    // system messages don't track read status
-        'system'
+          message.name,
+          message.message,
+          message.image,
+          message.id,
+          replyToData,
+          message.edited || false,
+          message.reactions || {},
+          validReaders
       );
       messageContainer.appendChild(messageElement);
-      return;
-    }
 
-    // Handle regular messages
-    const validReaders = (message.read_by || []).filter(reader => 
-      reader !== null && 
-      reader !== message.name
-    );
-    
-    const replyToData = message.reply_to ? {
-      id: message.reply_to.id || message.reply_to,
-      message: message.reply_to.message || findMessageById(message.reply_to)
-    } : null;
-
-    const messageElement = createMessageElement(
-      message.name, 
-      message.message, 
-      message.image, 
-      message.id, 
-      replyToData,
-      message.edited || false,
-      message.reactions || {},
-      validReaders
-    );
-    messageContainer.appendChild(messageElement);
-
-    if (message.name !== currentUser && !validReaders.includes(currentUser)) {
-      unreadMessages.add(message.id);
-    }
+      if (message.name !== currentUser && !validReaders.includes(currentUser)) {
+          unreadMessages.add(message.id);
+      }
   });
-  
+
   messages.innerHTML = '';
   messages.appendChild(messageContainer);
-  
+
   if (data.messages.length > 0) {
-    oldestMessageId = data.messages[0].id;
+      oldestMessageId = data.messages[0].id;
   }
-  
+
   hasMoreMessages = data.has_more;
   updateLoadMoreButton();
-  
+
   markMessagesAsRead();
-  
+
   messages.scrollTop = messages.scrollHeight;
 });
 
 socketio.on("more_messages", (data) => {
   const oldScrollHeight = messages.scrollHeight;
   let messageContainer = messages.querySelector('.flex.flex-col');
-  
+
   if (!messageContainer) {
-    messageContainer = document.createElement('div');
-    messageContainer.className = 'flex flex-col space-y-4 p-4';
-    messages.appendChild(messageContainer);
+      messageContainer = document.createElement('div');
+      messageContainer.className = 'flex flex-col space-y-4 p-4';
+      messages.appendChild(messageContainer);
   }
-  
+
   const loadMoreBtn = document.getElementById('load-more-btn');
   const fragment = document.createDocumentFragment();
-  
+
   data.messages.forEach((message) => {
-    // Handle system messages
-    if (message.type === 'system') {
+      // Handle system messages
+      if (message.type === 'system') {
+          const messageElement = createMessageElement(
+              message.name,
+              message.message,
+              null, // system messages don't have images
+              message.id,
+              null, // system messages don't have replies
+              false, // system messages can't be edited
+              {}, // system messages don't have reactions
+              [], // system messages don't track read status
+              'system'
+          );
+          fragment.appendChild(messageElement);
+          return;
+      }
+
+      // Handle regular messages
+      const validReaders = (message.read_by || []).filter(reader =>
+          reader !== null &&
+          reader !== message.name
+      );
+
+      const replyToData = message.reply_to ? {
+          id: message.reply_to.id || message.reply_to,
+          message: message.reply_to.message || findMessageById(message.reply_to)
+      } : null;
+
       const messageElement = createMessageElement(
-        message.name,
-        message.message,
-        null,  // system messages don't have images
-        message.id,
-        null,  // system messages don't have replies
-        false, // system messages can't be edited
-        {},    // system messages don't have reactions
-        [],    // system messages don't track read status
-        'system'
+          message.name,
+          message.message,
+          message.image,
+          message.id,
+          replyToData,
+          message.edited || false,
+          message.reactions || {},
+          validReaders
       );
       fragment.appendChild(messageElement);
-      return;
-    }
 
-    // Handle regular messages
-    const validReaders = (message.read_by || []).filter(reader => 
-      reader !== null && 
-      reader !== message.name
-    );
-    
-    const replyToData = message.reply_to ? {
-      id: message.reply_to.id || message.reply_to,
-      message: message.reply_to.message || findMessageById(message.reply_to)
-    } : null;
-    
-    const messageElement = createMessageElement(
-      message.name, 
-      message.message, 
-      message.image, 
-      message.id, 
-      replyToData,
-      message.edited || false,
-      message.reactions || {},
-      validReaders
-    );
-    fragment.appendChild(messageElement);
-
-    if (message.name !== currentUser && !validReaders.includes(currentUser)) {
-      unreadMessages.add(message.id);
-    }
+      if (message.name !== currentUser && !validReaders.includes(currentUser)) {
+          unreadMessages.add(message.id);
+      }
   });
-  
+
   if (loadMoreBtn) {
-    loadMoreBtn.after(fragment);
+      loadMoreBtn.after(fragment);
   } else {
-    messageContainer.insertBefore(fragment, messageContainer.firstChild);
+      messageContainer.insertBefore(fragment, messageContainer.firstChild);
   }
-  
+
   if (data.messages.length > 0) {
-    oldestMessageId = data.messages[0].id;
+      oldestMessageId = data.messages[0].id;
   }
-  
+
   hasMoreMessages = data.has_more;
   updateLoadMoreButton();
-  
+
   isLoadingMessages = false;
-  
+
   const newScrollHeight = messages.scrollHeight;
   messages.scrollTop = newScrollHeight - oldScrollHeight + messages.scrollTop;
 });
@@ -1504,62 +1543,66 @@ function createLoadMoreButton() {
 function updateLoadMoreButton() {
   let messageContainer = messages.querySelector('.flex.flex-col');
   if (!messageContainer) {
-    messageContainer = document.createElement('div');
-    messageContainer.className = 'flex flex-col space-y-4 p-4';
-    messages.appendChild(messageContainer);
+      messageContainer = document.createElement('div');
+      messageContainer.className = 'flex flex-col space-y-4 p-4';
+      messages.appendChild(messageContainer);
   }
 
   let existingButton = document.getElementById('load-more-btn');
   if (hasMoreMessages) {
-    if (!existingButton) {
-      existingButton = createLoadMoreButton();
-      messageContainer.insertBefore(existingButton, messageContainer.firstChild);
-    }
+      if (!existingButton) {
+          existingButton = createLoadMoreButton();
+          messageContainer.insertBefore(existingButton, messageContainer.firstChild);
+      }
   } else {
-    if (existingButton) {
-      existingButton.remove();
-    }
+      if (existingButton) {
+          existingButton.remove();
+      }
   }
 }
 
 function loadMoreMessages() {
   if (isLoadingMessages || !hasMoreMessages) return;
-  
+
   isLoadingMessages = true;
-  socketio.emit("load_more_messages", { last_message_id: oldestMessageId });
+  socketio.emit("load_more_messages", {
+      last_message_id: oldestMessageId
+  });
 }
 
 socketio.on("edit_message", (data) => {
   const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
   if (messageElement) {
-    const messageContainer = messageElement.querySelector('.message-content').parentElement;
-    const isCurrentUser = messageElement.closest('.message').classList.contains('justify-end');
-    
-    // Update message content
-    const messageContent = messageContainer.querySelector('.message-content');
-    messageContent.textContent = data.newText;
-    
-    // Add edit indicator if not already present
-    if (!messageContainer.querySelector('.edited-indicator')) {
-      const editedIndicator = document.createElement("span");
-      editedIndicator.className = `edited-indicator text-xs ${isCurrentUser ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'}`;
-      editedIndicator.textContent = "(edited)";
-      messageContainer.appendChild(editedIndicator);
-    }
+      const messageContainer = messageElement.querySelector('.message-content').parentElement;
+      const isCurrentUser = messageElement.closest('.message').classList.contains('justify-end');
+
+      // Update message content
+      const messageContent = messageContainer.querySelector('.message-content');
+      messageContent.textContent = data.newText;
+
+      // Add edit indicator if not already present
+      if (!messageContainer.querySelector('.edited-indicator')) {
+          const editedIndicator = document.createElement("span");
+          editedIndicator.className = `edited-indicator text-xs ${isCurrentUser ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'}`;
+          editedIndicator.textContent = "(edited)";
+          messageContainer.appendChild(editedIndicator);
+      }
   }
-}); 
-  
+});
+
 socketio.on("delete_message", (data) => {
   const messageElement = document.querySelector(`[data-message-id="${data.messageId}"]`);
   if (messageElement) {
-    messageElement.classList.add('message-deleting');
-    createShards(messageElement);
-    
-    messageElement.addEventListener('animationend', (e) => {
-      if (e.target === messageElement.firstElementChild) {
-        messageElement.remove();
-      }
-    }, { once: true });
+      messageElement.classList.add('message-deleting');
+      createShards(messageElement);
+
+      messageElement.addEventListener('animationend', (e) => {
+          if (e.target === messageElement.firstElementChild) {
+              messageElement.remove();
+          }
+      }, {
+          once: true
+      });
   }
 });
 
@@ -1580,31 +1623,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const highlightMessageId = urlParams.get('highlight');
 
   if (highlightMessageId) {
-    // Remove the URL parameter without refreshing the page
-    const newUrl = window.location.pathname + window.location.hash;
-    window.history.replaceState({}, '', newUrl);
+      // Remove the URL parameter without refreshing the page
+      const newUrl = window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', newUrl);
 
-    // Function to attempt scrolling to the message
-    const attemptScroll = () => {
-      const targetMessage = document.querySelector(`[data-message-id="${highlightMessageId}"]`);
-      if (targetMessage) {
-        // Message found, scroll to it
-        setTimeout(() => {
-          targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          highlightMessage(targetMessage);
-        }, 100);
-      } else {
-        // Message not found yet, try again
-        if (document.querySelector('.flex.flex-col.space-y-4')) {
-          // Messages container exists but message not found
-          // This might mean we're still loading messages
-          setTimeout(attemptScroll, 100);
-        }
-      }
-    };
+      // Function to attempt scrolling to the message
+      const attemptScroll = () => {
+          const targetMessage = document.querySelector(`[data-message-id="${highlightMessageId}"]`);
+          if (targetMessage) {
+              // Message found, scroll to it
+              setTimeout(() => {
+                  targetMessage.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center'
+                  });
+                  highlightMessage(targetMessage);
+              }, 100);
+          } else {
+              // Message not found yet, try again
+              if (document.querySelector('.flex.flex-col.space-y-4')) {
+                  // Messages container exists but message not found
+                  // This might mean we're still loading messages
+                  setTimeout(attemptScroll, 100);
+              }
+          }
+      };
 
-    // Start attempting to scroll
-    attemptScroll();
+      // Start attempting to scroll
+      attemptScroll();
   }
 });
 
