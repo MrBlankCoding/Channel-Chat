@@ -1096,6 +1096,56 @@ def delete_firebase_image(image_url):
         print(f"Error deleting image from Firebase Storage: {e}")
         print(f"Attempted to delete path: {path}")
 
+@app.route("/pending_room_invites")
+def pending_room_invites():
+    if not current_user:
+        flash("Please login to view pending invites.")
+        return redirect(url_for("login"))
+    
+    # Get current user's data
+    current_username = current_user.username
+    user_data = get_user_data(current_username)
+    
+    # Initialize pending_invites if it doesn't exist
+    if "pending_invites" not in user_data:
+        user_data["pending_invites"] = []
+    
+    return render_template("room_invites.html", user_data=user_data)
+
+@app.route("/cancel_room_invite/<username>/<room_code>")
+def cancel_room_invite(username, room_code):
+    if not current_user:
+        flash("Please login to cancel invites.")
+        return redirect(url_for("login"))
+    
+    # Get the invited user's data
+    friend_data = get_user_data(username)
+    if not friend_data:
+        flash("User not found.")
+        return redirect(url_for("room"))
+    
+    # Remove the invite from their room_invites
+    if "room_invites" in friend_data:
+        friend_data["room_invites"] = [
+            inv for inv in friend_data["room_invites"] 
+            if inv.get("room") != room_code
+        ]
+        update_user_data(username, friend_data)
+        
+    # Remove from current user's pending_invites
+    current_username = current_user.username
+    user_data = get_user_data(current_username)
+    if "pending_invites" in user_data:
+        user_data["pending_invites"] = [
+            inv for inv in user_data["pending_invites"]
+            if inv.get("username") != username or inv.get("room") != room_code
+        ]
+        update_user_data(current_username, user_data)
+    
+    flash(f"Cancelled room invitation to {username}.")
+    return redirect(url_for("room"))
+
+# Modified invite_to_room route to include pending_invites
 @app.route("/invite_to_room/<username>")
 def invite_to_room(username):
     current_room = session.get("room")
@@ -1104,7 +1154,7 @@ def invite_to_room(username):
         flash("You're not in a room.")
         return redirect(url_for("home"))
 
-    # Get the room data to include room name and photo
+    # Get the room data
     room_data = rooms_collection.find_one({"_id": current_room})
     if not room_data:
         flash("Room not found.")
@@ -1116,7 +1166,7 @@ def invite_to_room(username):
         flash("User not found.")
         return redirect(url_for("room"))
 
-    # Get current user's data and ensure current_user is handled correctly
+    # Get current user's data
     current_username = current_user.username
     user_data = get_user_data(current_username)
 
@@ -1124,9 +1174,13 @@ def invite_to_room(username):
         flash("You can only invite friends to rooms.")
         return redirect(url_for("room"))
 
-    # Initialize room_invites if it doesn't exist
+    # Initialize room_invites for friend
     if "room_invites" not in friend_data:
         friend_data["room_invites"] = []
+
+    # Initialize pending_invites for current user
+    if "pending_invites" not in user_data:
+        user_data["pending_invites"] = []
 
     # Check if invite already exists
     existing_invite = next(
@@ -1135,7 +1189,7 @@ def invite_to_room(username):
     )
 
     if not existing_invite:
-        # Create new invite with room name and profile photo
+        # Create new invite
         new_invite = {
             "room": current_room,
             "room_name": room_data.get("name", "Unnamed Room"),
@@ -1143,9 +1197,19 @@ def invite_to_room(username):
             "profile_photo": room_data.get("profile_photo")
         }
         friend_data["room_invites"].append(new_invite)
+        
+        # Add to pending_invites for current user
+        pending_invite = {
+            "username": username,
+            "room": current_room,
+            "room_name": room_data.get("name", "Unnamed Room"),
+            "profile_photo": room_data.get("profile_photo")
+        }
+        user_data["pending_invites"].append(pending_invite)
 
-        # Save the updated friend data
+        # Save both updated data
         update_user_data(username, friend_data)
+        update_user_data(current_username, user_data)
         flash(f"Room invitation sent to {username}!")
     else:
         flash(f"{username} already has a pending invite to this room.")

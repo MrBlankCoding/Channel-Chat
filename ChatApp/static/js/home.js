@@ -84,9 +84,12 @@ document.addEventListener('DOMContentLoaded', function() {
         roomToDelete = null;
     }
 
-    function toggleRoomInvites() {
-        const content = document.getElementById('roomInvitesContent');
-        content.classList.toggle('hidden');
+    function toggleRoomInvites(type) {
+        const contentId = type === 'pending' ? 'pendingInvitesContent' : 'receivedInvitesContent';
+        const content = document.getElementById(contentId);
+        if (content) {
+            content.classList.toggle('hidden');
+        }
     }
 
     // =========================================
