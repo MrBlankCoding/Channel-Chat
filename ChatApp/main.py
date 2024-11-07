@@ -1231,6 +1231,92 @@ def invite_to_room(username):
 
     return redirect(url_for("room"))
 
+@app.route("/accept_room_invite/<room_code>")
+@login_required
+def accept_room_invite(room_code):
+    username = current_user.username
+    user_data = get_user_data(username)
+
+    # Find and remove the invite
+    invite_found = False
+    room_invites = user_data.get("room_invites", [])
+
+    # Find the invite to get the sender's username before removing it
+    invite = next(
+        (inv for inv in room_invites if inv["room"] == room_code),
+        None
+    )
+
+    if not invite:
+        flash("Room invite not found or already accepted.")
+        return redirect(url_for("home"))
+
+    # Get the sender's username from the invite
+    sender_username = invite["from"]
+
+    # Filter out the accepted invite from recipient
+    user_data["room_invites"] = [
+        inv for inv in room_invites if inv["room"] != room_code
+    ]
+
+    # Add room to user's rooms list
+    if "rooms" not in user_data:
+        user_data["rooms"] = []
+    if room_code not in user_data["rooms"]:
+        user_data["rooms"].append(room_code)
+
+    # Save the updated recipient's data
+    update_user_data(username, user_data)
+
+    # Remove pending invite from sender's data
+    sender_data = get_user_data(sender_username)
+    if sender_data and "pending_invites" in sender_data:
+        sender_data["pending_invites"] = [
+            inv for inv in sender_data["pending_invites"]
+            if not (inv["username"] == username and inv["room"] == room_code)
+        ]
+        update_user_data(sender_username, sender_data)
+
+    flash("Room invite accepted!")
+    return redirect(url_for("room", code=room_code))
+
+@app.route("/decline_room_invite/<room_code>")
+@login_required
+def decline_room_invite(room_code):
+    username = current_user.username
+    user_data = get_user_data(username)
+    
+    # Find the invite to get the sender's username before removing it
+    room_invites = user_data.get("room_invites", [])
+    invite = next(
+        (inv for inv in room_invites if inv["room"] == room_code),
+        None
+    )
+
+    if not invite:
+        flash("Room invite not found or already declined.")
+        return redirect(url_for("home"))
+
+    # Get the sender's username from the invite
+    sender_username = invite["from"]
+
+    # Remove the invite from recipient
+    user_data["room_invites"] = [
+        inv for inv in room_invites if inv["room"] != room_code
+    ]
+    update_user_data(username, user_data)
+
+    # Remove pending invite from sender's data
+    sender_data = get_user_data(sender_username)
+    if sender_data and "pending_invites" in sender_data:
+        sender_data["pending_invites"] = [
+            inv for inv in sender_data["pending_invites"]
+            if not (inv["username"] == username and inv["room"] == room_code)
+        ]
+        update_user_data(sender_username, sender_data)
+
+    flash("Room invite declined.")
+    return redirect(url_for("home"))
 
 @app.route("/join_friend_room/<friend_username>")
 @login_required
@@ -1263,62 +1349,6 @@ def join_friend_room(friend_username):
     )
 
     return redirect(url_for("room"))
-
-
-@app.route("/accept_room_invite/<room_code>")
-@login_required
-def accept_room_invite(room_code):
-    username = current_user.username
-    user_data = get_user_data(username)
-
-    # Find and remove the invite
-    invite_found = False
-    room_invites = user_data.get("room_invites", [])
-
-    # Filter out the accepted invite
-    user_data["room_invites"] = [
-        inv
-        for inv in room_invites
-        if not (
-            inv["room"] == room_code
-            and not invite_found
-            and (invite_found := True)
-        )
-    ]
-
-    if not invite_found:
-        flash("Room invite not found or already accepted.")
-        return redirect(url_for("home"))
-
-    # Add room to user's rooms list
-    if "rooms" not in user_data:
-        user_data["rooms"] = []
-    if room_code not in user_data["rooms"]:
-        user_data["rooms"].append(room_code)
-
-    # Save the updated user data
-    update_user_data(username, user_data)
-    flash("Room invite accepted!")
-    return redirect(url_for("room", code=room_code))
-
-
-@app.route("/decline_room_invite/<room_code>")
-@login_required
-def decline_room_invite(room_code):
-    username = current_user.username
-    user_data = get_user_data(username)
-
-    # Remove the invite
-    user_data["room_invites"] = [
-        inv
-        for inv in user_data.get("room_invites", [])
-        if inv["room"] != room_code
-    ]
-
-    update_user_data(username, user_data)
-    flash("Room invite declined.")
-    return redirect(url_for("home"))
-
 
 @app.route("/delete_room/<room_code>")
 @login_required
