@@ -19,6 +19,16 @@
       <meta name="twitter:title" content="Channel - Modern Chat App" />
       <meta name="twitter:description" content="A simple, real-time chatroom app for seamless communication." />
       <meta name="twitter:image" content="{{ url_for('static', filename='images/preview.png') }}" />
+          <!-- PWA and Theme Configuration -->
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="apple-mobile-web-app-status-bar" content="#4E46DC">
+    <meta name="theme-color" content="#4E46DC">
+    <link rel="icon" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+    <link rel="apple-touch-icon" href="/static/icons/icon-96x96.png" sizes="96x96">
+    <link rel="apple-touch-icon" href="/static/icons/icon-152x152.png" sizes="152x152">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png" sizes="192x192">
+    <link rel="apple-touch-icon" href="/static/icons/icon-512x512.png" sizes="512x512">
       <!-- Canonical Tag -->
       <link rel="canonical" href="{{ request.url }}" />
       <!-- Robots Meta Tag -->

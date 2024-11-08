@@ -400,7 +400,6 @@ def profile_photo(username):
     """Serve the user's profile photo from Firebase Cloud Storage"""
     for ext in app.config["ALLOWED_IMAGE_TYPES"]:
         filename = f"profile_photos/{username}.{ext}"
-        print(filename)
         blob = storage.bucket().blob(filename)
 
         try:
@@ -1097,7 +1096,6 @@ def delete_firebase_image(image_url):
 
         # Delete the blob
         blob.delete()
-        print(f"Successfully deleted image: {path}")
     except Exception as e:
         print(f"Error deleting image from Firebase Storage: {e}")
         print(f"Attempted to delete path: {path}")
