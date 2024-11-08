@@ -1600,6 +1600,69 @@ def get_room_data(room_code):
         return None
 
 
+@app.route("/get_last_message/<room_code>")
+@login_required
+def get_last_message(room_code):
+    try:
+        room_data = rooms_collection.find_one({"_id": room_code})
+        if not room_data or not room_data.get("messages"):
+            return jsonify({"last_message": None})
+        
+        last_message = room_data["messages"][-1]
+        
+        # Determine message type and content
+        message_content = get_message_content(last_message)
+            
+        return jsonify({
+            "last_message": {
+                "content": message_content,
+                "sender": last_message.get("name", ""),
+                "timestamp": last_message.get("timestamp", ""),
+                "type": get_message_type(last_message)
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def get_message_type(message):
+    """Helper function to determine message type"""
+    if "image" in message and message["image"]:
+        return "image"
+    elif "file" in message and message["file"]:
+        return "file"
+    elif "message" in message and message["message"]:
+        return "text"
+    return "unknown"
+
+def get_message_content(message):
+    """Helper function to get appropriate message content based on type"""
+    message_type = get_message_type(message)
+    
+    if message_type == "image":
+        return "📷 Image"
+    elif message_type == "file":
+        return "📎 File"
+    elif message_type == "text":
+        return message.get("message", "")
+    return "Unknown message type"
+
+# In your room route, update the rooms_with_messages preparation:
+def prepare_room_message_data(room_info):
+    last_message = room_info["messages"][-1] if room_info.get("messages") else None
+    if last_message:
+        message_content = get_message_content(last_message)
+        message_type = get_message_type(last_message)
+    else:
+        message_content = ""
+        message_type = "none"
+    
+    return {
+        "content": message_content,
+        "sender": last_message["name"] if last_message else "",
+        "timestamp": last_message.get("timestamp", "") if last_message else "",
+        "type": message_type
+    }
+
 @app.route("/room/", defaults={"code": None})
 @app.route("/room/<code>")
 @login_required
@@ -1656,6 +1719,9 @@ def room(code):
                     }
                 )
 
+        # Get unread messages for notification badges
+        unread_messages = get_unread_messages(username)
+
         # Prepare friends data
         friends_data = []
         for friend in user_friends:
@@ -1663,20 +1729,31 @@ def room(code):
             if friend_data:
                 room_name = "Unknown Room"
                 if friend_data.get("current_room"):
-                    friend_room_data = get_room_data(
-                        friend_data["current_room"]
-                    )
+                    friend_room_data = get_room_data(friend_data["current_room"])
                     if friend_room_data:
                         room_name = friend_room_data.get("name", "Unnamed Room")
 
-                friends_data.append(
-                    {
-                        "username": friend,
-                        "online": friend_data.get("online", False),
-                        "current_room": friend_data.get("current_room"),
-                        "room_name": room_name,
-                    }
-                )
+                friends_data.append({
+                    "username": friend,
+                    "online": friend_data.get("online", False),
+                    "current_room": friend_data.get("current_room"),
+                    "room_name": room_name,
+                })
+
+        # Prepare room data with last messages
+        rooms_with_messages = []
+        for room_code in user_data.get("rooms", []):
+            room_info = get_room_data(room_code)
+            if room_info:
+                last_message_data = prepare_room_message_data(room_info)
+                rooms_with_messages.append({
+                    "code": room_code,
+                    "name": room_info.get("name", "Unnamed Room"),
+                    "profile_photo": room_info.get("profile_photo"),
+                    "users": room_info.get("users", []),
+                    "last_message": last_message_data,
+                    "unread_count": unread_messages.get(str(room_code), {}).get("unread_count", 0)
+                })
 
         return render_template(
             "room.html",
@@ -1688,13 +1765,13 @@ def room(code):
             created_by=room_data["created_by"],
             friends=friends_data,
             room_data=room_data,
-            user_data=user_data,  # Add this line to pass user data to template
+            user_data=user_data,
+            rooms_with_messages=rooms_with_messages,
         )
 
     except Exception as e:
         flash(f"Error loading room data: {str(e)}")
         return redirect(url_for("home"))
-
 
 @app.route("/exit_room/<code>")
 @login_required
@@ -2223,18 +2300,22 @@ def get_unread_messages(username):
                 and message["name"] != username
             ):
                 unread_count += 1
+                
+                # Determine message content based on type
+                if "image" in message:
+                    content = "📷 Image"
+                elif "file" in message:
+                    content = "📎 File"
+                elif "message" in message:
+                    content = message["message"]
+                else:
+                    content = "Unknown message type"
+                    
                 unread_msg_details.append(
                     {
                         "id": message["id"],
                         "sender": message["name"],
-                        "content": message.get(
-                            "message",
-                            (
-                                "Image message"
-                                if "image" in message
-                                else "Unknown content"
-                            ),
-                        ),
+                        "content": content,
                     }
                 )
 
