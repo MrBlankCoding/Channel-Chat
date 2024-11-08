@@ -62,102 +62,7 @@
    <p class="font-bold">Notice</p>
    <p>Slower load times due to server maintenance. We appreciate your patience!</p>
 </div>
-<div class="flex h-screen bg-gray-100 dark:bg-gray-900">
-   <!-- Sidebar -->
-   <aside class="w-80 bg-white dark:bg-gray-800 shadow-lg fixed inset-y-0 left-0 flex flex-col">
-      <!-- Sidebar Header -->
-      <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700">
-         <h3 class="text-lg font-medium text-gray-900 dark:text-white">
-            Your Rooms
-         </h3>
-      </div>
-      <!-- Rooms List -->
-      <div class="flex-1 overflow-y-auto">
-         {% if user_data.get('rooms') %}
-         <div class="p-4 space-y-4">
-            {% for room_code in user_data.get('rooms') %}
-            {% set room_data = get_room_data(room_code) %}
-            {% if room_data %}
-            <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-               <div class="flex items-center justify-between mb-3">
-                  <div class="flex items-center">
-                     <div class="flex-shrink-0 h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold text-sm">
-                        {{ room_code[:2] }}
-                     </div>
-                     <div class="ml-3">
-                        <h4 class="text-sm font-medium text-gray-900 dark:text-white">
-                           {{ room_data.name or 'Unnamed Room' }}
-                        </h4>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">
-                           {{ room_code }}
-                        </p>
-                     </div>
-                  </div>
-                  {% if room_data.created_by == username %}
-                  <button onclick="showEditRoomName('{{ room_code }}')" class="text-xs text-indigo-600 hover:text-indigo-500">
-                     Edit
-                  </button>
-                  {% endif %}
-               </div>
-               <!-- Edit Room Name Form -->
-               <div id="edit-room-name-{{ room_code }}" class="hidden mb-3">
-                  <form action="{{ url_for('update_room_name', room_code=room_code) }}" method="POST" class="flex items-center space-x-2">
-                     <input type="text" name="room_name" value="{{ room_data.name or '' }}" 
-                        class="flex-1 text-sm rounded-md border-gray-300 dark:bg-gray-600 dark:border-gray-500 dark:text-white focus:ring-indigo-500 focus:border-indigo-500" required>
-                     <button type="submit" class="text-xs px-2 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                        Save
-                     </button>
-                  </form>
-               </div>
-               <!-- Room Users -->
-               <div class="flex flex-wrap gap-1 mb-3">
-                  {% for user in room_data.get('users', [])[:3] %}
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">
-                     {{ user }}
-                  </span>
-                  {% endfor %}
-                  {% if room_data.get('users', [])|length > 3 %}
-                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-600 dark:text-gray-200">
-                     +{{ room_data.get('users', [])|length - 3 }}
-                  </span>
-                  {% endif %}
-               </div>
-               <!-- Room Actions -->
-               <div class="flex items-center justify-between">
-                  <a href="{{ url_for('room', code=room_code) }}" 
-                     class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                     Join Room
-                     <span id="unread-{{ room_code }}" class="ml-1.5 px-1.5 py-0.5 rounded-full text-xs bg-red-100 text-red-800 hidden">0</span>
-                  </a>
-                  {% if room_data.created_by == username %}
-                  <button onclick="confirmDeleteRoom('{{ room_code }}')" 
-                     class="text-xs px-3 py-1.5 text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                     Delete
-                  </button>
-                  {% else %}
-                  <a href="{{ url_for('exit_room', code=room_code) }}" 
-                     onclick="return confirm('Are you sure you want to exit this room?')"
-                     class="text-xs px-3 py-1.5 text-indigo-700 bg-indigo-100 rounded-md hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                     Exit
-                  </a>
-                  {% endif %}
-               </div>
-            </div>
-            {% endif %}
-            {% endfor %}
-         </div>
-         {% else %}
-         <div class="flex flex-col items-center justify-center h-full p-4">
-            <svg class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z M12 11v4 M15 13h-6" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No rooms</h3>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new room or joining one.</p>
-         </div>
-         {% endif %}
-      </div>
-   </aside>
-   <!-- Main Content Area -->
+
 <div class="md:flex md:space-x-8">
 <!-- Main Content -->
 <main class="flex-1">
@@ -211,6 +116,90 @@
                </div>
             </form>
          </div>
+      </div>
+   </section>
+   <!-- Your Rooms Section -->
+   <section class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+      <div class="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
+         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+            Your Rooms
+         </h3>
+      </div>
+      <div class="px-4 py-5 sm:p-6">
+         {% if user_data.get('rooms') %}
+         <div class="grid gap-6 mb-8 md:grid-cols-2 xl:grid-cols-3">
+            {% for room_code in user_data.get('rooms') %}
+            {% set room_data = get_room_data(room_code) %}
+            {% if room_data %}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+               <div class="p-5">
+                  <div class="flex items-center justify-between mb-4">
+                     <div class="flex items-center">
+                        <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+                           {{ room_code[:2] }}
+                        </div>
+                        <div class="ml-3">
+                           <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-white">
+                              {{ room_data.name or 'Unnamed Room' }}
+                           </h3>
+                           <p class="text-sm text-gray-500 dark:text-gray-400">
+                              Room ID: {{ room_code }}
+                           </p>
+                           <p class="text-sm text-gray-500 dark:text-gray-400">
+                              Created by: {{ room_data.created_by }}
+                           </p>
+                        </div>
+                     </div>
+                     {% if room_data.created_by == username %}
+                     <button onclick="showEditRoomName('{{ room_code }}')" class="text-sm text-indigo-600 hover:text-indigo-500">
+                     Edit Name
+                     </button>
+                     {% endif %}
+                  </div>
+                  <div id="edit-room-name-{{ room_code }}" class="hidden mt-4">
+                     <form action="{{ url_for('update_room_name', room_code=room_code) }}" method="POST" class="flex items-center">
+                        <input type="text" name="room_name" value="{{ room_data.name or '' }}" class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                        <button type="submit" class="ml-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Save
+                        </button>
+                     </form>
+                  </div>
+                  <div class="mt-4 flex flex-wrap gap-2">
+                     {% for user in room_data.get('users', []) %}
+                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-800 dark:text-indigo-100">
+                     {{ user }}
+                     </span>
+                     {% endfor %}
+                  </div>
+                  <div class="mt-6 flex items-center justify-between">
+                     <a href="{{ url_for('room', code=room_code) }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Join Room
+                     <span id="unread-{{ room_code }}" class="ml-2 items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 hidden">0</span>
+                     </a>
+                     {% if room_data.created_by == username %}
+                     <button onclick="confirmDeleteRoom('{{ room_code }}')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Delete
+                     </button>
+                     {% else %}
+                     <a href="{{ url_for('exit_room', code=room_code) }}" onclick="return confirm('Are you sure you want to exit this room?')" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                     Exit Room
+                     </a>
+                     {% endif %}
+                  </div>
+               </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+         </div>
+         {% else %}
+         <div class="text-center py-16">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z M12 11v4 M15 13h-6" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-white">No rooms</h3>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating a new room or joining one.</p>
+         </div>
+         {% endif %}
       </div>
    </section>
 </main>
