@@ -1846,7 +1846,6 @@ def update_room_name(room_code):
     flash("Room name updated successfully.")
     return redirect(url_for("room", code=room_code))
 
-
 @app.route("/update_room_photo/<room_code>", methods=["POST"])
 @login_required
 def update_room_photo(room_code):
@@ -1875,17 +1874,25 @@ def update_room_photo(room_code):
             except Exception as e:
                 print(f"Error deleting existing room photo: {e}")
 
+        # Open the image using Pillow
+        img = Image.open(photo)
+        
+        # Convert the image to webp
+        img = img.convert("RGB")  # Ensure it's in RGB mode for webp
+        img_byte_arr = io.BytesIO()  # Create a byte stream to save the image in memory
+        img.save(img_byte_arr, format="WEBP")  # Save as webp in the byte array
+        img_byte_arr.seek(0)  # Move to the beginning of the byte array
+
         # Generate unique filename using room code
-        ext = photo.filename.rsplit(".", 1)[1].lower()
-        filename = f"room_profile_photos/{room_code}.{ext}"
+        filename = f"room_profile_photos/{room_code}.webp"
 
         # Upload to Firebase Storage
         bucket = storage.bucket()
         blob = bucket.blob(filename)
-        blob.content_type = f"image/{ext}"
+        blob.content_type = "image/webp"  # Set content type to webp
 
-        # Upload the file
-        blob.upload_from_string(photo.read(), content_type=photo.content_type)
+        # Upload the file from the byte array
+        blob.upload_from_file(img_byte_arr, content_type="image/webp")
 
         # Make the blob publicly accessible
         blob.make_public()
