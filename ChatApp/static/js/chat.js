@@ -31,7 +31,7 @@ const storage = getStorage(app);
 const TYPING_TIMEOUT = 1000;
 const messages = document.getElementById("messages");
 const messageInput = document.getElementById("message");
-const imageUpload = document.getElementById('image-upload');
+const fileUpload = document.getElementById('image-upload');
 const username = document.getElementById("username").value;
 const unreadMessages = new Set();
 const originalTitle = document.title;
@@ -139,7 +139,7 @@ const getResponsiveMaxWidth = () => {
   return MESSAGE.maxWidth.largeDesktop; // Large desktop screens
 };
 
-const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal') => {
+const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal', video = null) => {
   // Handle system messages differently
   if (type === 'system') {
       const element = document.createElement("div");
@@ -149,7 +149,6 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
       const systemMessage = document.createElement("div");
       systemMessage.className = 'px-4 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full inline-flex items-center gap-2';
 
-      // System icon
       const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       iconSvg.setAttribute("class", "w-3.5 h-3.5 text-gray-400 dark:text-gray-500");
       iconSvg.setAttribute("fill", "none");
@@ -157,7 +156,6 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
       iconSvg.setAttribute("stroke", "currentColor");
       iconSvg.setAttribute("stroke-width", "2");
 
-      // Info circle icon
       const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
       iconPath.setAttribute("stroke-linecap", "round");
       iconPath.setAttribute("stroke-linejoin", "round");
@@ -176,7 +174,6 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
       return element;
   }
 
-  // Regular message handling continues below
   const isCurrentUser = name === currentUser;
   const validReaders = readBy.filter(reader => reader !== null && reader !== name);
   const isRead = validReaders.length > 0;
@@ -208,10 +205,9 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   }
 
   const messageContainer = document.createElement("div");
-  messageContainer.style.maxWidth = getResponsiveMaxWidth(); // Set responsive max width
+  messageContainer.style.maxWidth = getResponsiveMaxWidth();
   messageContainer.className = "relative";
 
-  // Message header
   const messageHeader = document.createElement("div");
   messageHeader.style.display = 'flex';
   messageHeader.style.alignItems = 'center';
@@ -228,15 +224,14 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
 
   messageContainer.appendChild(messageHeader);
 
-  // Message bubble
   const messageBubble = document.createElement("div");
   messageBubble.style.padding = `${MESSAGE.padding.bubble}px`;
   messageBubble.style.fontSize = `${MESSAGE.text.size}px`;
   messageBubble.className = `relative ${
-  isCurrentUser 
-    ? 'bg-blue-500 text-white rounded-t-2xl rounded-l-2xl rounded-br-lg' 
-    : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-t-2xl rounded-r-2xl rounded-bl-lg'
-}`;
+      isCurrentUser 
+          ? 'bg-blue-500 text-white rounded-t-2xl rounded-l-2xl rounded-br-lg' 
+          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-t-2xl rounded-r-2xl rounded-bl-lg'
+  }`;
 
   if (isCurrentUser && isRead) {
       messageBubble.classList.add('bg-indigo-700');
@@ -247,15 +242,12 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
       const replyInfo = document.createElement("div");
       replyInfo.style.marginBottom = `${MESSAGE.text.spacing}px`;
       replyInfo.className = `text-xs rounded px-2 py-0.5 border-l-2 ${
-    isCurrentUser
-      ? 'bg-blue-600/50 border-blue-300'
-      : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
-  }`;
+          isCurrentUser
+              ? 'bg-blue-600/50 border-blue-300'
+              : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+      }`;
 
-      // Store both the ID and the message content
       replyInfo.dataset.replyTo = replyTo.id;
-
-      // Check if replyTo has the necessary message content
       const replyMessage = replyTo.message || "Message not available";
       replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyMessage}`;
       messageBubble.appendChild(replyInfo);
@@ -264,7 +256,7 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
   // Message content
   const messageContent = document.createElement("div");
   messageContent.className = "message-content break-words";
-  messageContent.textContent = msg || "Sent an image";
+  messageContent.textContent = msg || (video ? "Sent a video" : "Sent an image");
 
   if (isEdited) {
       const editedIndicator = document.createElement("span");
@@ -290,6 +282,56 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
       messageBubble.appendChild(img);
       img.classList.add('cursor-pointer');
       img.addEventListener('click', () => openImageModal(image));
+  }
+
+  // Video handling
+  if (video) {
+      const videoContainer = document.createElement("div");
+      videoContainer.className = "relative mt-2";
+      
+      const videoElement = document.createElement("video");
+      videoElement.src = video;
+      videoElement.className = "max-w-[240px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200";
+      videoElement.controls = true;
+      videoElement.preload = "metadata";
+      
+      // Add play button overlay
+      const playButton = document.createElement("button");
+      playButton.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg transition-opacity duration-200 hover:bg-opacity-40";
+      playButton.innerHTML = `
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+      `;
+      
+      videoContainer.appendChild(videoElement);
+      videoContainer.appendChild(playButton);
+      
+      // Hide play button when video starts playing
+      videoElement.addEventListener('play', () => {
+          playButton.style.display = 'none';
+      });
+      
+      // Show play button when video pauses or ends
+      videoElement.addEventListener('pause', () => {
+          playButton.style.display = 'flex';
+      });
+      
+      videoElement.addEventListener('ended', () => {
+          playButton.style.display = 'flex';
+      });
+      
+      // Play/pause on play button click
+      playButton.addEventListener('click', () => {
+          if (videoElement.paused) {
+              videoElement.play();
+          } else {
+              videoElement.pause();
+          }
+      });
+      
+      messageBubble.appendChild(videoContainer);
   }
 
   // Reactions
@@ -542,12 +584,12 @@ messageInput.addEventListener("keyup", (event) => {
 
 const sendMessage = () => {
   const message = messageInput.value.trim();
+  const fileInput = document.getElementById('image-upload'); // Assuming 'fileUpload' for file input
 
-  if (message || imageUpload.files.length > 0) {
-      if (imageUpload.files.length > 0) {
-          imageUpload.dispatchEvent(new Event('change'));
+  if (message || fileInput.files.length > 0) {
+      if (fileInput.files.length > 0) {
+          fileInput.dispatchEvent(new Event('change'));
       } else {
-          // Include both ID and message content for replies
           const messageData = {
               data: message,
               replyTo: replyingTo ? {
@@ -566,6 +608,7 @@ const sendMessage = () => {
       });
   }
 };
+
 
 // Event listener to adjust max width on window resize
 window.addEventListener('resize', () => {
@@ -1163,34 +1206,27 @@ const deleteMessage = async (messageId) => {
   if (!messageElement) return;
 
   try {
-      // Start the deletion animation immediately
       messageElement.classList.add('message-deleting');
 
-      // Check if message contains an image
-      const imageElement = messageElement.querySelector('img:not(.profile-photo)');
-      if (imageElement) {
+      // Check if message contains media (image or video)
+      const mediaElement = messageElement.querySelector('img:not(.profile-photo), video');
+      if (mediaElement) {
           try {
-              // Extract the image path from the URL
-              const imageUrl = imageElement.src;
-              // Convert the full URL to a storage reference path
-              const imagePath = decodeURIComponent(imageUrl.split('/o/')[1].split('?')[0]);
-              const imageRef = ref(storage, imagePath);
+              const mediaUrl = mediaElement.src;
+              const mediaPath = decodeURIComponent(mediaUrl.split('/o/')[1].split('?')[0]);
+              const mediaRef = ref(storage, mediaPath);
 
-              // Delete the image from Firebase Storage
-              await deleteObject(imageRef);
-              console.log('Image deleted successfully from storage');
+              await deleteObject(mediaRef);
+              console.log('Media deleted successfully from storage');
           } catch (error) {
-              console.error('Error deleting image from storage:', error);
-              // Continue with message deletion even if image deletion fails
+              console.error('Error deleting media from storage:', error);
           }
       }
 
-      // Emit socket event to delete message from database
       socketio.emit('delete_message', {
           messageId
       });
 
-      // Remove the element after animation completes
       messageElement.addEventListener('animationend', () => {
           messageElement.remove();
       }, {
@@ -1199,68 +1235,73 @@ const deleteMessage = async (messageId) => {
 
   } catch (error) {
       console.error('Error during message deletion:', error);
-      // Remove animation class if there's an error
       messageElement.classList.remove('message-deleting');
       alert('Failed to delete message. Please try again.');
   }
 };
 
-imageUpload.addEventListener('change', async (event) => {
-  const file = event.target.files[0];
-  if (file) {
-      try {
-          // Create a storage reference with a unique filename
-          const storageRef = ref(storage, `chat-images/${Date.now()}_${file.name}`);
+fileUpload.setAttribute('accept', 'image/*,video/*');
 
-          // Show upload progress
-          const progressIndicator = document.createElement('div');
-          progressIndicator.className = 'upload-progress bg-gray-200 rounded-full h-2 mx-4 mb-4';
-          progressIndicator.innerHTML = '<div class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>';
-          messages.insertAdjacentElement('beforeend', progressIndicator);
+fileUpload.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-          // Upload file with progress tracking
-          const uploadTask = uploadBytesResumable(storageRef, file);
+    try {
+        const isVideo = file.type.startsWith('video/');
+        const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024; // 50MB for videos, 5MB for images
 
-          // Monitor upload progress
-          uploadTask.on('state_changed',
-              (snapshot) => {
-                  const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                  progressIndicator.querySelector('div').style.width = progress + '%';
-              },
-              (error) => {
-                  console.error("Upload failed:", error);
-                  progressIndicator.remove();
-                  alert('Failed to upload image. Please try again.');
-              },
-              async () => {
-                  try {
-                      // Get the download URL
-                      const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+        if (file.size > maxSize) {
+            alert(`File size exceeds maximum limit (${isVideo ? '50MB' : '5MB'})`);
+            fileUpload.value = '';
+            return;
+        }
 
-                      // Remove progress indicator
-                      progressIndicator.remove();
+        // Create storage reference
+        const storageRef = ref(storage, `${isVideo ? 'chat-videos' : 'chat-images'}/${Date.now()}_${file.name}`);
 
-                      // Emit socket event with the image URL and any reply reference
-                      socketio.emit("message", {
-                          data: "Sent an image",
-                          image: downloadURL,
-                          replyTo: replyingTo ? replyingTo.id : null
-                      });
+        // Show upload progress
+        const progressIndicator = document.createElement('div');
+        progressIndicator.className = 'upload-progress bg-gray-200 rounded-full h-2 mx-4 mb-4';
+        progressIndicator.innerHTML = '<div class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>';
+        messages.insertAdjacentElement('beforeend', progressIndicator);
 
-                      // Clear the file input value so the same file can be sent again if needed
-                      imageUpload.value = '';
+        // Upload file
+        const uploadTask = uploadBytesResumable(storageRef, file);
 
-                  } catch (error) {
-                      console.error("Error getting download URL:", error);
-                      alert('Failed to get image URL. Please try again.');
-                  }
-              }
-          );
-      } catch (error) {
-          console.error("Error handling file upload:", error);
-          alert('Failed to process image. Please try again.');
-      }
-  }
+        uploadTask.on('state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                progressIndicator.querySelector('div').style.width = progress + '%';
+            },
+            (error) => {
+                console.error("Upload failed:", error);
+                progressIndicator.remove();
+                alert('Failed to upload file. Please try again.');
+            },
+            async () => {
+                try {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    progressIndicator.remove();
+
+                    // Emit socket event with the media URL
+                    socketio.emit("message", {
+                        data: isVideo ? "Sent a video" : "Sent an image",
+                        [isVideo ? 'video' : 'image']: downloadURL,
+                        replyTo: replyingTo ? replyingTo.id : null
+                    });
+
+                    fileUpload.value = '';
+
+                } catch (error) {
+                    console.error("Error getting download URL:", error);
+                    alert('Failed to get media URL. Please try again.');
+                }
+            }
+        );
+    } catch (error) {
+        console.error("Error handling file upload:", error);
+        alert('Failed to process file. Please try again.');
+    }
 });
 
 const markMessagesAsRead = () => {
@@ -1292,13 +1333,13 @@ socketio.on("message", (data) => {
       const messageElement = createMessageElement(
           data.name,
           data.message,
-          null, // system messages don't have images
+          null,
           data.id,
-          null, // system messages don't have replies
-          false, // system messages can't be edited
-          {}, // system messages don't have reactions
+          null,
+          false,
+          {},
           data.read_by || [],
-          'system' // specify type as system
+          'system'
       );
       addMessageToDOM(messageElement);
       return;
@@ -1308,8 +1349,8 @@ socketio.on("message", (data) => {
   let replyToData = null;
   if (data.reply_to) {
       replyToData = {
-          id: data.reply_to.id || data.reply_to, // Handle both object and string formats
-          message: data.reply_to.message || findMessageById(data.reply_to) // Get message content if available
+          id: data.reply_to.id || data.reply_to,
+          message: data.reply_to.message || findMessageById(data.reply_to)
       };
   }
 
@@ -1321,7 +1362,9 @@ socketio.on("message", (data) => {
       replyToData,
       data.edited || false,
       data.reactions || {},
-      data.read_by || []
+      data.read_by || [],
+      'normal',
+      data.video
   );
   addMessageToDOM(messageElement);
 
@@ -1335,13 +1378,13 @@ socketio.on("message", (data) => {
       }
   }
 
-  // Safely handle reply info click events
+  // Handle reply info click events
   const replyInfo = messageElement.querySelector('[data-reply-to]');
   if (replyInfo) {
       replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
   }
 
-  // Only add action buttons for non-system messages
+  // Add action buttons
   const actionButtons = messageElement.querySelectorAll('.action-btn');
   actionButtons.forEach(button => {
       const buttonTitle = button.getAttribute('title');

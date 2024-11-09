@@ -6,6 +6,9 @@ import io
 from datetime import timedelta, datetime
 from string import ascii_uppercase
 import urllib.parse
+import ffmpeg
+from werkzeug.utils import secure_filename
+import tempfile
 
 # Third-party library imports
 from flask import (
@@ -37,6 +40,7 @@ from PIL import Image
 from pymongo import MongoClient
 from fuzzywuzzy import fuzz
 from bson import ObjectId
+import mimetypes
 import string
 
 load_dotenv()
@@ -77,6 +81,10 @@ users_collection.create_index([("fcm_token", 1)])
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+
+MAX_VIDEO_SIZE_MB = 50
+ALLOWED_VIDEO_TYPES = {'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'}
+VIDEO_COMPRESS_CRF = 28  # Compression quality (0-51, lower is better quality)
 
 
 # User class for Flask-Login
@@ -1357,68 +1365,70 @@ def delete_room(room_code):
         flash("You don't have permission to delete this room.")
         return redirect(url_for("home"))
 
-    # Delete all images from Firebase Storage
-    deleted_images = 0
+    # Delete all media from Firebase Storage
+    deleted_items = 0
     failed_deletions = 0
 
-    # Delete room profile photo from Firebase Storage
+    # Delete room profile photo
     if room_data.get("profile_photo"):
         try:
-            # Since we store profile photos in a fixed path format
-            ext = room_data["profile_photo"].split(".")[
-                -1
-            ]  # Get the extension from the URL
+            ext = room_data["profile_photo"].split(".")[-1]
             profile_photo_path = f"room_profile_photos/{room_code}.{ext}"
-
+            
             bucket = storage.bucket()
             blob = bucket.blob(profile_photo_path)
-
+            
             if blob.exists():
                 blob.delete()
-                deleted_images += 1
+                deleted_items += 1
         except Exception as e:
             failed_deletions += 1
             print(f"Failed to delete room profile photo: {str(e)}")
 
-    # Delete message images
+    # Delete message media (images and videos)
     if "messages" in room_data:
         for message in room_data["messages"]:
+            # Handle images
             if "image" in message and message["image"]:
                 try:
                     image_path = message["image"].split("/o/")[1].split("?")[0]
                     image_path = urllib.parse.unquote(image_path)
-
+                    
                     blob = storage.bucket().blob(image_path)
                     if blob.exists():
                         blob.delete()
-                        deleted_images += 1
+                        deleted_items += 1
                 except Exception as e:
                     failed_deletions += 1
-                    print(
-                        f"Failed to delete image for message: {message.get('id', 'unknown')}"
-                    )
-                    print(f"Error: {str(e)}")
+                    print(f"Failed to delete image: {str(e)}")
+            
+            # Handle videos
+            if "video" in message and message["video"]:
+                try:
+                    video_path = message["video"].split("/o/")[1].split("?")[0]
+                    video_path = urllib.parse.unquote(video_path)
+                    
+                    blob = storage.bucket().blob(video_path)
+                    if blob.exists():
+                        blob.delete()
+                        deleted_items += 1
+                except Exception as e:
+                    failed_deletions += 1
+                    print(f"Failed to delete video: {str(e)}")
 
-    # Remove room from all users who are in it
+    # Remove room from all users
     users_collection.update_many(
         {"rooms": room_code},
-        {"$pull": {"rooms": room_code}, "$set": {"current_room": None}},
+        {"$pull": {"rooms": room_code}, "$set": {"current_room": None}}
     )
 
     # Delete the room
     rooms_collection.delete_one({"_id": room_code})
 
-    # Provide feedback about the deletion process
-    if deleted_images > 0 or failed_deletions > 0:
-        flash(
-            f"Room deleted. Successfully removed {deleted_images} images. {failed_deletions} images failed to delete."
-        )
+    if deleted_items > 0 or failed_deletions > 0:
+        flash(f"Room deleted. Successfully removed {deleted_items} media files. {failed_deletions} files failed to delete.")
     else:
         flash("Room successfully deleted.")
-
-    rooms_collection.update_one(
-        {"_id": room_code}, {"$pull": {"users": username}}
-    )
 
     return redirect(url_for("home"))
 
@@ -1593,6 +1603,32 @@ def get_room_data(room_code):
         return None
 
 
+def get_message_type(message):
+    """Helper function to determine message type"""
+    if "video" in message and message["video"]:
+        return "video"
+    elif "image" in message and message["image"]:
+        return "image"
+    elif "file" in message and message["file"]:
+        return "file"
+    elif "message" in message and message["message"]:
+        return "text"
+    return "unknown"
+
+def get_message_content(message):
+    """Helper function to get appropriate message content based on type"""
+    message_type = get_message_type(message)
+    
+    if message_type == "video":
+        return "📹 Video"
+    elif message_type == "image":
+        return "📷 Image"
+    elif message_type == "file":
+        return "📎 File"
+    elif message_type == "text":
+        return message.get("message", "")
+    return "Unknown message type"
+
 @app.route("/get_last_message/<room_code>")
 @login_required
 def get_last_message(room_code):
@@ -1603,7 +1639,6 @@ def get_last_message(room_code):
         
         last_message = room_data["messages"][-1]
         
-        # Determine message type and content
         message_content = get_message_content(last_message)
             
         return jsonify({
@@ -1616,28 +1651,6 @@ def get_last_message(room_code):
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-def get_message_type(message):
-    """Helper function to determine message type"""
-    if "image" in message and message["image"]:
-        return "image"
-    elif "file" in message and message["file"]:
-        return "file"
-    elif "message" in message and message["message"]:
-        return "text"
-    return "unknown"
-
-def get_message_content(message):
-    """Helper function to get appropriate message content based on type"""
-    message_type = get_message_type(message)
-    
-    if message_type == "image":
-        return "📷 Image"
-    elif message_type == "file":
-        return "📎 File"
-    elif message_type == "text":
-        return message.get("message", "")
-    return "Unknown message type"
 
 # In your room route, update the rooms_with_messages preparation:
 def prepare_room_message_data(room_info):
@@ -2052,6 +2065,87 @@ def handle_reaction(data):
     except Exception as e:
         print(f"Error emitting reaction update: {str(e)}")
 
+@app.route("/upload_video", methods=["POST"])
+@login_required
+def upload_video():
+    if "video" not in request.files:
+        return jsonify({"error": "No video file provided"}), 400
+    
+    video = request.files["video"]
+    if not is_valid_video(video):
+        return jsonify({"error": "Invalid video file or size exceeds 50MB"}), 400
+    
+    try:
+        # Save original video temporarily
+        with tempfile.NamedTemporaryFile(delete=False) as temp_input:
+            video.save(temp_input.name)
+        
+        # Compress and convert to WEBM
+        output_path = compress_convert_video(temp_input.name)
+        
+        # Upload to Firebase Storage
+        filename = secure_filename(f"{str(ObjectId())}.webm")
+        bucket = storage.bucket()
+        blob = bucket.blob(f"room_videos/{filename}")
+        
+        # Upload the processed video
+        blob.upload_from_filename(output_path)
+        
+        # Clean up temporary files
+        os.unlink(temp_input.name)
+        os.unlink(output_path)
+        
+        # Generate public URL
+        video_url = blob.generate_signed_url(timedelta(days=7))
+        
+        return jsonify({"url": video_url})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+def compress_convert_video(input_file):
+    """Compress video and convert to WEBM format"""
+    with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_output:
+        output_path = temp_output.name
+        
+    try:
+        # Convert and compress video using ffmpeg
+        stream = ffmpeg.input(input_file)
+        stream = ffmpeg.output(
+            stream,
+            output_path,
+            **{
+                'c:v': 'libvpx-vp9',  # VP9 codec for WEBM
+                'crf': VIDEO_COMPRESS_CRF,  # Compression quality
+                'b:v': '1M',  # Target bitrate
+                'maxrate': '1.5M',  # Maximum bitrate
+                'bufsize': '2M',  # Buffer size
+                'c:a': 'libopus',  # Audio codec
+                'b:a': '128k',  # Audio bitrate
+            }
+        )
+        ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
+        
+        return output_path
+    except ffmpeg.Error as e:
+        print(f"FFmpeg error: {e.stderr.decode()}")
+        if os.path.exists(output_path):
+            os.unlink(output_path)
+        raise
+    
+def is_valid_video(file):
+    """Check if file is a valid video and within size limits"""
+    if not file:
+        return False
+    
+    # Check file size (50MB limit)
+    file_size_mb = len(file.read()) / (1024 * 1024)
+    file.seek(0)  # Reset file pointer
+    if file_size_mb > MAX_VIDEO_SIZE_MB:
+        return False
+    
+    # Check MIME type using file extension
+    file_type, _ = mimetypes.guess_type(file.name)
+    return file_type in ALLOWED_VIDEO_TYPES
 
 @socketio.on("message")
 def message(data):
@@ -2069,9 +2163,9 @@ def message(data):
                 "message": data["replyTo"]["message"],
             }
         else:
-            # If we only got an ID, try to find the message content
             original_message = rooms_collection.find_one(
-                {"_id": room, "messages.id": data["replyTo"]}, {"messages.$": 1}
+                {"_id": room, "messages.id": data["replyTo"]},
+                {"messages.$": 1}
             )
             if original_message and original_message.get("messages"):
                 reply_to = {
@@ -2083,10 +2177,12 @@ def message(data):
         "id": str(ObjectId()),
         "name": current_user.username,
         "message": data["data"],
-        "reply_to": reply_to,  # Store the complete reply information
+        "reply_to": reply_to,
         "read_by": [session.get("username")],
         "image": data.get("image"),
+        "video": data.get("video"),  # Add video URL if present
         "reactions": {},
+        "timestamp": datetime.utcnow().isoformat()
     }
 
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
@@ -2097,7 +2193,6 @@ def message(data):
     sender_username = current_user.username
     room_users = room_data["users"]
 
-    # Prepare notification content
     notification_content = {
         "sender": sender_username,
         "message": content["message"],
@@ -2107,10 +2202,9 @@ def message(data):
 
     for username in room_users:
         if username != sender_username:
-            # Get user's notification settings
             user_data = users_collection.find_one(
                 {"username": username},
-                {"notification_settings": 1, "fcm_token": 1},
+                {"notification_settings": 1, "fcm_token": 1}
             )
 
             if not user_data or "fcm_token" not in user_data:
@@ -2118,26 +2212,28 @@ def message(data):
 
             settings = user_data.get("notification_settings", {})
 
-            # Determine if we should send notification based on room type
             should_notify = False
             if len(room_users) == 2 and settings.get("direct_messages", True):
                 should_notify = True
             elif len(room_users) > 2 and settings.get("group_messages", True):
                 should_notify = True
 
-            # Check if notifications are enabled globally
             if should_notify and settings.get("enabled", False):
                 try:
-                    notification_type = (
-                        "direct_message"
-                        if len(room_users) == 2
-                        else "group_message"
-                    )
+                    notification_type = "direct_message" if len(room_users) == 2 else "group_message"
+                    
+                    # Customize notification message based on content type
+                    if content.get("video"):
+                        body = "📹 Sent a video"
+                    elif content.get("image"):
+                        body = "📷 Sent an image"
+                    else:
+                        body = content["message"][:100] + ("..." if len(content["message"]) > 100 else "")
+                    
                     message = messaging.Message(
                         notification=messaging.Notification(
                             title=f"New message from {content['name']}",
-                            body=content["message"][:100]
-                            + ("..." if len(content["message"]) > 100 else ""),
+                            body=body
                         ),
                         data={
                             "type": notification_type,

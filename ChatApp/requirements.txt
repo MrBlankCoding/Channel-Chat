@@ -13,3 +13,4 @@ flask_login
 apscheduler
 python-Levenshtein
 fuzzywuzzy
+ffmpeg-python
