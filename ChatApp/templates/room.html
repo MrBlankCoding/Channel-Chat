@@ -5,186 +5,180 @@
 <aside class="w-80 bg-white dark:bg-gray-800 shadow-lg h-full flex flex-col transition-all duration-300 ease-in-out" id="sidebar">
    <!-- Sidebar Header -->
    <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-       <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
-       <button onclick="toggleRoomMenu()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none" aria-label="Room Actions">
-           <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-               <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
-           </svg>
-       </button>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
+      <button onclick="toggleRoomMenu()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none" aria-label="Room Actions">
+         <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
+         </svg>
+      </button>
    </div>
-
    <!-- Room Actions Menu -->
    <div id="room-actions-menu" class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 p-4 space-y-4 z-50">
-       <form method="POST" class="space-y-3">
-           <input type="text" name="room_name" placeholder="New room name" class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500" required>
-           <button type="submit" name="create" value="true" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Create Room</button>
-       </form>
-       <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
-           <form method="POST" class="space-y-3">
-               <input type="text" name="code" placeholder="Enter room code" class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500">
-               <button type="submit" name="join" value="true" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Join Room</button>
-           </form>
-       </div>
+      <form method="POST" class="space-y-3">
+         <input type="text" name="room_name" placeholder="New room name" class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500" required>
+         <button type="submit" name="create" value="true" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Create Room</button>
+      </form>
+      <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
+         <form method="POST" class="space-y-3">
+            <input type="text" name="code" placeholder="Enter room code" class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500">
+            <button type="submit" name="join" value="true" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Join Room</button>
+         </form>
+      </div>
    </div>
-
    <!-- Search Bar -->
    <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-       <input type="text" id="room-search" placeholder="Search rooms..." class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" onkeyup="filterRooms()">
+      <input type="text" id="room-search" placeholder="Search rooms..." class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" onkeyup="filterRooms()">
    </div>
-
    <!-- Rooms List -->
    <div class="flex-1 overflow-y-auto" id="rooms-list">
       {% if rooms_with_messages %}
-        {% for room in rooms_with_messages %}
-          <a href="{{ url_for('room', code=room.code) }}" 
-             class="block py-3 px-5 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-in-out room-item relative
-             {% if room.code == code %} bg-blue-500 text-white {% else %} bg-white dark:bg-gray-800 text-gray-900 dark:text-white {% endif %}" 
-             data-room-name="{{ room.name }}"
-             data-room-code="{{ room.code }}"
-             id="room-{{ room.code }}">
-            <div class="flex items-center space-x-4">
-              <!-- Room Profile Image -->
-              <div class="relative">
-                <img src="{{ room.profile_photo if room.profile_photo else url_for('static', filename='images/default_room.png') }}" 
-                     alt="Room profile" 
-                     class="w-14 h-14 object-cover rounded-full shadow-md">
-                <!-- Unread Badge -->
-                <div class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center 
-                            {% if not room.unread_count %}hidden{% endif %}">
+      {% for room in rooms_with_messages %}
+      <a href="{{ url_for('room', code=room.code) }}" 
+         class="block py-2 px-3 md:py-3 md:px-5 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-in-out room-item relative
+         {% if room.code == code %} bg-blue-500 text-white {% else %} bg-white dark:bg-gray-800 text-gray-900 dark:text-white {% endif %}" 
+         data-room-name="{{ room.name }}"
+         data-room-code="{{ room.code }}"
+         id="room-{{ room.code }}">
+         <div class="flex items-center space-x-3 md:space-x-4">
+            <!-- Room Profile Image -->
+            <div class="relative">
+               <img src="{{ room.profile_photo if room.profile_photo else url_for('static', filename='images/default_room.png') }}" 
+                  alt="Room profile" 
+                  class="w-10 h-10 md:w-14 md:h-14 object-cover rounded-full shadow-md">
+               <!-- Unread Badge -->
+               <div class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 md:w-5 md:h-5 flex items-center justify-center 
+                  {% if not room.unread_count %}hidden{% endif %}">
                   {{ room.unread_count }}
-                </div>
-              </div>
-              <!-- Room Details -->
-              <div class="flex-1 space-y-1">
-                <div class="flex justify-between items-center">
-                  <h4 class="text-s font-semibold truncate {% if room.code == code %} text-white {% else %} text-gray-900 dark:text-white {% endif %}">
-                    {{ room.name }}
+               </div>
+            </div>
+            <!-- Room Details -->
+            <div class="flex-1 space-y-1">
+               <div class="flex justify-between items-center">
+                  <h4 class="text-sm md:text-s font-semibold truncate {% if room.code == code %} text-white {% else %} text-gray-900 dark:text-white {% endif %}">
+                     {{ room.name }}
                   </h4>
                   <span class="text-xs {% if room.code == code %} text-white {% else %} text-gray-500 dark:text-gray-400 {% endif %}">
-                    {{ room.last_message.timestamp if room.last_message }}
+                  {{ room.last_message.timestamp if room.last_message }}
                   </span>
-                </div>
-                <div class="text-gray-600 dark:text-gray-400 {% if room.code == code %} text-white {% endif %}">
-                  <p class="text-sm line-clamp-1">
-                    {% if room.last_message %}
-                      <span class="font-medium text-gray-900 dark:text-gray-200">{{ room.last_message.sender }}:</span>
-                      <span class="last-message-text text-gray-500 dark:text-gray-400" data-message-type="{{ room.last_message.type }}">
-                        {{ room.last_message.content }}
-                      </span>
-                    {% else %}
-                      <span class="italic text-gray-400">No messages yet</span>
-                    {% endif %}
+               </div>
+               <!-- Ensure last message truncation for responsiveness -->
+               <div class="text-gray-600 dark:text-gray-400 {% if room.code == code %} text-white {% endif %}">
+                  <p class="text-xs md:text-sm line-clamp-1 overflow-hidden whitespace-nowrap text-ellipsis">
+                     {% if room.last_message %}
+                     <span class="font-medium text-gray-900 dark:text-gray-200">{{ room.last_message.sender }}:</span>
+                     <span class="last-message-text text-gray-500 dark:text-gray-400" data-message-type="{{ room.last_message.type }}">
+                     {{ room.last_message.content }}
+                     </span>
+                     {% else %}
+                     <span class="italic text-gray-400">No messages yet</span>
+                     {% endif %}
                   </p>
-                </div>
-              </div>
+               </div>
             </div>
-          </a>
-        {% endfor %}
+         </div>
+      </a>
+      {% endfor %}
       {% else %}
-        <div class="flex flex-col items-center justify-center h-full text-center text-gray-500 dark:text-gray-400">
-          <svg class="h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div class="flex flex-col items-center justify-center h-full text-center text-gray-500 dark:text-gray-400">
+         <svg class="h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z M12 11v4 M15 13h-6" />
-          </svg>
-          <h3 class="text-sm font-medium">No rooms available</h3>
-          <p class="text-xs">Click the + button above to create a new room or join an existing one.</p>
-        </div>
+         </svg>
+         <h3 class="text-xs md:text-sm font-medium">No rooms available</h3>
+         <p class="text-xs">Click the + button above to create a new room or join an existing one.</p>
+      </div>
       {% endif %}
-    </div>    
-
+   </div>
    <!-- Settings and Logout Buttons -->
    <div class="border-t border-gray-200 dark:border-gray-700 p-4">
-       <a href="{{ url_for('settings') }}" class="flex items-center justify-center w-full px-4 py-2 mb-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-               <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-               <circle cx="12" cy="12" r="3"></circle>
-           </svg>
-           Settings
-       </a>
-       <a href="{{ url_for('logout') }}" class="flex items-center justify-center w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-               <polyline points="16 17 21 12 16 7"></polyline>
-               <line x1="21" y1="12" x2="9" y2="12"></line>
-           </svg>
-           Logout
-       </a>
+      <a href="{{ url_for('settings') }}" class="flex items-center justify-center w-full px-4 py-2 mb-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+         </svg>
+         Settings
+      </a>
+      <a href="{{ url_for('logout') }}" class="flex items-center justify-center w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+         </svg>
+         Logout
+      </a>
    </div>
 </aside>
-   
-   <!-- Main Chat Area -->
-   <div class="flex-1 flex flex-col">
-      <header class="sticky top-0 z-10 flex-none h-14 bg-white dark:bg-gray-800 shadow-sm">
-         <div class="flex items-center h-14 px-4">
-            <!-- Sidebar Toggle Button -->
-            <button onclick="toggleSidebar()" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-               <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 6h16M4 12h16M4 18h16" />
-               </svg>
-            </button>
-            
-            <!-- Room info -->
-            <div class="flex-1 min-w-0 flex items-center ml-2">
-               <div class="relative">
-                  <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
-                     <span class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
-                     <img 
-                        id="room-photo"
-                        src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
-                        alt="Room profile"
-                        class="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-full"
+<!-- Main Chat Area -->
+<div class="flex-1 flex flex-col">
+   <header class="sticky top-0 z-10 flex-none h-14 bg-white dark:bg-gray-800 shadow-sm">
+      <div class="flex items-center h-14 px-4">
+         <!-- Sidebar Toggle Button -->
+         <button onclick="toggleSidebar()" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+         </button>
+         <!-- Room info -->
+         <div class="flex-1 min-w-0 flex items-center ml-2">
+            <div class="relative">
+               <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
+                  <span class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+                  <img 
+                     id="room-photo"
+                     src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                     alt="Room profile"
+                     class="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-full"
                      />
-                     </span>
-                  </div>
-                  <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                  </span>
                </div>
-               <div class="min-w-0 ml-3">
-                  <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">
-                     {{ room_data.name or 'Unnamed Room' }}
-                  </h1>
-                  <div class="flex items-center gap-2">
-                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ users|length }} members</span>
-                     <div class="group relative flex items-center">
-                        <div class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                           onclick="copyRoomCode()">
-                           <span class="text-gray-600 dark:text-gray-300 font-medium tracking-wide">{{ code[:4] }}<span class="mx-0.5">•</span>{{ code[4:] }}</span>
-                           <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                           </svg>
-                        </div>
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 -bottom-8 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap">
-                           Click to copy room ID
-                        </div>
+               <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+            </div>
+            <div class="min-w-0 ml-3">
+               <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">
+                  {{ room_data.name or 'Unnamed Room' }}
+               </h1>
+               <div class="flex items-center gap-2">
+                  <span class="text-xs text-gray-500 dark:text-gray-400">{{ users|length }} members</span>
+                  <div class="group relative flex items-center">
+                     <div class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        onclick="copyRoomCode()">
+                        <span class="text-gray-600 dark:text-gray-300 font-medium tracking-wide">{{ code[:4] }}<span class="mx-0.5">•</span>{{ code[4:] }}</span>
+                        <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                     </div>
+                     <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 -bottom-8 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap">
+                        Click to copy room ID
                      </div>
                   </div>
                </div>
             </div>
-            <button onclick="toggleInviteModal(true)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-               <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <line x1="19" y1="8" x2="19" y2="14"/>
-                  <line x1="22" y1="11" x2="16" y2="11"/>
-               </svg>
-            </button>
-            <!-- Action buttons -->
-            <div class="flex items-center gap-1">
-               <a href="{{ url_for('room_settings', room_code=code) }}" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-                  <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                     <circle cx="12" cy="12" r="3"></circle>
-                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                  </svg>
-               </a>
-            </div>
          </div>
-      </header>      
+         <button onclick="toggleInviteModal(true)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+               <circle cx="9" cy="7" r="4"/>
+               <line x1="19" y1="8" x2="19" y2="14"/>
+               <line x1="22" y1="11" x2="16" y2="11"/>
+            </svg>
+         </button>
+         <!-- Action buttons -->
+         <div class="flex items-center gap-1">
+            <a href="{{ url_for('room_settings', room_code=code) }}" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+               <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+               </svg>
+            </a>
+         </div>
+      </div>
+   </header>
    <!-- Messages area (scrollable) -->
    <div id="messages" class="flex-1 overflow-y-auto p-4">
       {% for msg in messages %}
       <!-- Message bubbles will be inserted here -->
       {% endfor %}
    </div>
-
    <!-- Input area with sticky positioning -->
    <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       <!-- Emoji picker - now horizontal above the input -->
@@ -246,6 +240,59 @@
       </div>
    </div>
 </div>
+<div id="imageModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm">
+   <!-- Loading Spinner -->
+   <div id="modalLoader" class="hidden absolute inset-0 flex items-center justify-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+   </div>
+   <!-- Navigation Buttons -->
+   <button id="prevImage" class="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/75 hover:text-white transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+   </button>
+   <button id="nextImage" class="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/75 hover:text-white transition-colors">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg>
+   </button>
+   <div class="relative max-w-7xl w-full mx-auto p-4">
+      <!-- Controls Bar -->
+      <div class="absolute top-0 left-0 right-0 flex justify-between items-center p-4 bg-black/75 rounded-t-lg">
+         <!-- Image Counter -->
+         <div id="imageCounter" class="text-white text-sm font-medium"></div>
+         <!-- Controls -->
+         <div class="flex items-center gap-4">
+            <!-- Zoom Controls -->
+            <button id="zoomOut" class="p-2 text-white/75 hover:text-white transition-colors">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+               </svg>
+            </button>
+            <button id="zoomIn" class="p-2 text-white/75 hover:text-white transition-colors">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+               </svg>
+            </button>
+            <!-- Close Button -->
+            <button id="closeModal" class="p-2 text-white/75 hover:text-white transition-colors">
+               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+               </svg>
+            </button>
+         </div>
+      </div>
+      <!-- Image Container -->
+      <div class="relative w-full max-h-[80vh] h-auto bg-transparent rounded-lg overflow-hidden mt-8">
+         <img
+            id="modalImage"
+            src=""
+            alt="Modal image"
+            class="w-full h-full object-contain transition-transform duration-200 cursor-zoom-in"
+            />
+      </div>
+   </div>
+</div>
 <div id="invite-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-auto">
       <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Invite Friends</h3>
@@ -276,6 +323,15 @@
    position: fixed;
    width: 100%;
    touch-action: manipulation;
+   }
+   #modalImage {
+   width: 100%;
+   height: auto;
+   max-width: clamp(300px, 80vw, 1200px); /* Min 300px, scales with viewport up to 1200px */
+   max-height: clamp(200px, 80vh, 900px);  /* Min 200px, scales with viewport up to 900px */
+   object-fit: contain;
+   transition: transform 0.2s;
+   cursor: zoom-in;
    }
    /* Set viewport height for mobile browsers */
    @supports (-webkit-touch-callout: none) {
@@ -324,6 +380,214 @@
 <script type="module" defer src="{{ url_for('static', filename='js/chat.js') }}"></script>
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 <script>
+   const imageModal = document.getElementById('imageModal');
+   const modalImage = document.getElementById('modalImage');
+   const modalLoader = document.getElementById('modalLoader');
+   const prevButton = document.getElementById('prevImage');
+   const nextButton = document.getElementById('nextImage');
+   const closeButton = document.getElementById('closeModal');
+   const zoomInButton = document.getElementById('zoomIn');
+   const zoomOutButton = document.getElementById('zoomOut');
+   const imageCounter = document.getElementById('imageCounter');
+   
+   let currentImages = [];
+   let currentImageIndex = 0;
+   let currentScale = 1;
+   let isDragging = false;
+   let startPos = { x: 0, y: 0 };
+   let currentPos = { x: 0, y: 0 };
+   
+   // Touch handling variables
+   let touchStartX = 0;
+   let touchEndX = 0;
+   
+   // Function to show loading state
+   function showLoader() {
+     modalLoader.classList.remove('hidden');
+   }
+   
+   // Function to hide loading state
+   function hideLoader() {
+     modalLoader.classList.add('hidden');
+   }
+   
+   // Function to update navigation visibility
+   function updateNavigation() {
+     prevButton.classList.toggle('hidden', currentImages.length <= 1 || currentImageIndex === 0);
+     nextButton.classList.toggle('hidden', currentImages.length <= 1 || currentImageIndex === currentImages.length - 1);
+     imageCounter.textContent = currentImages.length > 1 ? `${currentImageIndex + 1} / ${currentImages.length}` : '';
+   }
+   
+   // Function to update image
+   function updateImage(index) {
+     showLoader();
+     currentImageIndex = index;
+     modalImage.src = currentImages[index];
+     resetZoom();
+     updateNavigation();
+   }
+   
+   // Zoom functions
+   function resetZoom() {
+     currentScale = 1;
+     currentPos = { x: 0, y: 0 };
+     updateImageTransform();
+     modalImage.classList.add('cursor-zoom-in');
+     modalImage.classList.remove('cursor-zoom-out', 'cursor-grab', 'cursor-grabbing');
+   }
+   
+   function updateImageTransform() {
+     modalImage.style.transform = `translate(${currentPos.x}px, ${currentPos.y}px) scale(${currentScale})`;
+   }
+   
+   function zoom(delta) {
+     const oldScale = currentScale;
+     currentScale = Math.max(1, Math.min(4, currentScale + delta));
+     
+     // Adjust cursor style
+     if (currentScale > 1) {
+       modalImage.classList.remove('cursor-zoom-in');
+       modalImage.classList.add('cursor-zoom-out');
+     } else {
+       modalImage.classList.add('cursor-zoom-in');
+       modalImage.classList.remove('cursor-zoom-out');
+     }
+     
+     // If zooming out to 1, reset position
+     if (currentScale === 1) {
+       currentPos = { x: 0, y: 0 };
+     }
+     
+     updateImageTransform();
+   }
+   
+   // Open modal function
+   function openImageModal(imageSrc) {
+     // Get all images in the chat
+     const messageImages = Array.from(document.querySelectorAll('.message img')).map(img => img.src);
+     currentImages = messageImages;
+     currentImageIndex = messageImages.indexOf(imageSrc);
+     
+     showLoader();
+     imageModal.classList.remove('hidden');
+     imageModal.classList.add('flex');
+     document.body.style.overflow = 'hidden';
+     
+     updateImage(currentImageIndex);
+     updateNavigation();
+   }
+   
+   // Close modal function
+   function closeImageModal() {
+     imageModal.classList.add('hidden');
+     imageModal.classList.remove('flex');
+     document.body.style.overflow = '';
+     resetZoom();
+   }
+   
+   document.getElementById('closeModal').addEventListener('click', closeImageModal);
+   
+   
+   // Event Listeners
+   modalImage.addEventListener('load', hideLoader);
+   
+   zoomInButton.addEventListener('click', () => zoom(0.5));
+   zoomOutButton.addEventListener('click', () => zoom(-0.5));
+   
+   prevButton.addEventListener('click', () => {
+     if (currentImageIndex > 0) {
+       updateImage(currentImageIndex - 1);
+     }
+   });
+   
+   nextButton.addEventListener('click', () => {
+     if (currentImageIndex < currentImages.length - 1) {
+       updateImage(currentImageIndex + 1);
+     }
+   });
+   
+   // Mouse drag handling
+   modalImage.addEventListener('mousedown', (e) => {
+     if (currentScale > 1) {
+       isDragging = true;
+       startPos = {
+         x: e.clientX - currentPos.x,
+         y: e.clientY - currentPos.y
+       };
+       modalImage.classList.add('cursor-grabbing');
+     }
+   });
+   
+   window.addEventListener('mousemove', (e) => {
+     if (isDragging) {
+       currentPos = {
+         x: e.clientX - startPos.x,
+         y: e.clientY - startPos.y
+       };
+       updateImageTransform();
+     }
+   });
+   
+   window.addEventListener('mouseup', () => {
+     isDragging = false;
+     modalImage.classList.remove('cursor-grabbing');
+   });
+   
+   // Touch handling for swipe
+   imageModal.addEventListener('touchstart', (e) => {
+     touchStartX = e.changedTouches[0].screenX;
+   });
+   
+   imageModal.addEventListener('touchend', (e) => {
+     touchEndX = e.changedTouches[0].screenX;
+     handleSwipe();
+   });
+   
+   function handleSwipe() {
+     const SWIPE_THRESHOLD = 50;
+     const touchDiff = touchStartX - touchEndX;
+   
+     if (Math.abs(touchDiff) > SWIPE_THRESHOLD) {
+       if (touchDiff > 0 && currentImageIndex < currentImages.length - 1) {
+         // Swipe left
+         updateImage(currentImageIndex + 1);
+       } else if (touchDiff < 0 && currentImageIndex > 0) {
+         // Swipe right
+         updateImage(currentImageIndex - 1);
+       }
+     }
+   }
+   
+   // Keyboard navigation
+   document.addEventListener('keydown', (e) => {
+     if (imageModal.classList.contains('hidden')) return;
+     
+     switch (e.key) {
+       case 'ArrowLeft':
+         if (currentImageIndex > 0) updateImage(currentImageIndex - 1);
+         break;
+       case 'ArrowRight':
+         if (currentImageIndex < currentImages.length - 1) updateImage(currentImageIndex + 1);
+         break;
+       case 'Escape':
+         closeImageModal();
+         break;
+       case '+':
+         zoom(0.5);
+         break;
+       case '-':
+         zoom(-0.5);
+         break;
+     }
+   });
+   
+   // Close modal when clicking outside
+   imageModal.addEventListener('click', (e) => {
+     if (e.target === imageModal) {
+       closeImageModal();
+     }
+   });
+   
    // Element selectors for reuse
    const messageContainer = document.getElementById('messages');
    const messageInput = document.getElementById('message');
@@ -346,18 +610,18 @@
    inviteModal.classList.toggle('hidden', !show);
    inviteModal.classList.toggle('flex', show);
    }
-
+   
    function toggleRoomMenu() {
       const menu = document.getElementById('room-actions-menu');
       menu.classList.toggle('hidden');
-  }
-  
-  // Filter rooms
-  function filterRooms() {
+   }
+   
+   // Filter rooms
+   function filterRooms() {
       const searchInput = document.getElementById('room-search');
       const filter = searchInput.value.toLowerCase();
       const rooms = document.querySelectorAll('.room-item');
-  
+   
       rooms.forEach(room => {
           const roomName = room.getAttribute('data-room-name').toLowerCase();
           if (roomName.includes(filter)) {
@@ -366,9 +630,9 @@
               room.classList.add('hidden');
           }
       });
-  }
-  
-  function updateRoomData() {
+   }
+   
+   function updateRoomData() {
    fetch('/get_unread_messages')
        .then(response => response.json())
        .then(unreadData => {
@@ -387,7 +651,7 @@
                }
            });
        });
-
+   
    // Update last messages
    const rooms = document.querySelectorAll('.room-item');
    rooms.forEach(room => {
@@ -409,13 +673,13 @@
                }
            });
    });
-}
-
-// Update room data every 5 seconds
-setInterval(updateRoomData, 5000);
-
-// Initial update
-updateRoomData();
+   }
+   
+   // Update room data every 5 seconds
+   setInterval(updateRoomData, 5000);
+   
+   // Initial update
+   updateRoomData();
    
    // Copy room code to clipboard with toast
    function copyRoomCode() {
@@ -505,18 +769,18 @@ updateRoomData();
      }, 200);
    }
    });
-
+   
     // Mobile sidebar toggle
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
       sidebar.classList.toggle('hidden');
-  }
-
-  // Room Actions menu toggle
-  function toggleRoomMenu() {
+   }
+   
+   // Room Actions menu toggle
+   function toggleRoomMenu() {
       const menu = document.getElementById('room-actions-menu');
       menu.classList.toggle('hidden');
-  }
+   }
    
    // Close dropdowns when scrolling messages
    messageContainer.addEventListener('scroll', () => {

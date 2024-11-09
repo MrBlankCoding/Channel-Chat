@@ -288,6 +288,8 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
           img.classList.remove('opacity-50');
       };
       messageBubble.appendChild(img);
+      img.classList.add('cursor-pointer');
+      img.addEventListener('click', () => openImageModal(image));
   }
 
   // Reactions
