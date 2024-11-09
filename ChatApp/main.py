@@ -1436,7 +1436,7 @@ def delete_room(room_code):
 def handle_room_operation(username, code, create, join):
     room = code
     if create:
-        room = generate_unique_code(10)
+        room = generate_unique_code()
         room_name = request.form.get(
             "room_name", "Unnamed Room"
         )  # Get custom name from form
