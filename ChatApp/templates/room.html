@@ -6,102 +6,168 @@
    <!-- Sidebar Header -->
    <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
-      <button onclick="toggleRoomMenu()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none" aria-label="Room Actions">
+      <button onclick="openRoomModal()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none transition-colors" aria-label="Room Actions">
          <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
          </svg>
       </button>
    </div>
-   <!-- Room Actions Menu -->
-   <div id="room-actions-menu" class="hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white dark:bg-gray-700 ring-1 ring-black ring-opacity-5 p-4 space-y-4 z-50">
-      <form method="POST" class="space-y-3">
-         <input type="text" name="room_name" placeholder="New room name" class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500" required>
-         <button type="submit" name="create" value="true" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Create Room</button>
-      </form>
-      <div class="border-t border-gray-200 dark:border-gray-600 pt-3">
-         <form method="POST" class="space-y-3">
-            <input type="text" name="code" placeholder="Enter room code" class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500">
-            <button type="submit" name="join" value="true" class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md">Join Room</button>
-         </form>
+   <!-- Room Modal -->
+   <div id="room-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="closeRoomModal()"></div>
+   <div id="room-modal" class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50 hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+         <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Room Actions</h3>
+            <button onclick="closeRoomModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+               </svg>
+            </button>
+         </div>
+      </div>
+      <!-- Modal Content -->
+      <div class="p-6 space-y-6">
+         <!-- Create Room Section -->
+         <div>
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Create a New Room</h4>
+            <form method="POST" class="space-y-3">
+               <div>
+                  <label for="room_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Name</label>
+                  <input type="text" id="room_name" name="room_name" placeholder="Enter room name" 
+                     class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" required>
+               </div>
+               <button type="submit" name="create" value="true" 
+                  class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
+               Create Room
+               </button>
+            </form>
+         </div>
+         <!-- Divider -->
+         <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+               <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+               <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">or</span>
+            </div>
+         </div>
+         <!-- Join Room Section -->
+         <div>
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Join Existing Room</h4>
+            <form method="POST" class="space-y-3">
+               <div>
+                  <label for="room_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Code</label>
+                  <input type="text" id="room_code" name="code" placeholder="Enter room code" 
+                     class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white">
+               </div>
+               <button type="submit" name="join" value="true" 
+                  class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
+               Join Room
+               </button>
+            </form>
+         </div>
       </div>
    </div>
    <!-- Search Bar -->
    <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-      <input type="text" id="room-search" placeholder="Search rooms..." class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" onkeyup="filterRooms()">
+      <input type="text" id="room-search" placeholder="Search rooms..." 
+         class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" 
+         onkeyup="filterRooms()">
    </div>
    <!-- Rooms List -->
    <div class="flex-1 overflow-y-auto" id="rooms-list">
       {% if rooms_with_messages %}
-      {% for room in rooms_with_messages %}
-      <a href="{{ url_for('room', code=room.code) }}" 
-         class="block py-2 px-3 md:py-3 md:px-5 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 ease-in-out room-item relative
-         {% if room.code == code %} bg-blue-500 text-white {% else %} bg-white dark:bg-gray-800 text-gray-900 dark:text-white {% endif %}" 
-         data-room-name="{{ room.name }}"
-         data-room-code="{{ room.code }}"
-         id="room-{{ room.code }}">
-         <div class="flex items-center space-x-3 md:space-x-4">
-            <!-- Room Profile Image -->
-            <div class="relative">
-               <img src="{{ room.profile_photo if room.profile_photo else url_for('static', filename='images/default_room.png') }}" 
-                  alt="Room profile" 
-                  class="w-10 h-10 md:w-14 md:h-14 object-cover rounded-full shadow-md">
-               <!-- Unread Badge -->
-               <div class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 md:w-5 md:h-5 flex items-center justify-center 
-                  {% if not room.unread_count %}hidden{% endif %}">
-                  {{ room.unread_count }}
-               </div>
-            </div>
-            <!-- Room Details -->
-            <div class="flex-1 space-y-1">
-               <div class="flex justify-between items-center">
-                  <h4 class="text-sm md:text-s font-semibold truncate {% if room.code == code %} text-white {% else %} text-gray-900 dark:text-white {% endif %}">
-                     {{ room.name }}
-                  </h4>
-                  <span class="text-xs {% if room.code == code %} text-white {% else %} text-gray-500 dark:text-gray-400 {% endif %}">
-                  {{ room.last_message.timestamp if room.last_message }}
-                  </span>
-               </div>
-               <!-- Ensure last message truncation for responsiveness -->
-               <div class="text-gray-600 dark:text-gray-400 {% if room.code == code %} text-white {% endif %}">
-                  <p class="text-xs md:text-sm line-clamp-1 overflow-hidden whitespace-nowrap text-ellipsis">
-                     {% if room.last_message %}
-                     <span class="font-medium text-gray-900 dark:text-gray-200">{{ room.last_message.sender }}:</span>
-                     <span class="last-message-text text-gray-500 dark:text-gray-400" data-message-type="{{ room.last_message.type }}">
-                     {{ room.last_message.content }}
+      <div class="p-4 space-y-3">
+         {% for room in rooms_with_messages %}
+         <a href="{{ url_for('room', code=room.code) }}" 
+            class="block rounded-lg transition-all duration-200 hover:shadow-md 
+            {% if room.code == code %}
+            bg-blue-600 text-white
+            {% else %}
+            bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
+            {% endif %}"
+            data-room-name="{{ room.name }}"
+            data-room-code="{{ room.code }}"
+            id="room-{{ room.code }}">
+            <div class="p-4">
+               <div class="flex items-center space-x-4">
+                  <!-- Room Avatar -->
+                  <div class="relative flex-shrink-0">
+                     <img src="{{ room.profile_photo if room.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                        alt="Room profile"
+                        class="w-12 h-12 rounded-full object-cover shadow-sm">
+                     {% if room.unread_count %}
+                     <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                     {{ room.unread_count }}
                      </span>
-                     {% else %}
-                     <span class="italic text-gray-400">No messages yet</span>
                      {% endif %}
-                  </p>
+                  </div>
+                  <!-- Room Details -->
+                  <div class="flex-1 min-w-0">
+                     <div class="flex justify-between items-start mb-1">
+                        <h4 class="text-sm font-semibold truncate pr-2
+                           {% if room.code == code %}
+                           text-white
+                           {% else %}
+                           text-gray-900 dark:text-white
+                           {% endif %}">
+                           {{ room.name }}
+                        </h4>
+                        {% if room.last_message %}
+                        <span class="text-xs whitespace-nowrap
+                           {% if room.code == code %}
+                           text-blue-100
+                           {% else %}
+                           text-gray-500 dark:text-gray-400
+                           {% endif %}">
+                        {{ room.last_message.timestamp }}
+                        </span>
+                        {% endif %}
+                     </div>
+                     <p class="text-sm truncate
+                        {% if room.code == code %}
+                        text-blue-100
+                        {% else %}
+                        text-gray-600 dark:text-gray-400
+                        {% endif %}">
+                        {% if room.last_message %}
+                        <span class="font-medium">{{ room.last_message.sender }}:</span>
+                        {{ room.last_message.content }}
+                        {% else %}
+                        <span class="italic">No messages yet</span>
+                        {% endif %}
+                     </p>
+                  </div>
                </div>
             </div>
-         </div>
-      </a>
-      {% endfor %}
+         </a>
+         {% endfor %}
+      </div>
       {% else %}
-      <div class="flex flex-col items-center justify-center h-full text-center text-gray-500 dark:text-gray-400">
-         <svg class="h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2z M12 11v4 M15 13h-6" />
+      <div class="h-full flex flex-col items-center justify-center p-6 text-center text-gray-500 dark:text-gray-400">
+         <svg class="w-16 h-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
          </svg>
-         <h3 class="text-xs md:text-sm font-medium">No rooms available</h3>
-         <p class="text-xs">Click the + button above to create a new room or join an existing one.</p>
+         <h3 class="text-lg font-medium mb-2">No rooms yet</h3>
+         <p class="text-sm max-w-xs">Create a new room or join an existing one to start chatting</p>
       </div>
       {% endif %}
    </div>
-   <!-- Settings and Logout Buttons -->
-   <div class="border-t border-gray-200 dark:border-gray-700 p-4">
-      <a href="{{ url_for('settings') }}" class="flex items-center justify-center w-full px-4 py-2 mb-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-100 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
+   <!-- Footer Actions -->
+   <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+      <a href="{{ url_for('settings') }}" 
+         class="flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+         <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
          </svg>
          Settings
       </a>
-      <a href="{{ url_for('logout') }}" class="flex items-center justify-center w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-800 dark:hover:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-            <polyline points="16 17 21 12 16 7"></polyline>
-            <line x1="21" y1="12" x2="9" y2="12"></line>
+      <a href="{{ url_for('logout') }}" 
+         class="flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+         <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
          </svg>
          Logout
       </a>
@@ -438,6 +504,15 @@
    
    function updateImageTransform() {
      modalImage.style.transform = `translate(${currentPos.x}px, ${currentPos.y}px) scale(${currentScale})`;
+   }
+   function openRoomModal() {
+      document.getElementById('room-modal').classList.remove('hidden');
+      document.getElementById('room-modal-backdrop').classList.remove('hidden');
+   }
+   
+   function closeRoomModal() {
+      document.getElementById('room-modal').classList.add('hidden');
+      document.getElementById('room-modal-backdrop').classList.add('hidden');
    }
    
    function zoom(delta) {
