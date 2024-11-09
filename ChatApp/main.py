@@ -37,6 +37,7 @@ from PIL import Image
 from pymongo import MongoClient
 from fuzzywuzzy import fuzz
 from bson import ObjectId
+import string
 
 load_dotenv()
 
@@ -471,17 +472,11 @@ def stop_heartbeat():
     return "", 204
 
 
-def generate_unique_code(length):
+def generate_unique_code():
     while True:
-        code = ""
-        for _ in range(length):
-            code += random.choice(ascii_uppercase)
-
+        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         if not rooms_collection.find_one({"_id": code}):
-            break
-
-    return code
-
+            return code
 
 def get_user_data(username):
     """Get user data from MongoDB"""
@@ -1661,17 +1656,87 @@ def prepare_room_message_data(room_info):
         "type": message_type
     }
 
-@app.route("/room/", defaults={"code": None})
-@app.route("/room/<code>")
+@app.route("/room/", defaults={"code": None}, methods=["GET", "POST"])
+@app.route("/room/<code>", methods=["GET", "POST"])
 @login_required
 def room(code):
     username = current_user.username
 
-    if code is None:
-        code = session.get("room")
-        if code is None:
-            flash("No room code provided")
-            return redirect(url_for("home"))
+    # Handle POST requests (room creation/joining)
+    if request.method == "POST":
+        if request.form.get("create"):
+            room_name = request.form.get("room_name")
+            if not room_name:
+                flash("Room name is required")
+                return redirect(url_for("room", code=code))
+            
+            # Generate a unique room code
+            new_room_code = generate_unique_code()  # You'll need to implement this function
+            
+            # Create new room document
+            new_room = {
+                "_id": new_room_code,
+                "name": room_name,
+                "users": [username],
+                "messages": [],
+                "created_by": username,
+                "created_at": datetime.utcnow()
+            }
+            
+            try:
+                # Insert the new room
+                rooms_collection.insert_one(new_room)
+                
+                # Add room to user's rooms list
+                users_collection.update_one(
+                    {"username": username},
+                    {
+                        "$addToSet": {"rooms": new_room_code},
+                        "$set": {"current_room": new_room_code}
+                    }
+                )
+                
+                session["room"] = new_room_code
+                return redirect(url_for("room", code=new_room_code))
+                
+            except Exception as e:
+                flash(f"Error creating room: {str(e)}")
+                return redirect(url_for("room", code=code))
+                
+        elif request.form.get("join"):
+            join_code = request.form.get("code")
+            if not join_code:
+                flash("Room code is required")
+                return redirect(url_for("room", code=code))
+                
+            # Check if room exists
+            join_room = rooms_collection.find_one({"_id": join_code})
+            if not join_room:
+                flash("Room does not exist")
+                return redirect(url_for("room", code=code))
+                
+            try:
+                # Add user to room's users list
+                rooms_collection.update_one(
+                    {"_id": join_code},
+                    {"$addToSet": {"users": username}}
+                )
+                
+                # Add room to user's rooms list
+                users_collection.update_one(
+                    {"username": username},
+                    {
+                        "$addToSet": {"rooms": join_code},
+                        "$set": {"current_room": join_code}
+                    }
+                )
+                
+                session["room"] = join_code
+                return redirect(url_for("room", code=join_code))
+                
+            except Exception as e:
+                flash(f"Error joining room: {str(e)}")
+                return redirect(url_for("room", code=code))
 
     room_data = rooms_collection.find_one({"_id": code})
     if not room_data:
