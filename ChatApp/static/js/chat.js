@@ -21,8 +21,8 @@ const firebaseConfig = {
   measurementId: "G-PL15EEFQDE"
 };
 
-const LINKPREVIEW_API_KEY = '1c04df7c16f6df68d9c4d8fb66c68a2e'; // Replace with your actual API key
-const LINKPREVIEW_API_URL = 'http://api.linkpreview.net/';
+const LINKPREVIEW_API_KEY = '1c04df7c16f6df68d9c4d8fb66c68a2e';
+const LINKPREVIEW_API_URL = 'https://api.linkpreview.net/';
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
@@ -79,15 +79,22 @@ const fetchLinkPreview = async (url) => {
         });
         
         if (!response.ok) {
-            throw new Error('Failed to fetch link preview');
+            throw new Error(`Failed to fetch link preview: ${response.status}`);
         }
         
         const data = await response.json();
         return {
             url: data.url,
             title: data.title,
-            image: data.image,
-            favicon: data.favicon || `https://www.google.com/s2/favicons?domain=${new URL(data.url).hostname}`
+            image: data.image ? new URL(data.image).protocol === 'http:' 
+                ? data.image.replace('http:', 'https:') 
+                : data.image 
+                : null,
+            favicon: data.favicon 
+                ? new URL(data.favicon).protocol === 'http:' 
+                    ? data.favicon.replace('http:', 'https:') 
+                    : data.favicon
+                : `https://www.google.com/s2/favicons?domain=${new URL(data.url).hostname}`
         };
     } catch (error) {
         console.error('Error fetching link preview:', error);
