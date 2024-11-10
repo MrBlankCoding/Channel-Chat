@@ -1,21 +1,12 @@
-4. Add profile photos to chats
-   - add profile photo cache to service worker
-
-
 5. Add a profile photo cache
    - main.py
    - service worker
 
 
-6. Make rooms display better on homepage
-   - make a vertical room list
-
 
 7. Fix jumping to messages
    - I have no idea how to fix this
 
-
-8. Add basic E2E encryption to messages
 
 
 11. Patch security vulnerabilities
@@ -28,26 +19,6 @@
 11. Gif API
 
 
-12. Image model
-
-13. Make it so messages are not read when tabbed out
-
 14. Add themes to chats
    - Toggle in settings
    - Save to chat room DB
-
-15. Add support for pasting of images and links sent
-
-16. Click on Usernames on homepage for instant chat room with them
-
-
-21. Make account deleteing button more hidden
-   - Also make it so you have to type you account name to delete it
-   - Remove username from rooms your in
-
-22. Add a message for new users joining a room and leaving a room permanly 
-
-23. Allow pasting of messages from websites
-
-24. Make it broadcast a user joining a room for the first time
-   - System Message
