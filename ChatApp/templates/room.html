@@ -98,7 +98,7 @@
                         alt="Room profile"
                         class="w-12 h-12 rounded-full object-cover shadow-sm">
                      {% if room.unread_count %}
-                     <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                     <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center unread-badge justify-center">
                      {{ room.unread_count }}
                      </span>
                      {% endif %}
@@ -308,7 +308,7 @@
 </div>
 <div id="imageModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm">
    <!-- Loading Spinner -->
-   <div id="modalLoader" class="hidden absolute inset-0 flex items-center justify-center">
+   <div id="modalLoader" class="hidden absolute inset-0 items-center justify-center">
       <div class="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
    </div>
    <!-- Navigation Buttons -->
@@ -381,123 +381,7 @@
       </button>
    </div>
 </div>
-<style>
-   /* Prevent body scrolling and ensure full viewport height */
-   html, body {
-   height: 100%;
-   overflow: hidden;
-   position: fixed;
-   width: 100%;
-   touch-action: manipulation;
-   }
-   /* Sidebar styling */
-   #sidebar {
-   width: 25%;
-   min-width: 250px;
-   transition: transform 0.3s ease;
-   position: relative;
-   z-index: 10;
-   }
-   #sidebar.hidden {
-   transform: translateX(-100%);
-   }
-   /* Sidebar Overlay for Mobile */
-   #sidebar-overlay {
-   position: fixed;
-   inset: 0;
-   background-color: rgba(0, 0, 0, 0.5);
-   z-index: 9;
-   display: none;
-   }
-   /* Responsive Design */
-   @media (max-width: 768px) {
-   #sidebar {
-   width: 100%;
-   position: fixed;
-   transform: translateX(-100%);
-   }
-   #sidebar.active {
-   transform: translateX(0);
-   }
-   #sidebar-overlay {
-   display: block;
-   }
-   }
-   /* Tablet and Small Desktops */
-   @media (min-width: 769px) and (max-width: 1024px) {
-   #sidebar {
-   width: 20%;
-   max-width: 250px;
-   }
-   }
-   /* Large Screens */
-   @media (min-width: 1025px) {
-   #sidebar {
-   position: static;
-   width: 25%;
-   transform: none;
-   }
-   }
-   /* Modal Image */
-   #modalImage {
-   width: 100%;
-   max-width: clamp(300px, 80vw, 1200px);
-   max-height: clamp(200px, 80vh, 900px);
-   object-fit: contain;
-   transition: transform 0.2s;
-   cursor: zoom-in;
-   }
-   /* Set viewport height for mobile browsers */
-   @supports (-webkit-touch-callout: none) {
-   .fixed.inset-0 {
-   height: -webkit-fill-available;
-   }
-   }
-   /* Toast animation */
-   @keyframes slideIn {
-   from { transform: translate(-50%, -100%); }
-   to { transform: translate(-50%, 0); }
-   }
-   .toast-enter {
-   animation: slideIn 0.3s ease-out;
-   }
-   /* Mobile keyboard adjustments */
-   @media screen and (max-height: 450px) {
-   .sticky.bottom-0 {
-   position: relative;
-   }
-   }   
-   /* Container scaling */
-   #messages {
-   display: flex;
-   flex-direction: column;
-   padding: 1rem; /* Default padding */
-   overflow-y: auto;
-   max-height: 100vh;
-   }
-   /* Scrollbar styling */
-   #messages::-webkit-scrollbar {
-   width: 8px;
-   }
-   #messages::-webkit-scrollbar-thumb {
-   background-color: #888;
-   border-radius: 4px;
-   }
-   #messages::-webkit-scrollbar-thumb:hover {
-   background-color: #555;
-   }
-   /* Responsive adjustments */
-   @media (max-width: 768px) {
-   #messages {
-   padding: 0.5rem; /* Smaller padding for mobile screens */
-   }
-   }
-   @media (min-width: 1024px) {
-   #messages {
-   padding: 2rem; /* Larger padding for wider screens */
-   }
-   }
-</style>
+<style></style>
 <div id="invite-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-auto">
       <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Invite Friends</h3>
@@ -854,53 +738,57 @@
    }
    
    function updateRoomData() {
-   fetch('/get_unread_messages')
-       .then(response => response.json())
-       .then(unreadData => {
-           Object.keys(unreadData).forEach(roomCode => {
-               const roomElement = document.getElementById(`room-${roomCode}`);
-               if (roomElement) {
-                   const unreadBadge = roomElement.querySelector('.unread-badge');
-                   const unreadCount = unreadData[roomCode].unread_count;
-                   
-                   if (unreadCount > 0) {
-                       unreadBadge.textContent = unreadCount;
-                       unreadBadge.classList.remove('hidden');
-                   } else {
-                       unreadBadge.classList.add('hidden');
-                   }
-               }
-           });
-       });
-   
-   // Update last messages
-   const rooms = document.querySelectorAll('.room-item');
-   rooms.forEach(room => {
-       const roomCode = room.getAttribute('data-room-code');
-       fetch(`/get_last_message/${roomCode}`)
-           .then(response => response.json())
-           .then(data => {
-               if (data.last_message) {
-                   const lastMessageTime = room.querySelector('.last-message-time');
-                   const lastMessageSender = room.querySelector('.last-message-sender');
-                   const lastMessageText = room.querySelector('.last-message-text');
-                   
-                   if (lastMessageTime) lastMessageTime.textContent = data.last_message.timestamp;
-                   if (lastMessageSender) lastMessageSender.textContent = `${data.last_message.sender}:`;
-                   if (lastMessageText) {
-                       lastMessageText.textContent = data.last_message.content;
-                       lastMessageText.setAttribute('data-message-type', data.last_message.type);
-                   }
-               }
-           });
-   });
+      // Fetch and update unread message counts for all rooms
+      fetch('/get_unread_messages')
+          .then(response => response.json())
+          .then(unreadData => {
+              Object.keys(unreadData).forEach(roomCode => {
+                  const roomElement = document.getElementById(`room-${roomCode}`);
+                  if (roomElement) {
+                      const unreadBadge = roomElement.querySelector('.unread-badge');
+                      const unreadCount = unreadData[roomCode].unread_count;
+                      
+                      if (unreadCount > 0) {
+                          unreadBadge.textContent = unreadCount;
+                          unreadBadge.classList.remove('hidden');
+                      } else {
+                          unreadBadge.classList.add('hidden');
+                      }
+                  }
+              });
+          })
+          .catch(error => console.error('Error fetching unread messages:', error));
+      
+      // Update last messages for all rooms
+      const rooms = document.querySelectorAll('.room-item');
+      rooms.forEach(room => {
+          const roomCode = room.getAttribute('data-room-code');
+          fetch(`/get_last_message/${roomCode}`)
+              .then(response => response.json())
+              .then(data => {
+                  if (data.last_message) {
+                      const lastMessageTime = room.querySelector('.last-message-time');
+                      const lastMessageSender = room.querySelector('.last-message-sender');
+                      const lastMessageText = room.querySelector('.last-message-text');
+                      
+                      if (lastMessageTime) lastMessageTime.textContent = data.last_message.timestamp;
+                      if (lastMessageSender) lastMessageSender.textContent = `${data.last_message.sender}:`;
+                      if (lastMessageText) {
+                          lastMessageText.textContent = data.last_message.content;
+                          lastMessageText.setAttribute('data-message-type', data.last_message.type);
+                      }
+                  }
+              })
+              .catch(error => console.error('Error fetching last message:', error));
+      });
    }
    
-   // Update room data every 5 seconds
-   setInterval(updateRoomData, 5000);
+   // Update room data every minute (60000 milliseconds)
+   const UPDATE_INTERVAL = 60000;
+   setInterval(updateRoomData, UPDATE_INTERVAL);
    
-   // Initial update
-   updateRoomData();
+   // Initial update when the page loads
+   document.addEventListener('DOMContentLoaded', updateRoomData);
    
    // Copy room code to clipboard with toast
    function copyRoomCode() {
