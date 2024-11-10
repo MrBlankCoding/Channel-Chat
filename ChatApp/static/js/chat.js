@@ -21,6 +21,9 @@ const firebaseConfig = {
   measurementId: "G-PL15EEFQDE"
 };
 
+const LINKPREVIEW_API_KEY = '1c04df7c16f6df68d9c4d8fb66c68a2e'; // Replace with your actual API key
+const LINKPREVIEW_API_URL = 'http://api.linkpreview.net/';
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
@@ -61,6 +64,226 @@ var socketio = io({
 });
 
 // Helper functions
+
+const fetchLinkPreview = async (url) => {
+    try {
+        const apiUrl = new URL(LINKPREVIEW_API_URL);
+        apiUrl.searchParams.append('key', LINKPREVIEW_API_KEY);
+        apiUrl.searchParams.append('q', url);
+
+        const response = await fetch(apiUrl.toString(), {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch link preview');
+        }
+        
+        const data = await response.json();
+        return {
+            url: data.url,
+            title: data.title,
+            image: data.image,
+            favicon: data.favicon || `https://www.google.com/s2/favicons?domain=${new URL(data.url).hostname}`
+        };
+    } catch (error) {
+        console.error('Error fetching link preview:', error);
+        return null;
+    }
+};
+
+const createLinkPreview = (metadata) => {
+    const previewContainer = document.createElement('div');
+    previewContainer.className = 'mt-2 border dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-200';
+    previewContainer.style.maxWidth = '300px';
+
+    const content = document.createElement('a');
+    content.href = metadata.url;
+    content.target = '_blank';
+    content.rel = 'noopener noreferrer';
+    content.className = 'block';
+
+    // Thumbnail section
+    if (metadata.image) {
+        const thumbnailContainer = document.createElement('div');
+        thumbnailContainer.className = 'relative w-full h-40 bg-gray-100 dark:bg-gray-700';
+        
+        const img = document.createElement('img');
+        img.src = metadata.image;
+        img.alt = metadata.title || 'Link preview';
+        img.className = 'w-full h-full object-cover transition-opacity duration-200';
+        img.style.opacity = '0';
+        
+        // Add loading state
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-700';
+        loadingOverlay.innerHTML = `
+            <svg class="animate-spin h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+        `;
+        
+        // Handle image load
+        img.onload = () => {
+            img.style.opacity = '1';
+            loadingOverlay.remove();
+        };
+        
+        // Handle image error
+        img.onerror = () => {
+            thumbnailContainer.remove();
+        };
+        
+        thumbnailContainer.appendChild(loadingOverlay);
+        thumbnailContainer.appendChild(img);
+        content.appendChild(thumbnailContainer);
+    }
+
+    // Text content section
+    const textContent = document.createElement('div');
+    textContent.className = 'p-3 space-y-2';
+
+    if (metadata.title) {
+        const title = document.createElement('h3');
+        title.className = 'text-sm font-medium text-gray-900 dark:text-white line-clamp-2';
+        title.textContent = metadata.title;
+        textContent.appendChild(title);
+    }
+
+    // Domain section with favicon
+    const domainInfo = document.createElement('div');
+    domainInfo.className = 'flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400';
+    
+    const favicon = document.createElement('img');
+    favicon.src = metadata.favicon;
+    favicon.className = 'w-4 h-4';
+    favicon.alt = '';
+    
+    const domain = document.createElement('span');
+    domain.textContent = new URL(metadata.url).hostname;
+    
+    domainInfo.appendChild(favicon);
+    domainInfo.appendChild(domain);
+    textContent.appendChild(domainInfo);
+
+    content.appendChild(textContent);
+    previewContainer.appendChild(content);
+
+    return previewContainer;
+};
+
+// Update the message content creation part in createMessageElement
+const updateMessageContentWithLinks = (msg, isCurrentUser) => {
+    const messageContent = document.createElement("div");
+    messageContent.className = "message-content break-words";
+
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urls = msg.match(urlRegex);
+    
+    if (urls) {
+        // Split message into text and links
+        let lastIndex = 0;
+        const fragments = [];
+        
+        urls.forEach(url => {
+            const index = msg.indexOf(url, lastIndex);
+            if (index > lastIndex) {
+                fragments.push(document.createTextNode(msg.substring(lastIndex, index)));
+            }
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.className = `${isCurrentUser ? 'text-blue-200' : 'text-blue-500'} hover:underline`;
+            link.textContent = url;
+            fragments.push(link);
+            
+            lastIndex = index + url.length;
+        });
+        
+        if (lastIndex < msg.length) {
+            fragments.push(document.createTextNode(msg.substring(lastIndex)));
+        }
+        
+        fragments.forEach(fragment => messageContent.appendChild(fragment));
+
+        // Create preview container
+        const previewsContainer = document.createElement('div');
+        previewsContainer.className = 'mt-2 space-y-2';
+
+        // Process each URL for preview
+        urls.forEach(url => {
+            // Add loading state
+            const loadingPreview = createLoadingPreview();
+            previewsContainer.appendChild(loadingPreview);
+
+            // Fetch and replace with actual preview
+            fetchLinkPreview(url)
+                .then(metadata => {
+                    if (metadata) {
+                        const preview = createLinkPreview(metadata);
+                        loadingPreview.replaceWith(preview);
+                    } else {
+                        loadingPreview.remove();
+                    }
+                })
+                .catch(() => loadingPreview.remove());
+        });
+
+        return { messageContent, previewsContainer };
+    }
+
+    messageContent.textContent = msg;
+    return { messageContent };
+};
+
+// Helper function to create loading preview
+const createLoadingPreview = () => {
+    const loadingPreview = document.createElement('div');
+    loadingPreview.className = 'border dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 animate-pulse';
+    loadingPreview.style.maxWidth = '300px';
+
+    const loadingContent = document.createElement('div');
+    loadingContent.className = 'space-y-3';
+
+    // Loading thumbnail
+    const loadingThumbnail = document.createElement('div');
+    loadingThumbnail.className = 'w-full h-40 bg-gray-200 dark:bg-gray-700';
+    loadingContent.appendChild(loadingThumbnail);
+
+    // Loading text content
+    const textContent = document.createElement('div');
+    textContent.className = 'p-3 space-y-2';
+
+    // Loading title
+    const loadingTitle = document.createElement('div');
+    loadingTitle.className = 'h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4';
+    textContent.appendChild(loadingTitle);
+
+    // Loading domain
+    const loadingDomain = document.createElement('div');
+    loadingDomain.className = 'mt-2 flex items-center gap-1.5';
+    
+    const loadingFavicon = document.createElement('div');
+    loadingFavicon.className = 'w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded-full';
+    
+    const loadingDomainText = document.createElement('div');
+    loadingDomainText.className = 'h-3 bg-gray-200 dark:bg-gray-700 rounded w-24';
+    
+    loadingDomain.appendChild(loadingFavicon);
+    loadingDomain.appendChild(loadingDomainText);
+    textContent.appendChild(loadingDomain);
+
+    loadingContent.appendChild(textContent);
+    loadingPreview.appendChild(loadingContent);
+
+    return loadingPreview;
+};
 
 const updatePageTitle = () => {
   if (unreadCount > 0) {
@@ -140,218 +363,215 @@ const getResponsiveMaxWidth = () => {
 };
 
 const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal', video = null) => {
-  // Handle system messages differently
-  if (type === 'system') {
-      const element = document.createElement("div");
-      element.className = 'message group py-2 flex justify-center';
-      element.dataset.messageId = messageId;
+    // Handle system messages differently
+    if (type === 'system') {
+        const element = document.createElement("div");
+        element.className = 'message group py-2 flex justify-center';
+        element.dataset.messageId = messageId;
 
-      const systemMessage = document.createElement("div");
-      systemMessage.className = 'px-4 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full inline-flex items-center gap-2';
+        const systemMessage = document.createElement("div");
+        systemMessage.className = 'px-4 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-full inline-flex items-center gap-2';
 
-      const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      iconSvg.setAttribute("class", "w-3.5 h-3.5 text-gray-400 dark:text-gray-500");
-      iconSvg.setAttribute("fill", "none");
-      iconSvg.setAttribute("viewBox", "0 0 24 24");
-      iconSvg.setAttribute("stroke", "currentColor");
-      iconSvg.setAttribute("stroke-width", "2");
+        const iconSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        iconSvg.setAttribute("class", "w-3.5 h-3.5 text-gray-400 dark:text-gray-500");
+        iconSvg.setAttribute("fill", "none");
+        iconSvg.setAttribute("viewBox", "0 0 24 24");
+        iconSvg.setAttribute("stroke", "currentColor");
+        iconSvg.setAttribute("stroke-width", "2");
 
-      const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      iconPath.setAttribute("stroke-linecap", "round");
-      iconPath.setAttribute("stroke-linejoin", "round");
-      iconPath.setAttribute("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z");
+        const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        iconPath.setAttribute("stroke-linecap", "round");
+        iconPath.setAttribute("stroke-linejoin", "round");
+        iconPath.setAttribute("d", "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z");
 
-      iconSvg.appendChild(iconPath);
-      systemMessage.appendChild(iconSvg);
+        iconSvg.appendChild(iconPath);
+        systemMessage.appendChild(iconSvg);
 
-      const messageText = document.createElement("span");
-      messageText.className = 'text-sm text-gray-500 dark:text-gray-400';
-      messageText.textContent = msg;
+        const messageText = document.createElement("span");
+        messageText.className = 'text-sm text-gray-500 dark:text-gray-400';
+        messageText.textContent = msg;
 
-      systemMessage.appendChild(messageText);
-      element.appendChild(systemMessage);
+        systemMessage.appendChild(messageText);
+        element.appendChild(systemMessage);
 
-      return element;
-  }
+        return element;
+    }
 
-  const isCurrentUser = name === currentUser;
-  const validReaders = readBy.filter(reader => reader !== null && reader !== name);
-  const isRead = validReaders.length > 0;
+    const isCurrentUser = name === currentUser;
+    const validReaders = readBy.filter(reader => reader !== null && reader !== name);
+    const isRead = validReaders.length > 0;
 
-  const element = document.createElement("div");
-  element.style.padding = `${MESSAGE.padding.vertical}px ${MESSAGE.padding.horizontal}px`;
-  element.style.display = 'flex';
-  element.style.justifyContent = isCurrentUser ? 'flex-end' : 'flex-start';
-  element.style.alignItems = 'flex-start';
-  element.style.gap = `${MESSAGE.photo.gap}px`;
-  element.dataset.messageId = messageId;
-  element.className = 'message group hover:bg-gray-50/5 transition-colors duration-200';
+    const element = document.createElement("div");
+    element.style.padding = `${MESSAGE.padding.vertical}px ${MESSAGE.padding.horizontal}px`;
+    element.style.display = 'flex';
+    element.style.justifyContent = isCurrentUser ? 'flex-end' : 'flex-start';
+    element.style.alignItems = 'flex-start';
+    element.style.gap = `${MESSAGE.photo.gap}px`;
+    element.dataset.messageId = messageId;
+    element.className = 'message group hover:bg-gray-50/5 transition-colors duration-200';
 
-  // Profile photo section
-  if (!isCurrentUser) {
-      const profilePhotoContainer = document.createElement("div");
-      profilePhotoContainer.style.flexShrink = '0';
-      const profilePhoto = document.createElement("img");
-      profilePhoto.src = `/profile_photos/${name}`;
-      profilePhoto.alt = `${name}'s profile`;
-      profilePhoto.style.width = `${MESSAGE.photo.size}px`;
-      profilePhoto.style.height = `${MESSAGE.photo.size}px`;
-      profilePhoto.className = "rounded-full object-cover ring-1 ring-white dark:ring-gray-800 shadow-sm";
-      profilePhoto.onerror = function() {
-          this.src = '/static/images/default-profile.png';
-      };
-      profilePhotoContainer.appendChild(profilePhoto);
-      element.appendChild(profilePhotoContainer);
-  }
+    // Profile photo section
+    if (!isCurrentUser) {
+        const profilePhotoContainer = document.createElement("div");
+        profilePhotoContainer.style.flexShrink = '0';
+        const profilePhoto = document.createElement("img");
+        profilePhoto.src = `/profile_photos/${name}`;
+        profilePhoto.alt = `${name}'s profile`;
+        profilePhoto.style.width = `${MESSAGE.photo.size}px`;
+        profilePhoto.style.height = `${MESSAGE.photo.size}px`;
+        profilePhoto.className = "rounded-full object-cover ring-1 ring-white dark:ring-gray-800 shadow-sm";
+        profilePhoto.onerror = function() {
+            this.src = '/static/images/default-profile.png';
+        };
+        profilePhotoContainer.appendChild(profilePhoto);
+        element.appendChild(profilePhotoContainer);
+    }
 
-  const messageContainer = document.createElement("div");
-  messageContainer.style.maxWidth = getResponsiveMaxWidth();
-  messageContainer.className = "relative";
+    const messageContainer = document.createElement("div");
+    messageContainer.style.maxWidth = getResponsiveMaxWidth();
+    messageContainer.className = "relative";
 
-  const messageHeader = document.createElement("div");
-  messageHeader.style.display = 'flex';
-  messageHeader.style.alignItems = 'center';
-  messageHeader.style.gap = `${MESSAGE.text.spacing}px`;
-  messageHeader.style.marginBottom = `${MESSAGE.text.spacing}px`;
-  messageHeader.style.justifyContent = isCurrentUser ? 'flex-end' : 'flex-start';
+    const messageHeader = document.createElement("div");
+    messageHeader.style.display = 'flex';
+    messageHeader.style.alignItems = 'center';
+    messageHeader.style.gap = `${MESSAGE.text.spacing}px`;
+    messageHeader.style.marginBottom = `${MESSAGE.text.spacing}px`;
+    messageHeader.style.justifyContent = isCurrentUser ? 'flex-end' : 'flex-start';
 
-  if (!isCurrentUser) {
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "text-xs font-medium text-gray-700 dark:text-gray-300";
-      nameSpan.textContent = name;
-      messageHeader.appendChild(nameSpan);
-  }
+    if (!isCurrentUser) {
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "text-xs font-medium text-gray-700 dark:text-gray-300";
+        nameSpan.textContent = name;
+        messageHeader.appendChild(nameSpan);
+    }
 
-  messageContainer.appendChild(messageHeader);
+    messageContainer.appendChild(messageHeader);
 
-  const messageBubble = document.createElement("div");
-  messageBubble.style.padding = `${MESSAGE.padding.bubble}px`;
-  messageBubble.style.fontSize = `${MESSAGE.text.size}px`;
-  messageBubble.className = `relative ${
-      isCurrentUser 
-          ? 'bg-blue-500 text-white rounded-t-2xl rounded-l-2xl rounded-br-lg' 
-          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-t-2xl rounded-r-2xl rounded-bl-lg'
-  }`;
+    const messageBubble = document.createElement("div");
+    messageBubble.style.padding = `${MESSAGE.padding.bubble}px`;
+    messageBubble.style.fontSize = `${MESSAGE.text.size}px`;
+    messageBubble.className = `relative ${
+        isCurrentUser 
+            ? 'bg-blue-500 text-white rounded-t-2xl rounded-l-2xl rounded-br-lg' 
+            : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-t-2xl rounded-r-2xl rounded-bl-lg'
+    }`;
 
-  if (isCurrentUser && isRead) {
-      messageBubble.classList.add('bg-indigo-700');
-  }
+    if (isCurrentUser && isRead) {
+        messageBubble.classList.add('bg-indigo-700');
+    }
 
-  // Reply section
-  if (replyTo) {
-      const replyInfo = document.createElement("div");
-      replyInfo.style.marginBottom = `${MESSAGE.text.spacing}px`;
-      replyInfo.className = `text-xs rounded px-2 py-0.5 border-l-2 ${
-          isCurrentUser
-              ? 'bg-blue-600/50 border-blue-300'
-              : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
-      }`;
+    // Reply section
+    if (replyTo) {
+        const replyInfo = document.createElement("div");
+        replyInfo.style.marginBottom = `${MESSAGE.text.spacing}px`;
+        replyInfo.className = `text-xs rounded px-2 py-0.5 border-l-2 ${
+            isCurrentUser
+                ? 'bg-blue-600/50 border-blue-300'
+                : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
+        }`;
 
-      replyInfo.dataset.replyTo = replyTo.id;
-      const replyMessage = replyTo.message || "Message not available";
-      replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyMessage}`;
-      messageBubble.appendChild(replyInfo);
-  }
+        replyInfo.dataset.replyTo = replyTo.id;
+        const replyMessage = replyTo.message || "Message not available";
+        replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyMessage}`;
+        messageBubble.appendChild(replyInfo);
+    }
 
-  // Message content
-  const messageContent = document.createElement("div");
-  messageContent.className = "message-content break-words";
-  messageContent.textContent = msg || (video ? "Sent a video" : "Sent an image");
+    // Message content with URL detection and preview
+    const { messageContent, previewsContainer } = updateMessageContentWithLinks(msg || (video ? "Sent a video" : "Sent an image"), isCurrentUser);
+    messageBubble.appendChild(messageContent);
+    
+    if (previewsContainer) {
+        messageBubble.appendChild(previewsContainer);
+    }
 
-  if (isEdited) {
-      const editedIndicator = document.createElement("span");
-      editedIndicator.className = "ml-1 text-xs opacity-75";
-      editedIndicator.textContent = "(edited)";
-      messageContent.appendChild(editedIndicator);
-  }
+    if (isEdited) {
+        const editedIndicator = document.createElement("span");
+        editedIndicator.className = "ml-1 text-xs opacity-75";
+        editedIndicator.textContent = "(edited)";
+        messageContent.appendChild(editedIndicator);
+    }
 
-  messageBubble.appendChild(messageContent);
+    // Image handling
+    if (image) {
+        const img = document.createElement("img");
+        img.src = image;
+        img.alt = "Uploaded image";
+        img.style.marginTop = `${MESSAGE.text.spacing}px`;
+        img.className = "max-w-[120px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 opacity-50";
+        img.onload = () => img.classList.remove('opacity-50');
+        img.onerror = () => {
+            img.src = '/static/images/image-error.png';
+            img.classList.remove('opacity-50');
+        };
+        messageBubble.appendChild(img);
+        img.classList.add('cursor-pointer');
+        img.addEventListener('click', () => openImageModal(image));
+    }
 
-  // Image handling
-  if (image) {
-      const img = document.createElement("img");
-      img.src = image;
-      img.alt = "Uploaded image";
-      img.style.marginTop = `${MESSAGE.text.spacing}px`;
-      img.className = "max-w-[120px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 opacity-50";
-      img.onload = () => img.classList.remove('opacity-50');
-      img.onerror = () => {
-          img.src = '/static/images/image-error.png';
-          img.classList.remove('opacity-50');
-      };
-      messageBubble.appendChild(img);
-      img.classList.add('cursor-pointer');
-      img.addEventListener('click', () => openImageModal(image));
-  }
+    // Video handling
+    if (video) {
+        const videoContainer = document.createElement("div");
+        videoContainer.className = "relative mt-2";
+        
+        const videoElement = document.createElement("video");
+        videoElement.src = video;
+        videoElement.className = "max-w-[240px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200";
+        videoElement.controls = true;
+        videoElement.preload = "metadata";
+        
+        const playButton = document.createElement("button");
+        playButton.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg transition-opacity duration-200 hover:bg-opacity-40";
+        playButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        `;
+        
+        videoContainer.appendChild(videoElement);
+        videoContainer.appendChild(playButton);
+        
+        videoElement.addEventListener('play', () => {
+            playButton.style.display = 'none';
+        });
+        
+        videoElement.addEventListener('pause', () => {
+            playButton.style.display = 'flex';
+        });
+        
+        videoElement.addEventListener('ended', () => {
+            playButton.style.display = 'flex';
+        });
+        
+        playButton.addEventListener('click', () => {
+            if (videoElement.paused) {
+                videoElement.play();
+            } else {
+                videoElement.pause();
+            }
+        });
+        
+        messageBubble.appendChild(videoContainer);
+    }
 
-  // Video handling
-  if (video) {
-      const videoContainer = document.createElement("div");
-      videoContainer.className = "relative mt-2";
-      
-      const videoElement = document.createElement("video");
-      videoElement.src = video;
-      videoElement.className = "max-w-[240px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200";
-      videoElement.controls = true;
-      videoElement.preload = "metadata";
-      
-      // Add play button overlay
-      const playButton = document.createElement("button");
-      playButton.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg transition-opacity duration-200 hover:bg-opacity-40";
-      playButton.innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-      `;
-      
-      videoContainer.appendChild(videoElement);
-      videoContainer.appendChild(playButton);
-      
-      // Hide play button when video starts playing
-      videoElement.addEventListener('play', () => {
-          playButton.style.display = 'none';
-      });
-      
-      // Show play button when video pauses or ends
-      videoElement.addEventListener('pause', () => {
-          playButton.style.display = 'flex';
-      });
-      
-      videoElement.addEventListener('ended', () => {
-          playButton.style.display = 'flex';
-      });
-      
-      // Play/pause on play button click
-      playButton.addEventListener('click', () => {
-          if (videoElement.paused) {
-              videoElement.play();
-          } else {
-              videoElement.pause();
-          }
-      });
-      
-      messageBubble.appendChild(videoContainer);
-  }
+    // Reactions
+    const reactionsContainer = document.createElement("div");
+    reactionsContainer.style.marginTop = `${MESSAGE.text.spacing}px`;
+    reactionsContainer.className = "flex flex-wrap gap-0.5 reactions-container";
 
-  // Reactions
-  const reactionsContainer = document.createElement("div");
-  reactionsContainer.style.marginTop = `${MESSAGE.text.spacing}px`;
-  reactionsContainer.className = "flex flex-wrap gap-0.5 reactions-container";
+    updateReactionsDisplay(reactionsContainer, reactions, messageId);
+    messageBubble.appendChild(reactionsContainer);
 
-  updateReactionsDisplay(reactionsContainer, reactions, messageId);
-  messageBubble.appendChild(reactionsContainer);
+    // Actions menu
+    const actionsMenu = createActionsMenu(isCurrentUser);
+    messageBubble.appendChild(actionsMenu);
 
-  // Actions menu
-  const actionsMenu = createActionsMenu(isCurrentUser);
-  messageBubble.appendChild(actionsMenu);
+    messageContainer.appendChild(messageBubble);
+    element.appendChild(messageContainer);
 
-  messageContainer.appendChild(messageBubble);
-  element.appendChild(messageContainer);
+    addEventListeners(messageBubble, messageId, msg);
 
-  addEventListeners(messageBubble, messageId, msg);
-
-  return element;
+    return element;
 };
 
 const createReactionElement = (emoji, {
