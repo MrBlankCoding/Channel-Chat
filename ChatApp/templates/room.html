@@ -120,9 +120,9 @@
                            text-blue-100
                            {% else %}
                            text-gray-500 dark:text-gray-400
-                           {% endif %}">
-                        {{ room.last_message.timestamp }}
-                        </span>
+                           {% endif %}"
+                           data-timestamp="{{ room.last_message.timestamp }}"
+                           ></span>
                         {% endif %}
                      </div>
                      <p class="text-sm truncate
@@ -390,11 +390,59 @@
    width: 100%;
    touch-action: manipulation;
    }
+   /* Sidebar styling */
+   #sidebar {
+   width: 25%;
+   min-width: 250px;
+   transition: transform 0.3s ease;
+   position: relative;
+   z-index: 10;
+   }
+   #sidebar.hidden {
+   transform: translateX(-100%);
+   }
+   /* Sidebar Overlay for Mobile */
+   #sidebar-overlay {
+   position: fixed;
+   inset: 0;
+   background-color: rgba(0, 0, 0, 0.5);
+   z-index: 9;
+   display: none;
+   }
+   /* Responsive Design */
+   @media (max-width: 768px) {
+   #sidebar {
+   width: 100%;
+   position: fixed;
+   transform: translateX(-100%);
+   }
+   #sidebar.active {
+   transform: translateX(0);
+   }
+   #sidebar-overlay {
+   display: block;
+   }
+   }
+   /* Tablet and Small Desktops */
+   @media (min-width: 769px) and (max-width: 1024px) {
+   #sidebar {
+   width: 20%;
+   max-width: 250px;
+   }
+   }
+   /* Large Screens */
+   @media (min-width: 1025px) {
+   #sidebar {
+   position: static;
+   width: 25%;
+   transform: none;
+   }
+   }
+   /* Modal Image */
    #modalImage {
    width: 100%;
-   height: auto;
-   max-width: clamp(300px, 80vw, 1200px); /* Min 300px, scales with viewport up to 1200px */
-   max-height: clamp(200px, 80vh, 900px);  /* Min 200px, scales with viewport up to 900px */
+   max-width: clamp(300px, 80vw, 1200px);
+   max-height: clamp(200px, 80vh, 900px);
    object-fit: contain;
    transition: transform 0.2s;
    cursor: zoom-in;
@@ -417,6 +465,36 @@
    @media screen and (max-height: 450px) {
    .sticky.bottom-0 {
    position: relative;
+   }
+   }   
+   /* Container scaling */
+   #messages {
+   display: flex;
+   flex-direction: column;
+   padding: 1rem; /* Default padding */
+   overflow-y: auto;
+   max-height: 100vh;
+   }
+   /* Scrollbar styling */
+   #messages::-webkit-scrollbar {
+   width: 8px;
+   }
+   #messages::-webkit-scrollbar-thumb {
+   background-color: #888;
+   border-radius: 4px;
+   }
+   #messages::-webkit-scrollbar-thumb:hover {
+   background-color: #555;
+   }
+   /* Responsive adjustments */
+   @media (max-width: 768px) {
+   #messages {
+   padding: 0.5rem; /* Smaller padding for mobile screens */
+   }
+   }
+   @media (min-width: 1024px) {
+   #messages {
+   padding: 2rem; /* Larger padding for wider screens */
    }
    }
 </style>
@@ -476,6 +554,74 @@
    function hideLoader() {
      modalLoader.classList.add('hidden');
    }
+   
+   // Format timestamp adaptively based on how long ago it was
+   function formatTimestamp(timestamp) {
+   // Remove microseconds and ensure proper timezone handling
+   const cleanTimestamp = timestamp.split('.')[0] + 'Z';
+   const date = new Date(cleanTimestamp);
+   const now = new Date();
+   const diffInSeconds = Math.floor((now - date) / 1000);
+   const diffInMinutes = Math.floor(diffInSeconds / 60);
+   const diffInHours = Math.floor(diffInMinutes / 60);
+   const diffInDays = Math.floor(diffInHours / 24);
+   
+   // If invalid date, return empty string
+   if (isNaN(date.getTime())) {
+       console.log('Invalid date for timestamp:', timestamp);
+       return '';
+   }
+   
+   // Just now - less than a minute ago
+   if (diffInSeconds < 60) {
+       return 'Just now';
+   }
+   
+   // Minutes ago - less than an hour ago
+   if (diffInMinutes < 60) {
+       return `${diffInMinutes}m ago`;
+   }
+   
+   // Hours ago - less than 24 hours ago
+   if (diffInHours < 24) {
+       return `${diffInHours}h ago`;
+   }
+   
+   // Days ago - less than 7 days ago
+   if (diffInDays < 7) {
+       return `${diffInDays}d ago`;
+   }
+   
+   // This year - show month and day
+   if (date.getFullYear() === now.getFullYear()) {
+       return date.toLocaleDateString('en-US', {
+           month: 'short',
+           day: 'numeric'
+       });
+   }
+   
+   // Different year - show month, day and year
+   return date.toLocaleDateString('en-US', {
+       month: 'short',
+       day: 'numeric',
+       year: 'numeric'
+   });
+   }
+   
+   // Helper function to update all timestamps on the page
+   function updateAllTimestamps() {
+   const timestamps = document.querySelectorAll('[data-timestamp]');
+   timestamps.forEach(element => {
+       const timestamp = element.getAttribute('data-timestamp');
+       element.textContent = formatTimestamp(timestamp);
+   });
+   }
+   
+   // Update timestamps initially and every minute
+   document.addEventListener('DOMContentLoaded', () => {
+   updateAllTimestamps();
+   setInterval(updateAllTimestamps, 60000); // Update every minute
+   });
    
    // Function to update navigation visibility
    function updateNavigation() {
