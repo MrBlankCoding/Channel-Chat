@@ -102,10 +102,85 @@ const fetchLinkPreview = async (url) => {
     }
 };
 
-const createLinkPreview = (metadata) => {
+// Update the message content creation part in createMessageElement
+const updateMessageContentWithLinks = (msg, isCurrentUser) => {
+    const messageContent = document.createElement("div");
+    messageContent.className = "message-content break-words";
+
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urls = msg.match(urlRegex);
+    
+    if (urls) {
+        // Check if the message contains only a URL
+        const strippedMsg = msg.trim();
+        const isOnlyUrl = urls.length === 1 && urls[0] === strippedMsg;
+        
+        if (isOnlyUrl) {
+            // Create preview container that takes up full width
+            const previewsContainer = document.createElement('div');
+            previewsContainer.className = 'space-y-2';
+
+            // Add loading state
+            const loadingPreview = createLoadingPreview();
+            previewsContainer.appendChild(loadingPreview);
+
+            // Fetch and replace with actual preview
+            fetchLinkPreview(urls[0])
+                .then(metadata => {
+                    if (metadata) {
+                        const preview = createLinkPreview(metadata, isCurrentUser);
+                        loadingPreview.replaceWith(preview);
+                    } else {
+                        loadingPreview.remove();
+                        messageContent.textContent = msg; // Fallback to showing the URL
+                    }
+                })
+                .catch(() => {
+                    loadingPreview.remove();
+                    messageContent.textContent = msg; // Fallback to showing the URL
+                });
+
+            return { messageContent, previewsContainer };
+        } else {
+            // If message contains other text besides URLs, handle normally
+            let lastIndex = 0;
+            const fragments = [];
+            
+            urls.forEach(url => {
+                const index = msg.indexOf(url, lastIndex);
+                if (index > lastIndex) {
+                    fragments.push(document.createTextNode(msg.substring(lastIndex, index)));
+                }
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.className = `${isCurrentUser ? 'text-blue-200' : 'text-blue-500'} hover:underline`;
+                link.textContent = url;
+                fragments.push(link);
+                
+                lastIndex = index + url.length;
+            });
+            
+            if (lastIndex < msg.length) {
+                fragments.push(document.createTextNode(msg.substring(lastIndex)));
+            }
+            
+            fragments.forEach(fragment => messageContent.appendChild(fragment));
+        }
+    } else {
+        messageContent.textContent = msg;
+    }
+
+    return { messageContent };
+};
+
+const createLinkPreview = (metadata, isCurrentUser) => {
     const previewContainer = document.createElement('div');
-    previewContainer.className = 'mt-2 border dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-200';
-    previewContainer.style.maxWidth = '300px';
+    previewContainer.className = `w-full rounded-lg overflow-hidden bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow duration-200 ${
+        isCurrentUser ? 'border-blue-400/20' : 'border-gray-200 dark:border-gray-700'
+    } border`;
 
     const content = document.createElement('a');
     content.href = metadata.url;
@@ -116,7 +191,7 @@ const createLinkPreview = (metadata) => {
     // Thumbnail section
     if (metadata.image) {
         const thumbnailContainer = document.createElement('div');
-        thumbnailContainer.className = 'relative w-full h-40 bg-gray-100 dark:bg-gray-700';
+        thumbnailContainer.className = 'relative w-full aspect-[1.91/1] bg-gray-100 dark:bg-gray-700';
         
         const img = document.createElement('img');
         img.src = metadata.image;
@@ -134,13 +209,11 @@ const createLinkPreview = (metadata) => {
             </svg>
         `;
         
-        // Handle image load
         img.onload = () => {
             img.style.opacity = '1';
             loadingOverlay.remove();
         };
         
-        // Handle image error
         img.onerror = () => {
             thumbnailContainer.remove();
         };
@@ -152,18 +225,22 @@ const createLinkPreview = (metadata) => {
 
     // Text content section
     const textContent = document.createElement('div');
-    textContent.className = 'p-3 space-y-2';
+    textContent.className = 'p-4 space-y-2';
 
     if (metadata.title) {
         const title = document.createElement('h3');
-        title.className = 'text-sm font-medium text-gray-900 dark:text-white line-clamp-2';
+        title.className = `text-sm font-medium ${
+            isCurrentUser ? 'text-white' : 'text-gray-900 dark:text-white'
+        } line-clamp-2`;
         title.textContent = metadata.title;
         textContent.appendChild(title);
     }
 
     // Domain section with favicon
     const domainInfo = document.createElement('div');
-    domainInfo.className = 'flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400';
+    domainInfo.className = `flex items-center gap-1.5 text-xs ${
+        isCurrentUser ? 'text-blue-200' : 'text-gray-500 dark:text-gray-400'
+    }`;
     
     const favicon = document.createElement('img');
     favicon.src = metadata.favicon;
@@ -183,89 +260,21 @@ const createLinkPreview = (metadata) => {
     return previewContainer;
 };
 
-// Update the message content creation part in createMessageElement
-const updateMessageContentWithLinks = (msg, isCurrentUser) => {
-    const messageContent = document.createElement("div");
-    messageContent.className = "message-content break-words";
-
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const urls = msg.match(urlRegex);
-    
-    if (urls) {
-        // Split message into text and links
-        let lastIndex = 0;
-        const fragments = [];
-        
-        urls.forEach(url => {
-            const index = msg.indexOf(url, lastIndex);
-            if (index > lastIndex) {
-                fragments.push(document.createTextNode(msg.substring(lastIndex, index)));
-            }
-            
-            const link = document.createElement('a');
-            link.href = url;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.className = `${isCurrentUser ? 'text-blue-200' : 'text-blue-500'} hover:underline`;
-            link.textContent = url;
-            fragments.push(link);
-            
-            lastIndex = index + url.length;
-        });
-        
-        if (lastIndex < msg.length) {
-            fragments.push(document.createTextNode(msg.substring(lastIndex)));
-        }
-        
-        fragments.forEach(fragment => messageContent.appendChild(fragment));
-
-        // Create preview container
-        const previewsContainer = document.createElement('div');
-        previewsContainer.className = 'mt-2 space-y-2';
-
-        // Process each URL for preview
-        urls.forEach(url => {
-            // Add loading state
-            const loadingPreview = createLoadingPreview();
-            previewsContainer.appendChild(loadingPreview);
-
-            // Fetch and replace with actual preview
-            fetchLinkPreview(url)
-                .then(metadata => {
-                    if (metadata) {
-                        const preview = createLinkPreview(metadata);
-                        loadingPreview.replaceWith(preview);
-                    } else {
-                        loadingPreview.remove();
-                    }
-                })
-                .catch(() => loadingPreview.remove());
-        });
-
-        return { messageContent, previewsContainer };
-    }
-
-    messageContent.textContent = msg;
-    return { messageContent };
-};
-
-// Helper function to create loading preview
 const createLoadingPreview = () => {
     const loadingPreview = document.createElement('div');
-    loadingPreview.className = 'border dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 animate-pulse';
-    loadingPreview.style.maxWidth = '300px';
+    loadingPreview.className = 'w-full border dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800 animate-pulse';
 
     const loadingContent = document.createElement('div');
     loadingContent.className = 'space-y-3';
 
     // Loading thumbnail
     const loadingThumbnail = document.createElement('div');
-    loadingThumbnail.className = 'w-full h-40 bg-gray-200 dark:bg-gray-700';
+    loadingThumbnail.className = 'w-full aspect-[1.91/1] bg-gray-200 dark:bg-gray-700';
     loadingContent.appendChild(loadingThumbnail);
 
     // Loading text content
     const textContent = document.createElement('div');
-    textContent.className = 'p-3 space-y-2';
+    textContent.className = 'p-4 space-y-2';
 
     // Loading title
     const loadingTitle = document.createElement('div');
