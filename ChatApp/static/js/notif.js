@@ -74,31 +74,28 @@ class NotificationManager {
             if (permission !== 'granted') {
                 throw new Error('Notification permission denied');
             }
-
-            const token = await getToken(this.messaging, { 
-                vapidKey: 'BFF7GvyyBdEKRjSCNeDKIB0U85iGp7-wUm-mtV7GmBgq5FHqsQmcxTWe9QElWuwhdZEZ6xhGMcCRSreeAq-XSlE' 
-            });
-
-            if (!token) {
-                throw new Error('No registration token available');
+    
+            // Register service worker if not already registered
+            if ('serviceWorker' in navigator) {
+                const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+                    scope: '/'
+                });
+    
+                // Wait for the service worker to be ready
+                await navigator.serviceWorker.ready;
+                console.log("Registered again :)");
+    
+                const token = await getToken(this.messaging, {
+                    vapidKey: 'BFF7GvyyBdEKRjSCNeDKIB0U85iGp7-wUm-mtV7GmBgq5FHqsQmcxTWe9QElWuwhdZEZ6xhGMcCRSreeAq-XSlE',
+                    serviceWorkerRegistration: registration
+                });
+    
+                if (!token) {
+                    throw new Error('No registration token available');
+                }
+    
+                // Rest of your token registration code...
             }
-
-            // Register token with backend
-            const response = await fetch('/register-fcm-token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to register token with server');
-            }
-
-            // Update settings
-            this.settings.enabled = true;
-            await this.updateSettings(this.settings);
-            this.updateNotificationButton(true);
-
         } catch (error) {
             console.error('Error enabling notifications:', error);
             throw error;
