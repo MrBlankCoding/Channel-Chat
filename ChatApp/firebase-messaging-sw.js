@@ -10,7 +10,8 @@ const firebaseConfig = {
   projectId: "channelchat-7d679",
   storageBucket: "channelchat-7d679.appspot.com",
   messagingSenderId: "822894243205",
-  appId: "1:822894243205:web:e129bcac94601e183e68ec"
+  appId: "1:822894243205:web:8c8b1648fece9ae33e68ec",
+  measurementId: "G-W4NJ28ZYC6"
 };
 
 // Initialize Firebase

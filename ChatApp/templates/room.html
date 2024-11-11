@@ -5,6 +5,12 @@
 <aside class="w-80 bg-white dark:bg-gray-800 shadow-lg h-full flex flex-col transition-all duration-300 ease-in-out" id="sidebar">
    <!-- Sidebar Header -->
    <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+      <a href="{{ url_for('home') }}" 
+      class="inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+      <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+      </svg>
+   </a>   
       <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
       <button onclick="openRoomModal()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none transition-colors" aria-label="Room Actions">
          <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -228,6 +234,12 @@
                <line x1="22" y1="11" x2="16" y2="11"/>
             </svg>
          </button>
+         <button id="toggle-notifications" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+         </button>
          <!-- Action buttons -->
          <div class="flex items-center gap-1">
             <a href="{{ url_for('room_settings', room_code=code) }}" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
@@ -406,6 +418,7 @@
 </div>
 <input type="hidden" id="username" value="{{ session.get('name') }}">
 <script type="module" defer src="{{ url_for('static', filename='js/chat.js') }}"></script>
+<script type="module" defer src="{{ url_for('static', filename='js/notif.js') }}"></script>
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 <script>
    const imageModal = document.getElementById('imageModal');

@@ -12,14 +12,14 @@ import {
 
 // Your Firebase configuration (replace with your actual values)
 const firebaseConfig = {
-  apiKey: "AIzaSyCjJzQGCZ0niMD5tek_0gLSBGJXxW0VLKA",
-  authDomain: "channelchat-7d679.firebaseapp.com",
-  projectId: "channelchat-7d679",
-  storageBucket: "channelchat-7d679.appspot.com",
-  messagingSenderId: "822894243205",
-  appId: "1:822894243205:web:e129bcac94601e183e68ec",
-  measurementId: "G-PL15EEFQDE"
-};
+    apiKey: "AIzaSyCjJzQGCZ0niMD5tek_0gLSBGJXxW0VLKA",
+    authDomain: "channelchat-7d679.firebaseapp.com",
+    projectId: "channelchat-7d679",
+    storageBucket: "channelchat-7d679.appspot.com",
+    messagingSenderId: "822894243205",
+    appId: "1:822894243205:web:8c8b1648fece9ae33e68ec",
+    measurementId: "G-W4NJ28ZYC6"
+  };
 
 const LINKPREVIEW_API_KEY = '1c04df7c16f6df68d9c4d8fb66c68a2e';
 const LINKPREVIEW_API_URL = 'https://api.linkpreview.net/';
