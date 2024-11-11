@@ -94,7 +94,22 @@ class NotificationManager {
                     throw new Error('No registration token available');
                 }
     
-                // Rest of your token registration code...
+                // Register token with backend
+                const response = await fetch('/register-fcm-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token })
+                });
+    
+                if (!response.ok) {
+                    throw new Error('Failed to register token with server');
+                }
+    
+                // Update settings
+                this.settings.enabled = true;
+                await this.updateSettings(this.settings);
+                this.updateNotificationButton(true);
+    
             }
         } catch (error) {
             console.error('Error enabling notifications:', error);
