@@ -4,7 +4,6 @@ import random
 import re
 import io
 from datetime import timedelta, datetime
-from string import ascii_uppercase
 import urllib.parse
 import ffmpeg
 from werkzeug.utils import secure_filename
@@ -83,7 +82,12 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 
 MAX_VIDEO_SIZE_MB = 50
-ALLOWED_VIDEO_TYPES = {'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'}
+ALLOWED_VIDEO_TYPES = {
+    "video/mp4",
+    "video/quicktime",
+    "video/x-msvideo",
+    "video/webm",
+}
 VIDEO_COMPRESS_CRF = 28  # Compression quality (0-51, lower is better quality)
 
 
@@ -121,13 +125,13 @@ def allowed_file(filename):
         in app.config["ALLOWED_IMAGE_TYPES"]
     )
 
+
 @app.route("/notification-settings", methods=["GET", "POST"])
 @login_required
 def notification_settings():
     if request.method == "GET":
         user = users_collection.find_one(
-            {"username": current_user.username}, 
-            {"notification_settings": 1}
+            {"username": current_user.username}, {"notification_settings": 1}
         )
         settings = user.get("notification_settings", {"enabled": False})
         return jsonify(settings)
@@ -137,11 +141,12 @@ def notification_settings():
             settings = request.json
             users_collection.update_one(
                 {"username": current_user.username},
-                {"$set": {"notification_settings": settings}}
+                {"$set": {"notification_settings": settings}},
             )
             return jsonify({"message": "Settings updated successfully"}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 400
+
 
 @app.route("/register-fcm-token", methods=["POST"])
 @login_required
@@ -155,7 +160,12 @@ def register_fcm_token():
             # Clear the FCM token
             users_collection.update_one(
                 {"username": current_user.username},
-                {"$unset": {"fcm_token": "", "notification_settings.enabled": ""}}
+                {
+                    "$unset": {
+                        "fcm_token": "",
+                        "notification_settings.enabled": "",
+                    }
+                },
             )
             return jsonify({"message": "Notification settings cleared"}), 200
 
@@ -165,7 +175,12 @@ def register_fcm_token():
         # Update the user's FCM token and enable notifications
         users_collection.update_one(
             {"username": current_user.username},
-            {"$set": {"fcm_token": fcm_token, "notification_settings.enabled": True}}
+            {
+                "$set": {
+                    "fcm_token": fcm_token,
+                    "notification_settings.enabled": True,
+                }
+            },
         )
 
         return jsonify({"message": "FCM token registered successfully"}), 200
@@ -192,7 +207,8 @@ def send_notification(recipient_username, sender_username, message_text):
         message = messaging.Message(
             notification=messaging.Notification(
                 title=f"New message from {sender_username}",
-                body=message_text[:100] + ("..." if len(message_text) > 100 else "")
+                body=message_text[:100]
+                + ("..." if len(message_text) > 100 else ""),
             ),
             token=fcm_token,
         )
@@ -381,9 +397,12 @@ def stop_heartbeat():
 
 def generate_unique_code():
     while True:
-        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        code = "".join(
+            random.choices(string.ascii_uppercase + string.digits, k=6)
+        )
         if not rooms_collection.find_one({"_id": code}):
             return code
+
 
 def get_user_data(username):
     """Get user data from MongoDB"""
@@ -1131,6 +1150,7 @@ def invite_to_room(username):
 
     return redirect(url_for("room"))
 
+
 @app.route("/accept_room_invite/<room_code>")
 @login_required
 def accept_room_invite(room_code):
@@ -1143,8 +1163,7 @@ def accept_room_invite(room_code):
 
     # Find the invite to get the sender's username before removing it
     invite = next(
-        (inv for inv in room_invites if inv["room"] == room_code),
-        None
+        (inv for inv in room_invites if inv["room"] == room_code), None
     )
 
     if not invite:
@@ -1172,7 +1191,8 @@ def accept_room_invite(room_code):
     sender_data = get_user_data(sender_username)
     if sender_data and "pending_invites" in sender_data:
         sender_data["pending_invites"] = [
-            inv for inv in sender_data["pending_invites"]
+            inv
+            for inv in sender_data["pending_invites"]
             if not (inv["username"] == username and inv["room"] == room_code)
         ]
         update_user_data(sender_username, sender_data)
@@ -1180,17 +1200,17 @@ def accept_room_invite(room_code):
     flash("Room invite accepted!")
     return redirect(url_for("room", code=room_code))
 
+
 @app.route("/decline_room_invite/<room_code>")
 @login_required
 def decline_room_invite(room_code):
     username = current_user.username
     user_data = get_user_data(username)
-    
+
     # Find the invite to get the sender's username before removing it
     room_invites = user_data.get("room_invites", [])
     invite = next(
-        (inv for inv in room_invites if inv["room"] == room_code),
-        None
+        (inv for inv in room_invites if inv["room"] == room_code), None
     )
 
     if not invite:
@@ -1210,13 +1230,15 @@ def decline_room_invite(room_code):
     sender_data = get_user_data(sender_username)
     if sender_data and "pending_invites" in sender_data:
         sender_data["pending_invites"] = [
-            inv for inv in sender_data["pending_invites"]
+            inv
+            for inv in sender_data["pending_invites"]
             if not (inv["username"] == username and inv["room"] == room_code)
         ]
         update_user_data(sender_username, sender_data)
 
     flash("Room invite declined.")
     return redirect(url_for("home"))
+
 
 @app.route("/join_friend_room/<friend_username>")
 @login_required
@@ -1250,6 +1272,7 @@ def join_friend_room(friend_username):
 
     return redirect(url_for("room"))
 
+
 @app.route("/delete_room/<room_code>")
 @login_required
 def delete_room(room_code):
@@ -1273,10 +1296,10 @@ def delete_room(room_code):
         try:
             ext = room_data["profile_photo"].split(".")[-1]
             profile_photo_path = f"room_profile_photos/{room_code}.{ext}"
-            
+
             bucket = storage.bucket()
             blob = bucket.blob(profile_photo_path)
-            
+
             if blob.exists():
                 blob.delete()
                 deleted_items += 1
@@ -1292,7 +1315,7 @@ def delete_room(room_code):
                 try:
                     image_path = message["image"].split("/o/")[1].split("?")[0]
                     image_path = urllib.parse.unquote(image_path)
-                    
+
                     blob = storage.bucket().blob(image_path)
                     if blob.exists():
                         blob.delete()
@@ -1300,13 +1323,13 @@ def delete_room(room_code):
                 except Exception as e:
                     failed_deletions += 1
                     print(f"Failed to delete image: {str(e)}")
-            
+
             # Handle videos
             if "video" in message and message["video"]:
                 try:
                     video_path = message["video"].split("/o/")[1].split("?")[0]
                     video_path = urllib.parse.unquote(video_path)
-                    
+
                     blob = storage.bucket().blob(video_path)
                     if blob.exists():
                         blob.delete()
@@ -1318,14 +1341,16 @@ def delete_room(room_code):
     # Remove room from all users
     users_collection.update_many(
         {"rooms": room_code},
-        {"$pull": {"rooms": room_code}, "$set": {"current_room": None}}
+        {"$pull": {"rooms": room_code}, "$set": {"current_room": None}},
     )
 
     # Delete the room
     rooms_collection.delete_one({"_id": room_code})
 
     if deleted_items > 0 or failed_deletions > 0:
-        flash(f"Room deleted. Successfully removed {deleted_items} media files. {failed_deletions} files failed to delete.")
+        flash(
+            f"Room deleted. Successfully removed {deleted_items} media files. {failed_deletions} files failed to delete."
+        )
     else:
         flash("Room successfully deleted.")
 
@@ -1514,10 +1539,11 @@ def get_message_type(message):
         return "text"
     return "unknown"
 
+
 def get_message_content(message):
     """Helper function to get appropriate message content based on type"""
     message_type = get_message_type(message)
-    
+
     if message_type == "video":
         return "📹 Video"
     elif message_type == "image":
@@ -1528,6 +1554,7 @@ def get_message_content(message):
         return message.get("message", "")
     return "Unknown message type"
 
+
 @app.route("/get_last_message/<room_code>")
 @login_required
 def get_last_message(room_code):
@@ -1535,38 +1562,44 @@ def get_last_message(room_code):
         room_data = rooms_collection.find_one({"_id": room_code})
         if not room_data or not room_data.get("messages"):
             return jsonify({"last_message": None})
-        
+
         last_message = room_data["messages"][-1]
-        
+
         message_content = get_message_content(last_message)
-            
-        return jsonify({
-            "last_message": {
-                "content": message_content,
-                "sender": last_message.get("name", ""),
-                "timestamp": last_message.get("timestamp", ""),
-                "type": get_message_type(last_message)
+
+        return jsonify(
+            {
+                "last_message": {
+                    "content": message_content,
+                    "sender": last_message.get("name", ""),
+                    "timestamp": last_message.get("timestamp", ""),
+                    "type": get_message_type(last_message),
+                }
             }
-        })
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 # In your room route, update the rooms_with_messages preparation:
 def prepare_room_message_data(room_info):
-    last_message = room_info["messages"][-1] if room_info.get("messages") else None
+    last_message = (
+        room_info["messages"][-1] if room_info.get("messages") else None
+    )
     if last_message:
         message_content = get_message_content(last_message)
         message_type = get_message_type(last_message)
     else:
         message_content = ""
         message_type = "none"
-    
+
     return {
         "content": message_content,
         "sender": last_message["name"] if last_message else "",
         "timestamp": last_message.get("timestamp", "") if last_message else "",
-        "type": message_type
+        "type": message_type,
     }
+
 
 @app.route("/room/", defaults={"code": None}, methods=["GET", "POST"])
 @app.route("/room/<code>", methods=["GET", "POST"])
@@ -1581,10 +1614,12 @@ def room(code):
             if not room_name:
                 flash("Room name is required")
                 return redirect(url_for("room", code=code))
-            
+
             # Generate a unique room code
-            new_room_code = generate_unique_code()  # You'll need to implement this function
-            
+            new_room_code = (
+                generate_unique_code()
+            )  # You'll need to implement this function
+
             # Create new room document
             new_room = {
                 "_id": new_room_code,
@@ -1592,60 +1627,59 @@ def room(code):
                 "users": [username],
                 "messages": [],
                 "created_by": username,
-                "created_at": datetime.utcnow()
+                "created_at": datetime.utcnow(),
             }
-            
+
             try:
                 # Insert the new room
                 rooms_collection.insert_one(new_room)
-                
+
                 # Add room to user's rooms list
                 users_collection.update_one(
                     {"username": username},
                     {
                         "$addToSet": {"rooms": new_room_code},
-                        "$set": {"current_room": new_room_code}
-                    }
+                        "$set": {"current_room": new_room_code},
+                    },
                 )
-                
+
                 session["room"] = new_room_code
                 return redirect(url_for("room", code=new_room_code))
-                
+
             except Exception as e:
                 flash(f"Error creating room: {str(e)}")
                 return redirect(url_for("room", code=code))
-                
+
         elif request.form.get("join"):
             join_code = request.form.get("code")
             if not join_code:
                 flash("Room code is required")
                 return redirect(url_for("room", code=code))
-                
+
             # Check if room exists
             join_room = rooms_collection.find_one({"_id": join_code})
             if not join_room:
                 flash("Room does not exist")
                 return redirect(url_for("room", code=code))
-                
+
             try:
                 # Add user to room's users list
                 rooms_collection.update_one(
-                    {"_id": join_code},
-                    {"$addToSet": {"users": username}}
+                    {"_id": join_code}, {"$addToSet": {"users": username}}
                 )
-                
+
                 # Add room to user's rooms list
                 users_collection.update_one(
                     {"username": username},
                     {
                         "$addToSet": {"rooms": join_code},
-                        "$set": {"current_room": join_code}
-                    }
+                        "$set": {"current_room": join_code},
+                    },
                 )
-                
+
                 session["room"] = join_code
                 return redirect(url_for("room", code=join_code))
-                
+
             except Exception as e:
                 flash(f"Error joining room: {str(e)}")
                 return redirect(url_for("room", code=code))
@@ -1704,16 +1738,20 @@ def room(code):
             if friend_data:
                 room_name = "Unknown Room"
                 if friend_data.get("current_room"):
-                    friend_room_data = get_room_data(friend_data["current_room"])
+                    friend_room_data = get_room_data(
+                        friend_data["current_room"]
+                    )
                     if friend_room_data:
                         room_name = friend_room_data.get("name", "Unnamed Room")
 
-                friends_data.append({
-                    "username": friend,
-                    "online": friend_data.get("online", False),
-                    "current_room": friend_data.get("current_room"),
-                    "room_name": room_name,
-                })
+                friends_data.append(
+                    {
+                        "username": friend,
+                        "online": friend_data.get("online", False),
+                        "current_room": friend_data.get("current_room"),
+                        "room_name": room_name,
+                    }
+                )
 
         # Prepare room data with last messages
         rooms_with_messages = []
@@ -1721,14 +1759,18 @@ def room(code):
             room_info = get_room_data(room_code)
             if room_info:
                 last_message_data = prepare_room_message_data(room_info)
-                rooms_with_messages.append({
-                    "code": room_code,
-                    "name": room_info.get("name", "Unnamed Room"),
-                    "profile_photo": room_info.get("profile_photo"),
-                    "users": room_info.get("users", []),
-                    "last_message": last_message_data,
-                    "unread_count": unread_messages.get(str(room_code), {}).get("unread_count", 0)
-                })
+                rooms_with_messages.append(
+                    {
+                        "code": room_code,
+                        "name": room_info.get("name", "Unnamed Room"),
+                        "profile_photo": room_info.get("profile_photo"),
+                        "users": room_info.get("users", []),
+                        "last_message": last_message_data,
+                        "unread_count": unread_messages.get(
+                            str(room_code), {}
+                        ).get("unread_count", 0),
+                    }
+                )
 
         return render_template(
             "room.html",
@@ -1747,6 +1789,7 @@ def room(code):
     except Exception as e:
         flash(f"Error loading room data: {str(e)}")
         return redirect(url_for("home"))
+
 
 @app.route("/exit_room/<code>")
 @login_required
@@ -1823,6 +1866,7 @@ def update_room_name(room_code):
     flash("Room name updated successfully.")
     return redirect(url_for("room", code=room_code))
 
+
 @app.route("/update_room_photo/<room_code>", methods=["POST"])
 @login_required
 def update_room_photo(room_code):
@@ -1853,10 +1897,12 @@ def update_room_photo(room_code):
 
         # Open the image using Pillow
         img = Image.open(photo)
-        
+
         # Convert the image to webp
         img = img.convert("RGB")  # Ensure it's in RGB mode for webp
-        img_byte_arr = io.BytesIO()  # Create a byte stream to save the image in memory
+        img_byte_arr = (
+            io.BytesIO()
+        )  # Create a byte stream to save the image in memory
         img.save(img_byte_arr, format="WEBP")  # Save as webp in the byte array
         img_byte_arr.seek(0)  # Move to the beginning of the byte array
 
@@ -1887,6 +1933,7 @@ def update_room_photo(room_code):
     except Exception as e:
         print(f"Error uploading room photo: {e}")
         return jsonify({"error": "Failed to upload photo"}), 500
+
 
 @socketio.on("toggle_reaction")
 def handle_reaction(data):
@@ -1964,48 +2011,55 @@ def handle_reaction(data):
     except Exception as e:
         print(f"Error emitting reaction update: {str(e)}")
 
+
 @app.route("/upload_video", methods=["POST"])
 @login_required
 def upload_video():
     if "video" not in request.files:
         return jsonify({"error": "No video file provided"}), 400
-    
+
     video = request.files["video"]
     if not is_valid_video(video):
-        return jsonify({"error": "Invalid video file or size exceeds 50MB"}), 400
-    
+        return (
+            jsonify({"error": "Invalid video file or size exceeds 50MB"}),
+            400,
+        )
+
     try:
         # Save original video temporarily
         with tempfile.NamedTemporaryFile(delete=False) as temp_input:
             video.save(temp_input.name)
-        
+
         # Compress and convert to WEBM
         output_path = compress_convert_video(temp_input.name)
-        
+
         # Upload to Firebase Storage
         filename = secure_filename(f"{str(ObjectId())}.webm")
         bucket = storage.bucket()
         blob = bucket.blob(f"room_videos/{filename}")
-        
+
         # Upload the processed video
         blob.upload_from_filename(output_path)
-        
+
         # Clean up temporary files
         os.unlink(temp_input.name)
         os.unlink(output_path)
-        
+
         # Generate public URL
         video_url = blob.generate_signed_url(timedelta(days=7))
-        
+
         return jsonify({"url": video_url})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
+
 def compress_convert_video(input_file):
     """Compress video and convert to WEBM format"""
-    with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as temp_output:
+    with tempfile.NamedTemporaryFile(
+        suffix=".webm", delete=False
+    ) as temp_output:
         output_path = temp_output.name
-        
+
     try:
         # Convert and compress video using ffmpeg
         stream = ffmpeg.input(input_file)
@@ -2013,38 +2067,45 @@ def compress_convert_video(input_file):
             stream,
             output_path,
             **{
-                'c:v': 'libvpx-vp9',  # VP9 codec for WEBM
-                'crf': VIDEO_COMPRESS_CRF,  # Compression quality
-                'b:v': '1M',  # Target bitrate
-                'maxrate': '1.5M',  # Maximum bitrate
-                'bufsize': '2M',  # Buffer size
-                'c:a': 'libopus',  # Audio codec
-                'b:a': '128k',  # Audio bitrate
-            }
+                "c:v": "libvpx-vp9",  # VP9 codec for WEBM
+                "crf": VIDEO_COMPRESS_CRF,  # Compression quality
+                "b:v": "1M",  # Target bitrate
+                "maxrate": "1.5M",  # Maximum bitrate
+                "bufsize": "2M",  # Buffer size
+                "c:a": "libopus",  # Audio codec
+                "b:a": "128k",  # Audio bitrate
+            },
         )
-        ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
-        
+        ffmpeg.run(
+            stream,
+            overwrite_output=True,
+            capture_stdout=True,
+            capture_stderr=True,
+        )
+
         return output_path
     except ffmpeg.Error as e:
         print(f"FFmpeg error: {e.stderr.decode()}")
         if os.path.exists(output_path):
             os.unlink(output_path)
         raise
-    
+
+
 def is_valid_video(file):
     """Check if file is a valid video and within size limits"""
     if not file:
         return False
-    
+
     # Check file size (50MB limit)
     file_size_mb = len(file.read()) / (1024 * 1024)
     file.seek(0)  # Reset file pointer
     if file_size_mb > MAX_VIDEO_SIZE_MB:
         return False
-    
+
     # Check MIME type using file extension
     file_type, _ = mimetypes.guess_type(file.name)
     return file_type in ALLOWED_VIDEO_TYPES
+
 
 @socketio.on("message")
 def message(data):
@@ -2053,17 +2114,39 @@ def message(data):
     if not room or not room_data:
         return
 
+    # Handle reply_to data structure
+    reply_to = None
+    if data.get("replyTo"):
+        if isinstance(data["replyTo"], dict):
+            reply_to = {
+                "id": data["replyTo"]["id"],
+                "message": data["replyTo"]["message"],
+            }
+        else:
+            original_message = rooms_collection.find_one(
+                {"_id": room, "messages.id": data["replyTo"]},
+                {"messages.$": 1}
+            )
+            if original_message and original_message.get("messages"):
+                reply_to = {
+                    "id": data["replyTo"],
+                    "message": original_message["messages"][0]["message"],
+                }
+
     content = {
         "id": str(ObjectId()),
         "name": current_user.username,
         "message": data["data"],
+        "reply_to": reply_to,
+        "read_by": [session.get("username")],
+        "image": data.get("image"),
+        "video": data.get("video"),  # Add video URL if present
+        "reactions": {},
         "timestamp": datetime.utcnow().isoformat()
     }
 
-    # Save message to room in the database
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
 
-    # Broadcast message to room
     send(content, to=room)
 
     # Notify all other users in the room
@@ -2073,7 +2156,12 @@ def message(data):
     for username in room_users:
         if username != sender_username:
             # Send a notification using the simplified send_notification function
-            send_notification(recipient_username=username, sender_username=sender_username, message_text=content["message"])
+            send_notification(
+                recipient_username=username,
+                sender_username=sender_username,
+                message_text=content["message"],
+            )
+
 
 @socketio.on("load_more_messages")
 def load_more_messages(data):
@@ -2294,7 +2382,7 @@ def get_unread_messages(username):
                 and message["name"] != username
             ):
                 unread_count += 1
-                
+
                 # Determine message content based on type
                 if "image" in message:
                     content = "📷 Image"
@@ -2304,7 +2392,7 @@ def get_unread_messages(username):
                     content = message["message"]
                 else:
                     content = "Unknown message type"
-                    
+
                 unread_msg_details.append(
                     {
                         "id": message["id"],
