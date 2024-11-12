@@ -2082,7 +2082,6 @@ def message(data):
         "video": data.get("video"),
         "reactions": {},
         "timestamp": datetime.utcnow().isoformat(),
-        "notification_sent": False,  # New field to track if notification was sent
     }
 
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
@@ -2123,42 +2122,11 @@ def check_and_notify(
 
     # If the recipient hasn't read the message after 5 seconds, send a notification
     if recipient_username not in message.get("read_by", []):
-        notification_sent = send_notification(
+        send_notification(
             recipient_username=recipient_username,
             sender_username=sender_username,
             message_text=message_text,
         )
-        
-        if notification_sent:
-            # Update the message to mark that a notification was sent
-            rooms_collection.update_one(
-                {"_id": room_id, "messages.id": message_id},
-                {"$set": {"messages.$.notification_sent": True}}
-            )
-
-
-def dismiss_notification(username, message_id):
-    try:
-        # Get user's FCM token
-        user = users_collection.find_one({"username": username})
-        if not user or not user.get("fcm_token"):
-            return False
-
-        # Create a message to dismiss the notification
-        message = messaging.Message(
-            data={
-                "dismiss_notification": "true",
-                "message_id": message_id
-            },
-            token=user["fcm_token"]
-        )
-
-        messaging.send(message)
-        return True
-
-    except Exception as e:
-        print(f"Error dismissing notification for {username}: {e}")
-        return False
 
 
 @socketio.on("mark_messages_read")
@@ -2167,27 +2135,6 @@ def mark_messages_read(data):
     username = current_user.username
     if not room or not username:
         return
-
-    # Get messages that will be marked as read and had notifications sent
-    messages_to_check = rooms_collection.find_one(
-        {
-            "_id": room,
-            "messages": {
-                "$elemMatch": {
-                    "id": {"$in": data["message_ids"]},
-                    "notification_sent": True,
-                    "read_by": {"$ne": username}
-                }
-            }
-        },
-        {"messages": {"$elemMatch": {"id": {"$in": data["message_ids"]}}}},
-    )
-
-    if messages_to_check and messages_to_check.get("messages"):
-        # Dismiss notifications for messages that had them
-        for message in messages_to_check["messages"]:
-            if message.get("notification_sent"):
-                dismiss_notification(username, message["id"])
 
     # Update the read status of messages in the room
     rooms_collection.update_many(
@@ -2215,6 +2162,7 @@ def mark_messages_read(data):
         },
         room=room,
     )
+
 
 def get_unread_messages(username):
     # Get the user's data
