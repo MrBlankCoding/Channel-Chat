@@ -1,95 +1,79 @@
 // firebase-messaging-sw.js
-// Hi :)
-// Firebase Messaging Service Worker
-importScripts('https://cdnjs.cloudflare.com/ajax/libs/firebase/9.12.1/firebase-app-compat.js');
-importScripts('https://cdnjs.cloudflare.com/ajax/libs/firebase/9.12.1/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
-// Your Firebase configuration object
-const firebaseConfig = {
+firebase.initializeApp({
     apiKey: "AIzaSyCjJzQGCZ0niMD5tek_0gLSBGJXxW0VLKA",
     authDomain: "channelchat-7d679.firebaseapp.com",
     projectId: "channelchat-7d679",
     storageBucket: "channelchat-7d679.appspot.com",
     messagingSenderId: "822894243205",
-    appId: "1:822894243205:web:8c8b1648fece9ae33e68ec",
-    measurementId: "G-W4NJ28ZYC6"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-
-// Initialize Firebase Cloud Messaging
-const messaging = firebase.messaging();
-
-// Handle background messages
-messaging.onBackgroundMessage((payload) => {
-    console.log('Received background message:', payload);
-
-    const notificationTitle = payload.notification.title;
-    const notificationOptions = {
-        body: payload.notification.body,
-        icon: '/static/images/chat-icon.png', // Replace with path to your notification icon
-        badge: '/static/images/recent-chats-icon.png', // Replace with path to your notification badge
-        data: payload.data,
-        actions: [
-            {
-                action: 'open_chat',
-                title: 'Open Chat'
-            }
-        ]
-    };
-
-    return self.registration.showNotification(notificationTitle, notificationOptions);
+    appId: "1:822894243205:web:8c8b1648fece9ae33e68ec"
 });
 
-// Handle notification click
-self.addEventListener('notificationclick', (event) => {
-    console.log('Notification clicked:', event);
+const messaging = firebase.messaging();
 
-    event.notification.close();
+// Check if any window clients are focused
+async function isAppActive() {
+    const windowClients = await clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true
+    });
+    return windowClients.some(client => client.focused);
+}
 
-    // This looks to see if the current is already open and focuses if it is
-    event.waitUntil(
-        clients.matchAll({
-            type: "window",
+// Handle background messages
+messaging.onBackgroundMessage(async (payload) => {
+    // Check if app is active
+    const appIsActive = await isAppActive();
+    
+    if (appIsActive) {
+        // If app is active, forward the message to the client
+        const windowClients = await clients.matchAll({
+            type: 'window',
             includeUncontrolled: true
-        })
-        .then((clientList) => {
+        });
+        
+        windowClients.forEach(client => {
+            client.postMessage({
+                type: 'notification',
+                payload
+            });
+        });
+        
+        // Don't show the notification if app is active
+        return;
+    }
+    
+    // If app is not active, show the notification
+    const { title, body, icon } = payload.notification;
+    
+    const options = {
+        body,
+        icon: icon || '/path/to/icon.png',
+        badge: '/path/to/badge.png',
+        vibrate: [200, 100, 200],
+        tag: 'message-notification'
+    };
+
+    return self.registration.showNotification(title, options);
+});
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    
+    // Focus on existing window or open a new one
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then(clientList => {
             for (const client of clientList) {
                 if (client.url && 'focus' in client) {
                     return client.focus();
                 }
             }
-            // If no window is already open, open a new one
             if (clients.openWindow) {
                 return clients.openWindow('/');
             }
         })
     );
 });
-
-// Handle push events
-self.addEventListener('push', (event) => {
-    console.log('Push received:', event);
-
-    if (event.data) {
-        const data = event.data.json();
-        const options = {
-            body: data.notification.body,
-            icon: '/static/images/chat-icon.png', // Replace with path to your notification icon
-            badge: '/static/images/recent-chats-icon.png', // Replace with path to your notification badge
-            data: data.data,
-            actions: [
-                {
-                    action: 'open_chat',
-                    title: 'Open Chat'
-                }
-            ]
-        };
-
-        event.waitUntil(
-            self.registration.showNotification(data.notification.title, options)
-        );
-    }
-});
-// Add the photo caches here
