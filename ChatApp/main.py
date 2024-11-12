@@ -5,9 +5,9 @@ import re
 import io
 from datetime import timedelta, datetime
 import urllib.parse
-import ffmpeg
-from werkzeug.utils import secure_filename
+import string
 import tempfile
+import mimetypes
 
 # Third-party library imports
 from flask import (
@@ -33,21 +33,19 @@ from flask_login import (
 from firebase_admin import credentials, messaging, storage
 import firebase_admin
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
-from PIL import Image
 from pymongo import MongoClient
 from fuzzywuzzy import fuzz
 from bson import ObjectId
-import mimetypes
-import string
+import ffmpeg
+from PIL import Image
 
 load_dotenv()
 
 cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(
-    cred, {"storageBucket": "channelchat-7d679.appspot.com"}
-)
+firebase_admin.initialize_app(cred, {"storageBucket": "channelchat-7d679.appspot.com"})
 
 app = Flask(__name__)
 scheduler = BackgroundScheduler()
@@ -121,8 +119,7 @@ def datetime_to_iso(dt):
 def allowed_file(filename):
     return (
         "." in filename
-        and filename.rsplit(".", 1)[1].lower()
-        in app.config["ALLOWED_IMAGE_TYPES"]
+        and filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_IMAGE_TYPES"]
     )
 
 
@@ -207,8 +204,7 @@ def send_notification(recipient_username, sender_username, message_text):
         message = messaging.Message(
             notification=messaging.Notification(
                 title=f"New message from {sender_username}",
-                body=message_text[:100]
-                + ("..." if len(message_text) > 100 else ""),
+                body=message_text[:100] + ("..." if len(message_text) > 100 else ""),
             ),
             token=fcm_token,
         )
@@ -346,9 +342,7 @@ def default_profile():
 # Set up the background scheduler
 def check_inactive_users():
     threshold = datetime.utcnow() - timedelta(minutes=5)
-    inactive_users = heartbeats_collection.find(
-        {"last_heartbeat": {"$lt": threshold}}
-    )
+    inactive_users = heartbeats_collection.find({"last_heartbeat": {"$lt": threshold}})
 
     for user in inactive_users:
         users_collection.update_one(
@@ -359,9 +353,7 @@ def check_inactive_users():
 
 def start_scheduler():
     if not scheduler.running:
-        scheduler.add_job(
-            func=check_inactive_users, trigger="interval", minutes=1
-        )
+        scheduler.add_job(func=check_inactive_users, trigger="interval", minutes=1)
         scheduler.start()
 
 
@@ -378,9 +370,7 @@ def heartbeat():
         {"$set": {"last_heartbeat": datetime.utcnow()}},
         upsert=True,
     )
-    users_collection.update_one(
-        {"username": username}, {"$set": {"online": True}}
-    )
+    users_collection.update_one({"username": username}, {"$set": {"online": True}})
     return "", 204
 
 
@@ -389,17 +379,13 @@ def heartbeat():
 def stop_heartbeat():
     username = current_user.username
     heartbeats_collection.delete_one({"username": username})
-    users_collection.update_one(
-        {"username": username}, {"$set": {"online": False}}
-    )
+    users_collection.update_one({"username": username}, {"$set": {"online": False}})
     return "", 204
 
 
 def generate_unique_code():
     while True:
-        code = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=6)
-        )
+        code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
         if not rooms_collection.find_one({"_id": code}):
             return code
 
@@ -533,9 +519,7 @@ def logout():
     heartbeats_collection.delete_one({"username": username})
 
     # Update user's online status
-    users_collection.update_one(
-        {"username": username}, {"$set": {"online": False}}
-    )
+    users_collection.update_one({"username": username}, {"$set": {"online": False}})
 
     logout_user()
     flash("You have been logged out.")
@@ -595,9 +579,7 @@ def delete_account():
             for message in room["messages"]:
                 if "image" in message and message["image"]:
                     try:
-                        image_path = (
-                            message["image"].split("/o/")[1].split("?")[0]
-                        )
+                        image_path = message["image"].split("/o/")[1].split("?")[0]
                         image_path = urllib.parse.unquote(image_path)
 
                         blob = storage.bucket().blob(image_path)
@@ -932,9 +914,7 @@ def search_users():
         return jsonify([])
 
     # Get current user's data for exclusion list
-    current_user_data = users_collection.find_one(
-        {"username": current_user.username}
-    )
+    current_user_data = users_collection.find_one({"username": current_user.username})
     friends_list = current_user_data.get("friends", [])
 
     # First, get all eligible users (excluding current user and friends)
@@ -953,15 +933,12 @@ def search_users():
     # If it's just one character, only match first letter
     if len(query) == 1:
         matching_users = [
-            user
-            for user in all_users
-            if user["username"].lower().startswith(query)
+            user for user in all_users if user["username"].lower().startswith(query)
         ]
     else:
         # For longer queries, use fuzzy matching
         username_matches = [
-            (user, fuzz.ratio(query, user["username"].lower()))
-            for user in all_users
+            (user, fuzz.ratio(query, user["username"].lower())) for user in all_users
         ]
 
         # Filter based on different criteria depending on query length
@@ -972,9 +949,7 @@ def search_users():
                 if score > 50 or user["username"].lower().startswith(query)
             ]
         else:
-            matching_users = [
-                user for user, score in username_matches if score > 70
-            ]
+            matching_users = [user for user, score in username_matches if score > 70]
 
         # Sort by similarity score
         matching_users.sort(
@@ -1054,9 +1029,7 @@ def cancel_room_invite(username, room_code):
     # Remove the invite from their room_invites
     if "room_invites" in friend_data:
         friend_data["room_invites"] = [
-            inv
-            for inv in friend_data["room_invites"]
-            if inv.get("room") != room_code
+            inv for inv in friend_data["room_invites"] if inv.get("room") != room_code
         ]
         update_user_data(username, friend_data)
 
@@ -1114,11 +1087,7 @@ def invite_to_room(username):
 
     # Check if invite already exists
     existing_invite = next(
-        (
-            inv
-            for inv in friend_data["room_invites"]
-            if inv.get("room") == current_room
-        ),
+        (inv for inv in friend_data["room_invites"] if inv.get("room") == current_room),
         None,
     )
 
@@ -1162,9 +1131,7 @@ def accept_room_invite(room_code):
     room_invites = user_data.get("room_invites", [])
 
     # Find the invite to get the sender's username before removing it
-    invite = next(
-        (inv for inv in room_invites if inv["room"] == room_code), None
-    )
+    invite = next((inv for inv in room_invites if inv["room"] == room_code), None)
 
     if not invite:
         flash("Room invite not found or already accepted.")
@@ -1209,9 +1176,7 @@ def decline_room_invite(room_code):
 
     # Find the invite to get the sender's username before removing it
     room_invites = user_data.get("room_invites", [])
-    invite = next(
-        (inv for inv in room_invites if inv["room"] == room_code), None
-    )
+    invite = next((inv for inv in room_invites if inv["room"] == room_code), None)
 
     if not invite:
         flash("Room invite not found or already declined.")
@@ -1380,9 +1345,7 @@ def handle_room_operation(username, code, create, join):
             return redirect(url_for("home"))
 
         # Add user to the room's user list only if they're not already in it
-        rooms_collection.update_one(
-            {"_id": code}, {"$addToSet": {"users": username}}
-        )
+        rooms_collection.update_one({"_id": code}, {"$addToSet": {"users": username}})
 
     session["room"] = room
     session["name"] = username
@@ -1450,14 +1413,10 @@ def search_messages(room_code):
 
     # Search messages
     matching_messages = [
-        msg
-        for msg in room_data["messages"]
-        if query in msg.get("message", "").lower()
+        msg for msg in room_data["messages"] if query in msg.get("message", "").lower()
     ]
 
-    return jsonify(
-        {"messages": matching_messages[-50:]}
-    )  # Return last 50 matches
+    return jsonify({"messages": matching_messages[-50:]})  # Return last 50 matches
 
 
 @app.route("/kick_user/<room_code>/<username>", methods=["POST"])
@@ -1471,9 +1430,7 @@ def kick_user(room_code, username):
 
     if room_data["created_by"] != current_username:
         return (
-            jsonify(
-                {"success": False, "message": "Only room owner can kick users"}
-            ),
+            jsonify({"success": False, "message": "Only room owner can kick users"}),
             403,
         )
 
@@ -1493,9 +1450,7 @@ def kick_user(room_code, username):
         return jsonify({"success": False, "message": "User not in room"}), 404
 
     # Remove user from room
-    rooms_collection.update_one(
-        {"_id": room_code}, {"$pull": {"users": username}}
-    )
+    rooms_collection.update_one({"_id": room_code}, {"$pull": {"users": username}})
 
     # Update kicked user's data
     users_collection.update_one(
@@ -1583,9 +1538,7 @@ def get_last_message(room_code):
 
 # In your room route, update the rooms_with_messages preparation:
 def prepare_room_message_data(room_info):
-    last_message = (
-        room_info["messages"][-1] if room_info.get("messages") else None
-    )
+    last_message = room_info["messages"][-1] if room_info.get("messages") else None
     if last_message:
         message_content = get_message_content(last_message)
         message_type = get_message_type(last_message)
@@ -1738,9 +1691,7 @@ def room(code):
             if friend_data:
                 room_name = "Unknown Room"
                 if friend_data.get("current_room"):
-                    friend_room_data = get_room_data(
-                        friend_data["current_room"]
-                    )
+                    friend_room_data = get_room_data(friend_data["current_room"])
                     if friend_room_data:
                         room_name = friend_room_data.get("name", "Unnamed Room")
 
@@ -1766,9 +1717,9 @@ def room(code):
                         "profile_photo": room_info.get("profile_photo"),
                         "users": room_info.get("users", []),
                         "last_message": last_message_data,
-                        "unread_count": unread_messages.get(
-                            str(room_code), {}
-                        ).get("unread_count", 0),
+                        "unread_count": unread_messages.get(str(room_code), {}).get(
+                            "unread_count", 0
+                        ),
                     }
                 )
 
@@ -1827,9 +1778,7 @@ def exit_room(code):
         "type": "system",
         "read_by": room_data["users"],  # Mark as read by all current users
     }
-    rooms_collection.update_one(
-        {"_id": code}, {"$push": {"messages": system_message}}
-    )
+    rooms_collection.update_one({"_id": code}, {"$push": {"messages": system_message}})
 
     # Emit the system message to all users in the room
     socketio.emit("message", system_message, to=code)
@@ -1859,9 +1808,7 @@ def update_room_name(room_code):
         return redirect(url_for("room", code=room_code))
 
     # Update room name
-    rooms_collection.update_one(
-        {"_id": room_code}, {"$set": {"name": new_name}}
-    )
+    rooms_collection.update_one({"_id": room_code}, {"$set": {"name": new_name}})
 
     flash("Room name updated successfully.")
     return redirect(url_for("room", code=room_code))
@@ -1900,9 +1847,7 @@ def update_room_photo(room_code):
 
         # Convert the image to webp
         img = img.convert("RGB")  # Ensure it's in RGB mode for webp
-        img_byte_arr = (
-            io.BytesIO()
-        )  # Create a byte stream to save the image in memory
+        img_byte_arr = io.BytesIO()  # Create a byte stream to save the image in memory
         img.save(img_byte_arr, format="WEBP")  # Save as webp in the byte array
         img_byte_arr.seek(0)  # Move to the beginning of the byte array
 
@@ -1983,8 +1928,7 @@ def handle_reaction(data):
                 "$set": {
                     f"messages.$[msg].reactions.{emoji}": {
                         "count": current_emoji_data.get("count", 0) + 1,
-                        "users": current_emoji_data.get("users", [])
-                        + [username],
+                        "users": current_emoji_data.get("users", []) + [username],
                     }
                 }
             },
@@ -2002,9 +1946,7 @@ def handle_reaction(data):
                 "update_reactions",
                 {
                     "messageId": message_id,
-                    "reactions": updated_message["messages"][0].get(
-                        "reactions", {}
-                    ),
+                    "reactions": updated_message["messages"][0].get("reactions", {}),
                 },
                 room=room,
             )
@@ -2055,9 +1997,7 @@ def upload_video():
 
 def compress_convert_video(input_file):
     """Compress video and convert to WEBM format"""
-    with tempfile.NamedTemporaryFile(
-        suffix=".webm", delete=False
-    ) as temp_output:
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_output:
         output_path = temp_output.name
 
     try:
@@ -2124,8 +2064,7 @@ def message(data):
             }
         else:
             original_message = rooms_collection.find_one(
-                {"_id": room, "messages.id": data["replyTo"]},
-                {"messages.$": 1}
+                {"_id": room, "messages.id": data["replyTo"]}, {"messages.$": 1}
             )
             if original_message and original_message.get("messages"):
                 reply_to = {
@@ -2140,27 +2079,151 @@ def message(data):
         "reply_to": reply_to,
         "read_by": [session.get("username")],
         "image": data.get("image"),
-        "video": data.get("video"),  # Add video URL if present
+        "video": data.get("video"),
         "reactions": {},
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
 
     send(content, to=room)
 
-    # Notify all other users in the room
+    # Schedule delayed notifications for all other users in the room
     sender_username = current_user.username
     room_users = room_data["users"]
 
     for username in room_users:
         if username != sender_username:
-            # Send a notification using the simplified send_notification function
-            send_notification(
+            # Schedule a delayed notification check
+            socketio.start_background_task(
+                check_and_notify,
+                message_id=content["id"],
+                room_id=room,
                 recipient_username=username,
                 sender_username=sender_username,
                 message_text=content["message"],
             )
+
+
+def check_and_notify(
+    message_id, room_id, recipient_username, sender_username, message_text
+):
+    # Wait for 5 seconds
+    socketio.sleep(5)
+
+    # Check if the message is still unread
+    room = rooms_collection.find_one({"_id": room_id})
+    if not room:
+        return
+
+    message = next((msg for msg in room["messages"] if msg["id"] == message_id), None)
+    if not message:
+        return
+
+    # If the recipient hasn't read the message after 5 seconds, send a notification
+    if recipient_username not in message.get("read_by", []):
+        send_notification(
+            recipient_username=recipient_username,
+            sender_username=sender_username,
+            message_text=message_text,
+        )
+
+
+@socketio.on("mark_messages_read")
+def mark_messages_read(data):
+    room = session.get("room")
+    username = current_user.username
+    if not room or not username:
+        return
+
+    # Update the read status of messages in the room
+    rooms_collection.update_many(
+        {
+            "_id": room,
+            "messages": {
+                "$elemMatch": {
+                    "id": {"$in": data["message_ids"]},
+                    "read_by": {"$ne": username},
+                }
+            },
+        },
+        {
+            "$addToSet": {"messages.$[elem].read_by": username},
+        },
+        array_filters=[{"elem.id": {"$in": data["message_ids"]}}],
+    )
+
+    # Emit an event to notify other users that messages have been read
+    socketio.emit(
+        "messages_read",
+        {
+            "reader": username,
+            "message_ids": data["message_ids"],
+        },
+        room=room,
+    )
+
+
+def get_unread_messages(username):
+    # Get the user's data
+    user = users_collection.find_one({"username": username})
+    if not user:
+        return {"error": "User not found"}
+
+    # Get all rooms the user is in
+    user_rooms = rooms_collection.find({"users": username})
+
+    unread_messages = {}
+
+    for room in user_rooms:
+        room_id = str(room["_id"])
+        unread_count = 0
+        unread_msg_details = []
+
+        for message in room["messages"]:
+            # Check if the message is not read by the user and not sent by the user
+            if (
+                username not in message.get("read_by", [])
+                and message["name"] != username
+            ):
+                unread_count += 1
+
+                # Determine message content based on type
+                if "image" in message:
+                    content = "📷 Image"
+                elif "file" in message:
+                    content = "📎 File"
+                elif "message" in message:
+                    content = message["message"]
+                else:
+                    content = "Unknown message type"
+
+                unread_msg_details.append(
+                    {
+                        "id": message["id"],
+                        "sender": message["name"],
+                        "content": content,
+                    }
+                )
+
+        if unread_count > 0:
+            unread_messages[room_id] = {
+                "unread_count": unread_count,
+                "messages": unread_msg_details,
+            }
+
+    return unread_messages
+
+
+@app.route("/get_unread_messages")
+@login_required
+def fetch_unread_messages():
+    username = current_user.username
+    if not username:
+        return jsonify({"error": "User not logged in"}), 401
+
+    unread_messages = get_unread_messages(username)
+    return jsonify(unread_messages)
 
 
 @socketio.on("load_more_messages")
@@ -2178,11 +2241,7 @@ def load_more_messages(data):
         return
 
     last_message_index = next(
-        (
-            i
-            for i, msg in enumerate(all_messages)
-            if msg["id"] == last_message_id
-        ),
+        (i for i, msg in enumerate(all_messages) if msg["id"] == last_message_id),
         None,
     )
 
@@ -2237,9 +2296,7 @@ def connect():
     )
 
     # Add user to the room's user list if not already present
-    rooms_collection.update_one(
-        {"_id": room}, {"$addToSet": {"users": username}}
-    )
+    rooms_collection.update_one({"_id": room}, {"$addToSet": {"users": username}})
 
     # If this is the user's first time joining, add a system message
     if is_first_join:
@@ -2249,9 +2306,7 @@ def connect():
             "name": "system",
             "message": f"{username} has joined the room for the first time",
             "type": "system",
-            "read_by": room_data.get(
-                "users", []
-            ),  # Mark as read by all current users
+            "read_by": room_data.get("users", []),  # Mark as read by all current users
         }
 
         # Add the system message to the room
@@ -2348,103 +2403,6 @@ def disconnect():
     socketio.emit("update_users", {"users": user_list}, room=room)
 
 
-@app.route("/get_unread_messages")
-@login_required
-def fetch_unread_messages():
-    username = current_user.username
-    if not username:
-        return jsonify({"error": "User not logged in"}), 401
-
-    unread_messages = get_unread_messages(username)
-    return jsonify(unread_messages)
-
-
-def get_unread_messages(username):
-    # Get the user's data
-    user = users_collection.find_one({"username": username})
-    if not user:
-        return {"error": "User not found"}
-
-    # Get all rooms the user is in
-    user_rooms = rooms_collection.find({"users": username})
-
-    unread_messages = {}
-
-    for room in user_rooms:
-        room_id = str(room["_id"])
-        unread_count = 0
-        unread_msg_details = []
-
-        for message in room["messages"]:
-            # Check if the message is not read by the user and not sent by the user
-            if (
-                username not in message.get("read_by", [])
-                and message["name"] != username
-            ):
-                unread_count += 1
-
-                # Determine message content based on type
-                if "image" in message:
-                    content = "📷 Image"
-                elif "file" in message:
-                    content = "📎 File"
-                elif "message" in message:
-                    content = message["message"]
-                else:
-                    content = "Unknown message type"
-
-                unread_msg_details.append(
-                    {
-                        "id": message["id"],
-                        "sender": message["name"],
-                        "content": content,
-                    }
-                )
-
-        if unread_count > 0:
-            unread_messages[room_id] = {
-                "unread_count": unread_count,
-                "messages": unread_msg_details,
-            }
-
-    return unread_messages
-
-
-@socketio.on("mark_messages_read")
-def mark_messages_read(data):
-    room = session.get("room")
-    username = current_user.username
-    if not room or not username:
-        return
-
-    # Update the read status of messages in the room
-    rooms_collection.update_many(
-        {
-            "_id": room,
-            "messages": {
-                "$elemMatch": {
-                    "id": {"$in": data["message_ids"]},
-                    "read_by": {"$ne": username},
-                }
-            },
-        },
-        {
-            "$addToSet": {"messages.$[elem].read_by": username},
-        },
-        array_filters=[{"elem.id": {"$in": data["message_ids"]}}],
-    )
-
-    # Emit an event to notify other users that messages have been read
-    socketio.emit(
-        "messages_read",
-        {
-            "reader": username,
-            "message_ids": data["message_ids"],
-        },
-        room=room,
-    )
-
-
 @socketio.on("edit_message")
 def edit_message(data):
     room = session.get("room")
@@ -2494,9 +2452,7 @@ def delete_message(data):
     )
 
     if result.modified_count:
-        socketio.emit(
-            "delete_message", {"messageId": data["messageId"]}, room=room
-        )
+        socketio.emit("delete_message", {"messageId": data["messageId"]}, room=room)
 
 
 @socketio.on("typing")
@@ -2532,6 +2488,4 @@ if __name__ == "__main__":
         rooms_collection.create_index([("messages.id", 1)])
 
     port = int(os.environ.get("PORT", 5002))
-    socketio.run(
-        app, debug=True, allow_unsafe_werkzeug=True, host="0.0.0.0", port=port
-    )
+    socketio.run(app, debug=True, allow_unsafe_werkzeug=True, host="0.0.0.0", port=port)
