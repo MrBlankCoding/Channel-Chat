@@ -13,52 +13,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Check if any window clients are focused
-async function isAppActive() {
-    const windowClients = await clients.matchAll({
-        type: 'window',
-        includeUncontrolled: true
-    });
-    return windowClients.some(client => client.focused);
-}
-
-// Handle background messages
-messaging.onBackgroundMessage(async (payload) => {
-    // Check if app is active
-    const appIsActive = await isAppActive();
-    
-    if (appIsActive) {
-        // If app is active, forward the message to the client
-        const windowClients = await clients.matchAll({
-            type: 'window',
-            includeUncontrolled: true
-        });
-        
-        windowClients.forEach(client => {
-            client.postMessage({
-                type: 'notification',
-                payload
-            });
-        });
-        
-        // Don't show the notification if app is active
-        return;
-    }
-    
-    // If app is not active, show the notification
-    const { title, body, icon } = payload.notification;
-    
-    const options = {
-        body,
-        icon: icon || '/path/to/icon.png',
-        badge: '/path/to/badge.png',
-        vibrate: [200, 100, 200],
-        tag: 'message-notification'
-    };
-
-    return self.registration.showNotification(title, options);
-});
-
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
