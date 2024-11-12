@@ -439,11 +439,17 @@ def check_inactive_users():
         )
         heartbeats_collection.delete_one({"_id": user["_id"]})
 
-
+def cleanup_old_notifications():
+    # Remove notifications older than 30 days
+    cutoff_date = datetime.utcnow() - timedelta(days=30)
+    notifications_collection.delete_many({
+        "timestamp": {"$lt": cutoff_date}
+    })
+    
 def start_scheduler():
     if not scheduler.running:
         scheduler.add_job(func=check_inactive_users, trigger="interval", minutes=1)
-        scheduler.add_job(cleanup_old_notifications, 'interval', days=1)
+        scheduler.add_job(func=cleanup_old_notifications, trigger='interval', days=1)
         scheduler.start()
 
 
@@ -2315,14 +2321,6 @@ def get_pending_notifications():
         notification["_id"] = str(notification["_id"])
         
     return jsonify(notifications)
-
-# New function to cleanup old notifications periodically
-def cleanup_old_notifications():
-    # Remove notifications older than 30 days
-    cutoff_date = datetime.utcnow() - timedelta(days=30)
-    notifications_collection.delete_many({
-        "timestamp": {"$lt": cutoff_date}
-    })
 
 
 def get_unread_messages(username):
