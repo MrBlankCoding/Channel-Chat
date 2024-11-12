@@ -1,22 +1,25 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="fixed inset-0 flex bg-gray-100 dark:bg-gray-900">
-<!-- Sidebar -->
-<aside class="w-80 bg-white dark:bg-gray-800 shadow-lg h-full flex flex-col transition-all duration-300 ease-in-out" id="sidebar">
-   <!-- Sidebar Header -->
-   <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-      <a href="{{ url_for('home') }}" 
-      class="inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-      <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-      </svg>
-   </a>   
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
-      <button onclick="openRoomModal()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none transition-colors" aria-label="Room Actions">
-         <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
+   <!-- Sidebar Overlay -->
+   <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+   
+   <!-- Sidebar -->
+   <aside id="sidebar" class="bg-white dark:bg-gray-800 shadow-lg flex flex-col">
+     <!-- Sidebar Header -->
+     <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+       <button onclick="toggleSidebar()" 
+         class="inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+         <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
          </svg>
-      </button>
+       </button>
+       <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
+       <button onclick="openRoomModal()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none transition-colors" aria-label="Room Actions">
+         <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+           <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
+         </svg>
+       </button>
    </div>
    <!-- Room Modal -->
    <div id="room-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="closeRoomModal()"></div>
@@ -393,7 +396,6 @@
       </button>
    </div>
 </div>
-<style></style>
 <div id="invite-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-auto">
       <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Invite Friends</h3>
@@ -895,8 +897,14 @@
     // Mobile sidebar toggle
     function toggleSidebar() {
       const sidebar = document.getElementById('sidebar');
-      sidebar.classList.toggle('hidden');
-   }
+      const overlay = document.getElementById('sidebar-overlay');
+      
+      sidebar.classList.toggle('active');
+      overlay.classList.toggle('active');
+      
+      // Prevent body scrolling when sidebar is open
+      document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+    }
    
    // Room Actions menu toggle
    function toggleRoomMenu() {
@@ -916,62 +924,93 @@
    });
 </script>
 <style>
-   /* Prevent body scrolling and ensure full viewport height */
    html, body {
-    height: 100%;
-    overflow: hidden;
-    position: fixed;
-    width: 100%;
-    touch-action: manipulation;
-    }
-    /* Sidebar styling */
-    #sidebar {
-    width: 25%;
-    min-width: 250px;
-    transition: transform 0.3s ease;
-    position: relative;
-    z-index: 10;
-    }
-    #sidebar.hidden {
-    transform: translateX(-100%);
-    }
-    /* Sidebar Overlay for Mobile */
-    #sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 9;
-    display: none;
-    }
-    /* Responsive Design */
-    @media (max-width: 768px) {
-    #sidebar {
-    width: 100%;
-    position: fixed;
-    transform: translateX(-100%);
-    }
-    #sidebar.active {
-    transform: translateX(0);
-    }
-    #sidebar-overlay {
-    display: block;
-    }
-    }
-    /* Tablet and Small Desktops */
-    @media (min-width: 769px) and (max-width: 1024px) {
-    #sidebar {
-    width: 20%;
-    max-width: 250px;
-    }
-    }
-    /* Large Screens */
-    @media (min-width: 1025px) {
-    #sidebar {
-    position: static;
-    width: 25%;
-    transform: none;
-    }
-    }
+     height: 100%;
+     overflow: hidden;
+     position: fixed;
+     width: 100%;
+     touch-action: manipulation;
+   }
+   
+   /* Sidebar base styles */
+   #sidebar {
+     height: 100vh;
+     height: -webkit-fill-available;
+     transition: all 0.3s ease-in-out;
+   }
+   
+   /* Main content area */
+   #main-content {
+     flex: 1;
+     transition: margin-left 0.3s ease-in-out;
+   }
+   
+   /* Mobile styles */
+   @media (max-width: 1023px) {
+     #sidebar {
+       position: fixed;
+       top: 0;
+       left: 0;
+       width: 100%;
+       transform: translateX(-100%);
+       z-index: 50;
+     }
+     
+     #sidebar.active {
+       transform: translateX(0);
+     }
+   }
+   
+   /* Desktop styles */
+   @media (min-width: 1024px) {
+     #sidebar {
+       width: 25%; /* Takes up 25% of the screen width */
+       min-width: 250px; /* Minimum width */
+       max-width: 400px; /* Maximum width */
+       position: relative;
+       transform: none;
+     }
+     
+     #sidebar.hidden {
+       margin-left: -25%; /* Slides out of view when hidden */
+     }
+     
+     #main-content {
+       margin-left: 25%; /* Matches sidebar width */
+     }
+     
+     #main-content.full-width {
+       margin-left: 0;
+     }
+   }
+   
+   /* Overlay styles */
+   #sidebar-overlay {
+     display: none;
+     position: fixed;
+     top: 0;
+     left: 0;
+     width: 100%;
+     height: 100%;
+     background-color: rgba(0, 0, 0, 0.5);
+     z-index: 40;
+     opacity: 0;
+     visibility: hidden;
+     transition: opacity 0.3s ease, visibility 0.3s ease;
+   }
+   
+   #sidebar-overlay.active {
+     opacity: 1;
+     visibility: visible;
+     display: block;
+   }
+   
+   /* Only show overlay on mobile */
+   @media (min-width: 1024px) {
+     #sidebar-overlay.active {
+       display: none;
+     }
+   }
     /* Modal Image */
     #modalImage {
     width: 100%;
