@@ -66,6 +66,7 @@ db = client["chat_app_db"]
 # Collections
 users_collection = db["users"]
 rooms_collection = db["rooms"]
+notifications_collection = db.notifications
 heartbeats_collection = db["heartbeats"]
 users_collection.create_index([("username", 1)], unique=True)
 users_collection.create_index([("friends", 1)])
@@ -186,7 +187,19 @@ def register_fcm_token():
         return jsonify({"error": str(e)}), 400
 
 
-def send_notification(recipient_username, sender_username, message_text):
+def send_notification(recipient_username, sender_username, message_text, notification_id=None):
+    """
+    Send a push notification to a user using Firebase Cloud Messaging (FCM).
+    
+    Args:
+        recipient_username: Username of the notification recipient
+        sender_username: Username of the message sender
+        message_text: Content of the message
+        notification_id: ID of the notification in our database (for tracking)
+    
+    Returns:
+        bool: True if notification was sent successfully, False otherwise
+    """
     recipient = users_collection.find_one({"username": recipient_username})
 
     if not recipient:
@@ -195,27 +208,103 @@ def send_notification(recipient_username, sender_username, message_text):
     settings = recipient.get("notification_settings", {})
     fcm_token = recipient.get("fcm_token")
 
-    # Only send notification if enabled
-    if not settings.get("enabled") or not fcm_token:
+    # Check notification settings and FCM token
+    if not settings.get("enabled", True) or not fcm_token:
         return False
 
     try:
-        # Simple notification content
+        # Truncate message text for notification
+        truncated_message = message_text[:100] + ("..." if len(message_text) > 100 else "")
+
+        # Create notification data payload
+        data = {
+            "type": "chat_message",
+            "sender": sender_username,
+            "notification_id": str(notification_id) if notification_id else None,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+        # Create FCM message
         message = messaging.Message(
             notification=messaging.Notification(
                 title=f"New message from {sender_username}",
-                body=message_text[:100] + ("..." if len(message_text) > 100 else ""),
+                body=truncated_message,
             ),
+            data=data,
             token=fcm_token,
+            android=messaging.AndroidConfig(
+                priority="high",
+                notification=messaging.AndroidNotification(
+                    channel_id="chat_messages"
+                )
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        sound="default",
+                        badge=1
+                    )
+                )
+            )
         )
 
-        messaging.send(message)
+        # Send FCM message
+        response = messaging.send(message)
+
+        # Update notification record with FCM message ID
+        if notification_id:
+            notifications_collection.update_one(
+                {"_id": ObjectId(notification_id)},
+                {
+                    "$set": {
+                        "fcm_message_id": response,
+                        "status": "sent",
+                        "sent_at": datetime.utcnow()
+                    }
+                }
+            )
+
         return True
 
-    except Exception as e:
-        print(f"Error sending notification to {recipient_username}: {e}")
+    except messaging.UnregisteredError:
+        # Handle invalid FCM token
+        users_collection.update_one(
+            {"username": recipient_username},
+            {"$unset": {"fcm_token": ""}}
+        )
         return False
 
+    except messaging.QuotaExceededError:
+        # Handle FCM quota exceeded
+        notifications_collection.update_one(
+            {"_id": ObjectId(notification_id)},
+            {
+                "$set": {
+                    "status": "failed",
+                    "error": "FCM quota exceeded",
+                    "failed_at": datetime.utcnow()
+                }
+            }
+        ) if notification_id else None
+        return False
+
+    except Exception as e:
+        # Log error and update notification status
+        error_message = str(e)
+        print(f"Error sending notification to {recipient_username}: {error_message}")
+        
+        if notification_id:
+            notifications_collection.update_one(
+                {"_id": ObjectId(notification_id)},
+                {
+                    "$set": {
+                        "status": "failed",
+                        "error": error_message,
+                        "failed_at": datetime.utcnow()
+                    }
+                }
+            )
+        return False
 
 @app.route("/firebase-messaging-sw.js")
 def serve_sw():
@@ -354,6 +443,7 @@ def check_inactive_users():
 def start_scheduler():
     if not scheduler.running:
         scheduler.add_job(func=check_inactive_users, trigger="interval", minutes=1)
+        scheduler.add_job(cleanup_old_notifications, 'interval', days=1)
         scheduler.start()
 
 
@@ -2064,7 +2154,8 @@ def message(data):
             }
         else:
             original_message = rooms_collection.find_one(
-                {"_id": room, "messages.id": data["replyTo"]}, {"messages.$": 1}
+                {"_id": room, "messages.id": data["replyTo"]},
+                {"messages.$": 1}
             )
             if original_message and original_message.get("messages"):
                 reply_to = {
@@ -2072,8 +2163,9 @@ def message(data):
                     "message": original_message["messages"][0]["message"],
                 }
 
+    message_id = str(ObjectId())
     content = {
-        "id": str(ObjectId()),
+        "id": message_id,
         "name": current_user.username,
         "message": data["data"],
         "reply_to": reply_to,
@@ -2081,7 +2173,7 @@ def message(data):
         "image": data.get("image"),
         "video": data.get("video"),
         "reactions": {},
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.utcnow().isoformat()
     }
 
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
@@ -2091,26 +2183,23 @@ def message(data):
     # Schedule delayed notifications for all other users in the room
     sender_username = current_user.username
     room_users = room_data["users"]
-
+    
     for username in room_users:
         if username != sender_username:
             # Schedule a delayed notification check
             socketio.start_background_task(
                 check_and_notify,
-                message_id=content["id"],
+                message_id=message_id,
                 room_id=room,
                 recipient_username=username,
                 sender_username=sender_username,
-                message_text=content["message"],
+                message_text=content["message"]
             )
 
-
-def check_and_notify(
-    message_id, room_id, recipient_username, sender_username, message_text
-):
+def check_and_notify(message_id, room_id, recipient_username, sender_username, message_text):
     # Wait for 5 seconds
     socketio.sleep(5)
-
+    
     # Check if the message is still unread
     room = rooms_collection.find_one({"_id": room_id})
     if not room:
@@ -2120,14 +2209,28 @@ def check_and_notify(
     if not message:
         return
 
-    # If the recipient hasn't read the message after 5 seconds, send a notification
+    # If the recipient hasn't read the message after 5 seconds, create a notification
     if recipient_username not in message.get("read_by", []):
+        notification = {
+            "message_id": message_id,
+            "room_id": room_id,
+            "recipient": recipient_username,
+            "sender": sender_username,
+            "message_text": message_text,
+            "timestamp": datetime.utcnow(),
+            "is_read": False
+        }
+        
+        # Store the notification in MongoDB
+        notifications_collection.insert_one(notification)
+        
+        # Send the notification to the user
         send_notification(
             recipient_username=recipient_username,
             sender_username=sender_username,
             message_text=message_text,
+            notification_id=str(notification["_id"])  # Include notification ID
         )
-
 
 @socketio.on("mark_messages_read")
 def mark_messages_read(data):
@@ -2136,13 +2239,15 @@ def mark_messages_read(data):
     if not room or not username:
         return
 
+    message_ids = data["message_ids"]
+
     # Update the read status of messages in the room
     rooms_collection.update_many(
         {
             "_id": room,
             "messages": {
                 "$elemMatch": {
-                    "id": {"$in": data["message_ids"]},
+                    "id": {"$in": message_ids},
                     "read_by": {"$ne": username},
                 }
             },
@@ -2150,18 +2255,74 @@ def mark_messages_read(data):
         {
             "$addToSet": {"messages.$[elem].read_by": username},
         },
-        array_filters=[{"elem.id": {"$in": data["message_ids"]}}],
+        array_filters=[{"elem.id": {"$in": message_ids}}],
     )
 
-    # Emit an event to notify other users that messages have been read
+    # Bulk update notifications as read and dismiss them
+    notifications_collection.update_many(
+        {
+            "message_id": {"$in": message_ids},
+            "recipient": username,
+            "is_read": False
+        },
+        {
+            "$set": {"is_read": True}
+        }
+    )
+
+    # Emit events to notify other users that messages have been read
     socketio.emit(
         "messages_read",
         {
             "reader": username,
-            "message_ids": data["message_ids"],
+            "message_ids": message_ids,
         },
         room=room,
     )
+
+    # Emit event to dismiss notifications on the client side
+    socketio.emit(
+        "dismiss_notifications",
+        {
+            "message_ids": message_ids
+        },
+        room=username  # Send only to the user who read the messages
+    )
+
+# New route to get pending notifications for a user
+@app.route("/get_pending_notifications")
+@login_required
+def get_pending_notifications():
+    username = current_user.username
+    
+    # Get all unread notifications for the user
+    notifications = list(notifications_collection.find(
+        {
+            "recipient": username,
+            "is_read": False
+        },
+        {
+            "_id": 1,
+            "sender": 1,
+            "message_text": 1,
+            "timestamp": 1,
+            "room_id": 1
+        }
+    ).sort("timestamp", -1))
+    
+    # Convert ObjectId to string for JSON serialization
+    for notification in notifications:
+        notification["_id"] = str(notification["_id"])
+        
+    return jsonify(notifications)
+
+# New function to cleanup old notifications periodically
+def cleanup_old_notifications():
+    # Remove notifications older than 30 days
+    cutoff_date = datetime.utcnow() - timedelta(days=30)
+    notifications_collection.delete_many({
+        "timestamp": {"$lt": cutoff_date}
+    })
 
 
 def get_unread_messages(username):

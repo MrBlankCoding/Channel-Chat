@@ -1896,6 +1896,14 @@ socketio.on("disconnect", () => {
   console.log("Disconnected from server");
 });
 
+socketio.on('dismiss_notifications', function(data) {
+    // Remove notifications for the given message IDs from the UI
+    data.message_ids.forEach(messageId => {
+        // Remove notification from your UI
+        removeNotificationFromUI(messageId);
+    });
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("sendButton").addEventListener("click", sendMessage);
   // Get message ID from URL parameters
