@@ -10,6 +10,7 @@ import tempfile
 import mimetypes
 
 # Third-party library imports
+from flask_asgi import ASGIApp
 from flask import (
     Flask,
     render_template,
@@ -48,6 +49,7 @@ cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {"storageBucket": "channelchat-7d679.appspot.com"})
 
 app = Flask(__name__)
+app_asgi = ASGIApp(app)
 scheduler = BackgroundScheduler()
 
 
