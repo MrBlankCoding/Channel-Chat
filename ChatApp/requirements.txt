@@ -1,18 +1,52 @@
-flask
-flask-socketio 
-redis 
+# Web Framework and WSGI
+Flask
+gunicorn
 Werkzeug
-requests
-Pillow
-Flask-WTF
-pymongo
-firebase-admin
-python-dotenv
-flask-cors
-flask_login
-apscheduler
-python-Levenshtein
-fuzzywuzzy
-ffmpeg-python
+
+# Async and WebSocket
+flask_socketio
+python-engineio
+python-socketio
 gevent
-gunicorn 
+gevent-websocket
+
+# Authentication and Security
+Flask-Login
+firebase-admin
+
+# Task Scheduling
+APScheduler
+
+# Database
+pymongo
+dnspython
+
+# Environment and Utils
+python-dotenv
+fuzzywuzzy
+python-Levenshtein
+
+# Media Processing
+ffmpeg-python
+Pillow
+
+# Core Dependencies
+click
+itsdangerous
+Jinja2
+MarkupSafe
+bidict
+six
+
+# Firebase and Google Cloud Dependencies
+cachetools
+google-auth
+google-cloud-storage
+requests
+urllib3
+certifi
+charset-normalizer
+idna
+
+# Additional WebSocket Dependencies
+eventlet
