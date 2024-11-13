@@ -7,8 +7,6 @@ Werkzeug
 flask_socketio
 python-engineio
 python-socketio
-gevent
-gevent-websocket
 
 # Authentication and Security
 Flask-Login
@@ -47,6 +45,4 @@ urllib3
 certifi
 charset-normalizer
 idna
-
-# Additional WebSocket Dependencies
-eventlet
+uvicorn
