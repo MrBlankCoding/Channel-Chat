@@ -183,8 +183,8 @@
    </div>
 </aside>
 <!-- Main Chat Area -->
-<div class="flex-1 flex flex-col">
-   <header class="sticky top-0 z-10 flex-none h-14 bg-white dark:bg-gray-800 shadow-sm">
+<div class="flex-1 flex flex-col h-[100dvh]">
+   <header class="fixed top-0 right-0 md:right-auto z-10 h-14 bg-white dark:bg-gray-800 shadow-sm w-full md:w-[calc(100%-320px)]">
       <div class="flex items-center h-14 px-4">
          <!-- Sidebar Toggle Button -->
          <button onclick="toggleSidebar()" class=" md:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
@@ -254,13 +254,13 @@
       </div>
    </header>
    <!-- Messages area (scrollable) -->
-   <div id="messages" class="flex-1 overflow-y-auto p-4">
+   <div id="messages" class="flex-1 overflow-y-auto p-4 mt-14 mb-[60px] md:mb-[68px]">
       {% for msg in messages %}
       <!-- Message bubbles will be inserted here -->
       {% endfor %}
    </div>
    <!-- Input area with sticky positioning -->
-   <div class="sticky bottom-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+   <div class="fixed bottom-0 right-0 md:right-auto w-full md:w-[calc(100%-320px)] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
       <!-- Emoji picker - now horizontal above the input -->
       <div id="emojiPicker" class="hidden px-4 py-2 border-b border-gray-200 dark:border-gray-700">
          <div class="flex overflow-x-auto hide-scrollbar gap-1 pb-1">
