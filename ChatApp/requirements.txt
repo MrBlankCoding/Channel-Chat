@@ -46,4 +46,5 @@ certifi
 charset-normalizer
 idna
 uvicorn
-flask-asgi
+asgiref
+hypercorn
