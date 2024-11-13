@@ -1553,7 +1553,6 @@ def prepare_room_message_data(room_info):
         "type": message_type,
     }
 
-
 @app.route("/room/", defaults={"code": None}, methods=["GET", "POST"])
 @app.route("/room/<code>", methods=["GET", "POST"])
 @login_required
@@ -1569,9 +1568,7 @@ def room(code):
                 return redirect(url_for("room", code=code))
 
             # Generate a unique room code
-            new_room_code = (
-                generate_unique_code()
-            )  # You'll need to implement this function
+            new_room_code = generate_unique_code()
 
             # Create new room document
             new_room = {
@@ -1584,10 +1581,8 @@ def room(code):
             }
 
             try:
-                # Insert the new room
                 rooms_collection.insert_one(new_room)
 
-                # Add room to user's rooms list
                 users_collection.update_one(
                     {"username": username},
                     {
@@ -1609,19 +1604,16 @@ def room(code):
                 flash("Room code is required")
                 return redirect(url_for("room", code=code))
 
-            # Check if room exists
             join_room = rooms_collection.find_one({"_id": join_code})
             if not join_room:
                 flash("Room does not exist")
                 return redirect(url_for("room", code=code))
 
             try:
-                # Add user to room's users list
                 rooms_collection.update_one(
                     {"_id": join_code}, {"$addToSet": {"users": username}}
                 )
 
-                # Add room to user's rooms list
                 users_collection.update_one(
                     {"username": username},
                     {
@@ -1651,12 +1643,10 @@ def room(code):
             flash("User data not found")
             return redirect(url_for("home"))
 
-        # Update user's current room
         users_collection.update_one(
             {"username": username}, {"$set": {"current_room": code}}
         )
 
-        # Ensure room data has all required fields
         room_data.setdefault("users", [])
         room_data.setdefault("messages", [])
         room_data.setdefault("created_by", "")
@@ -1664,11 +1654,9 @@ def room(code):
 
         user_friends = set(user_data.get("friends", []))
 
-        # Update message friend status
         for message in room_data["messages"]:
             message["is_friend"] = message["name"] in user_friends
 
-        # Prepare user list
         user_list = []
         for user in room_data["users"]:
             user_profile = users_collection.find_one({"username": user})
@@ -1681,10 +1669,8 @@ def room(code):
                     }
                 )
 
-        # Get unread messages for notification badges
         unread_messages = get_unread_messages(username)
 
-        # Prepare friends data
         friends_data = []
         for friend in user_friends:
             friend_data = users_collection.find_one({"username": friend})
@@ -1704,7 +1690,7 @@ def room(code):
                     }
                 )
 
-        # Prepare room data with last messages
+        # Prepare room data with last messages and sort by timestamp
         rooms_with_messages = []
         for room_code in user_data.get("rooms", []):
             room_info = get_room_data(room_code)
@@ -1723,6 +1709,12 @@ def room(code):
                     }
                 )
 
+        # Sort rooms by last_message timestamp (most recent first)
+        rooms_with_messages.sort(
+            key=lambda room: room["last_message"].get("timestamp", datetime.min),
+            reverse=True
+        )
+
         return render_template(
             "room.html",
             code=code,
@@ -1740,6 +1732,7 @@ def room(code):
     except Exception as e:
         flash(f"Error loading room data: {str(e)}")
         return redirect(url_for("home"))
+
 
 
 @app.route("/exit_room/<code>")
