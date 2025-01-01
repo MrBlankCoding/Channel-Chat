@@ -478,9 +478,24 @@ const emojiMap = {
    }
  }
  
+ function replaceEmoji(value) {
+   return value.replace(/:[a-z]+:/g, match => emojiMap[match] || match);
+ }
+ 
  messageInputs.addEventListener('input', (e) => {
    const value = e.target.value;
    const lastColon = value.lastIndexOf(':');
+   const secondLastColon = value.slice(0, lastColon).lastIndexOf(':');
+   
+   // Check if we just completed an emoji code
+   if (lastColon !== -1 && secondLastColon !== -1) {
+     const potentialEmoji = value.slice(secondLastColon, lastColon + 1);
+     if (emojiMap[potentialEmoji]) {
+       e.target.value = replaceEmoji(value);
+       hideSuggestions();
+       return;
+     }
+   }
    
    if (lastColon !== -1 && !value.endsWith('::')) {
      const partial = value.slice(lastColon);
@@ -496,7 +511,7 @@ const emojiMap = {
    
    hideSuggestions();
    
-   const replaced = value.replace(/:[a-z]+:/g, match => emojiMap[match] || match);
+   const replaced = replaceEmoji(value);
    if (replaced !== value) {
      e.target.value = replaced;
    }
