@@ -107,9 +107,10 @@
                         alt="Room profile"
                         class="w-12 h-12 rounded-full object-cover shadow-sm">
                      {% if room.unread_count %}
-                     <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center unread-badge justify-center">
+                     <span
+                     class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center unread-badge justify-center {% if not room.unread_count %}hidden{% endif %}">
                      {{ room.unread_count }}
-                     </span>
+                   </span>                   
                      {% endif %}
                   </div>
                   <!-- Room Details -->
