@@ -432,6 +432,122 @@ document.addEventListener('keydown', function(event) {
         messageInputs.focus();
     }
 });
+// Emoji mappings
+const emojiMap = {
+   ':thumbsup:': '👍',
+   ':smile:': '😊',
+   ':heart:': '❤️',
+   ':fire:': '🔥',
+   ':laugh:': '😂',
+   ':wave:': '👋',
+   ':ok:': '👌',
+   ':clap:': '👏',
+   ':rocket:': '🚀',
+   ':star:': '⭐'
+ };
+ 
+ let suggestionBox = null;
+ let selectedIndex = 0;
+ 
+ function createSuggestionBox() {
+   const box = document.createElement('div');
+   box.className = 'absolute bottom-full mb-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto';
+   messageInputs.parentElement.appendChild(box);
+   return box;
+ }
+ 
+ function showSuggestions(suggestions) {
+   if (!suggestionBox) {
+     suggestionBox = createSuggestionBox();
+   }
+   
+   suggestionBox.innerHTML = suggestions.map((suggestion, index) => `
+     <div class="px-4 py-2 cursor-pointer ${index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''}"
+          data-suggestion="${suggestion}">
+       <span class="mr-2">${emojiMap[suggestion]}</span>
+       <span class="text-sm text-gray-700 dark:text-gray-300">${suggestion}</span>
+     </div>
+   `).join('');
+   
+   suggestionBox.style.display = 'block';
+ }
+ 
+ function hideSuggestions() {
+   if (suggestionBox) {
+     suggestionBox.style.display = 'none';
+     selectedIndex = 0;
+   }
+ }
+ 
+ messageInputs.addEventListener('input', (e) => {
+   const value = e.target.value;
+   const lastColon = value.lastIndexOf(':');
+   
+   if (lastColon !== -1 && !value.endsWith('::')) {
+     const partial = value.slice(lastColon);
+     const suggestions = Object.keys(emojiMap).filter(key => 
+       key.toLowerCase().includes(partial.toLowerCase())
+     );
+     
+     if (suggestions.length > 0) {
+       showSuggestions(suggestions);
+       return;
+     }
+   }
+   
+   hideSuggestions();
+   
+   // Convert emoji codes
+   const replaced = value.replace(/:[a-z]+:/g, match => emojiMap[match] || match);
+   if (replaced !== value) {
+     e.target.value = replaced;
+   }
+ });
+ 
+ messageInputs.addEventListener('keydown', (e) => {
+   if (!suggestionBox || suggestionBox.style.display === 'none') return;
+   
+   const suggestions = Array.from(suggestionBox.children);
+   
+   switch (e.key) {
+     case 'ArrowDown':
+       e.preventDefault();
+       selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+       break;
+     case 'ArrowUp':
+       e.preventDefault();
+       selectedIndex = Math.max(selectedIndex - 1, 0);
+       break;
+     case 'Enter':
+       e.preventDefault();
+       if (suggestions[selectedIndex]) {
+         const suggestion = suggestions[selectedIndex].dataset.suggestion;
+         const value = messageInputs.value;
+         const lastColon = value.lastIndexOf(':');
+         messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion];
+         hideSuggestions();
+       }
+       break;
+     case 'Escape':
+       hideSuggestions();
+       break;
+   }
+   
+   showSuggestions(suggestions.map(div => div.dataset.suggestion));
+ });
+ 
+ // Handle clicks on suggestions
+ document.addEventListener('click', (e) => {
+   const suggestion = e.target.closest('[data-suggestion]');
+   if (suggestion) {
+     const value = messageInputs.value;
+     const lastColon = value.lastIndexOf(':');
+     messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion.dataset.suggestion];
+     hideSuggestions();
+   } else if (!e.target.closest('#message')) {
+     hideSuggestions();
+   }
+ });
    const imageModal = document.getElementById('imageModal');
    const modalImage = document.getElementById('modalImage');
    const modalLoader = document.getElementById('modalLoader');
@@ -940,6 +1056,17 @@ document.addEventListener('keydown', function(event) {
      width: 100%;
      touch-action: manipulation;
    }
+
+   .cursor-pointer:hover {
+      background-color: #e2e8f0; /* Light gray */
+      color: #1a202c; /* Darker text */
+    }
+    
+    .dark .cursor-pointer:hover {
+      background-color: #4a5568; /* Darker gray for dark mode */
+      color: #edf2f7; /* Lighter text for dark mode */
+    }
+    
    
    /* Sidebar base styles */
    #sidebar {
