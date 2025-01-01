@@ -892,57 +892,54 @@ const emojiMap = {
    }
    
    function updateRoomData() {
-      // Fetch and update unread message counts for all rooms
-      fetch('/get_unread_messages')
+      fetch('/get_room_updates')
           .then(response => response.json())
-          .then(unreadData => {
-              Object.keys(unreadData).forEach(roomCode => {
+          .then(data => {
+              const fragment = document.createDocumentFragment();
+  
+              Object.keys(data).forEach(roomCode => {
                   const roomElement = document.getElementById(`room-${roomCode}`);
                   if (roomElement) {
+                      // Update unread messages
                       const unreadBadge = roomElement.querySelector('.unread-badge');
-                      const unreadCount = unreadData[roomCode].unread_count;
-                      
+                      const unreadCount = data[roomCode].unread_count;
+  
                       if (unreadCount > 0) {
                           unreadBadge.textContent = unreadCount;
                           unreadBadge.classList.remove('hidden');
                       } else {
                           unreadBadge.classList.add('hidden');
                       }
-                  }
-              });
-          })
-          .catch(error => console.error('Error fetching unread messages:', error));
-      
-      // Update last messages for all rooms
-      const rooms = document.querySelectorAll('.room-item');
-      rooms.forEach(room => {
-          const roomCode = room.getAttribute('data-room-code');
-          fetch(`/get_last_message/${roomCode}`)
-              .then(response => response.json())
-              .then(data => {
-                  if (data.last_message) {
-                      const lastMessageTime = room.querySelector('.last-message-time');
-                      const lastMessageSender = room.querySelector('.last-message-sender');
-                      const lastMessageText = room.querySelector('.last-message-text');
-                      
-                      if (lastMessageTime) lastMessageTime.textContent = data.last_message.timestamp;
-                      if (lastMessageSender) lastMessageSender.textContent = `${data.last_message.sender}:`;
-                      if (lastMessageText) {
-                          lastMessageText.textContent = data.last_message.content;
-                          lastMessageText.setAttribute('data-message-type', data.last_message.type);
+  
+                      // Update last message
+                      const lastMessage = data[roomCode].last_message;
+                      if (lastMessage) {
+                          const lastMessageTime = roomElement.querySelector('.last-message-time');
+                          const lastMessageSender = roomElement.querySelector('.last-message-sender');
+                          const lastMessageText = roomElement.querySelector('.last-message-text');
+  
+                          if (lastMessageTime) lastMessageTime.textContent = lastMessage.timestamp;
+                          if (lastMessageSender) lastMessageSender.textContent = `${lastMessage.sender}:`;
+                          if (lastMessageText) {
+                              lastMessageText.textContent = lastMessage.content;
+                              lastMessageText.setAttribute('data-message-type', lastMessage.type);
+                          }
                       }
                   }
-              })
-              .catch(error => console.error('Error fetching last message:', error));
-      });
-   }
-   
-   // Update room data every minute (60000 milliseconds)
-   const UPDATE_INTERVAL = 60000;
-   setInterval(updateRoomData, UPDATE_INTERVAL);
-   
-   // Initial update when the page loads
-   document.addEventListener('DOMContentLoaded', updateRoomData);
+              });
+  
+              document.body.appendChild(fragment); // Batch update
+          })
+          .catch(error => console.error('Error fetching room updates:', error));
+  }
+  
+  // Update room data every minute (60000 milliseconds)
+  const UPDATE_INTERVAL = 30000;
+  setInterval(updateRoomData, UPDATE_INTERVAL);
+  
+  // Initial update when the page loads
+  document.addEventListener('DOMContentLoaded', updateRoomData);
+  
    
    // Copy room code to clipboard with toast
    function copyRoomCode() {
