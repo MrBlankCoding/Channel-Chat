@@ -891,55 +891,84 @@ const emojiMap = {
       });
    }
    
-   function updateRoomData() {
-      fetch('/get_room_updates')
-          .then(response => response.json())
-          .then(data => {
-              const fragment = document.createDocumentFragment();
-  
-              Object.keys(data).forEach(roomCode => {
-                  const roomElement = document.getElementById(`room-${roomCode}`);
-                  if (roomElement) {
-                      // Update unread messages
-                      const unreadBadge = roomElement.querySelector('.unread-badge');
-                      const unreadCount = data[roomCode].unread_count;
-  
-                      if (unreadCount > 0) {
-                          unreadBadge.textContent = unreadCount;
-                          unreadBadge.classList.remove('hidden');
-                      } else {
-                          unreadBadge.classList.add('hidden');
-                      }
-  
-                      // Update last message
-                      const lastMessage = data[roomCode].last_message;
-                      if (lastMessage) {
-                          const lastMessageTime = roomElement.querySelector('.last-message-time');
-                          const lastMessageSender = roomElement.querySelector('.last-message-sender');
-                          const lastMessageText = roomElement.querySelector('.last-message-text');
-  
-                          if (lastMessageTime) lastMessageTime.textContent = lastMessage.timestamp;
-                          if (lastMessageSender) lastMessageSender.textContent = `${lastMessage.sender}:`;
-                          if (lastMessageText) {
-                              lastMessageText.textContent = lastMessage.content;
-                              lastMessageText.setAttribute('data-message-type', lastMessage.type);
-                          }
-                      }
-                  }
-              });
-  
-              document.body.appendChild(fragment); // Batch update
-          })
-          .catch(error => console.error('Error fetching room updates:', error));
-  }
-  
-  // Update room data every minute (60000 milliseconds)
-  const UPDATE_INTERVAL = 30000;
-  setInterval(updateRoomData, UPDATE_INTERVAL);
-  
-  // Initial update when the page loads
-  document.addEventListener('DOMContentLoaded', updateRoomData);
-  
+   const UPDATE_INTERVAL = 30000; // Update interval in milliseconds
+
+   // Utility function to fetch JSON data
+   async function fetchJSON(url) {
+       try {
+           const response = await fetch(url);
+           if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+           return await response.json();
+       } catch (error) {
+           console.error(`Error fetching data from ${url}:`, error);
+           throw error;
+       }
+   }
+   
+   // Update unread message counts for all rooms
+   async function updateUnreadCounts() {
+       try {
+           const unreadData = await fetchJSON('/get_unread_messages');
+   
+           Object.entries(unreadData).forEach(([roomCode, { unread_count }]) => {
+               const roomElement = document.getElementById(`room-${roomCode}`);
+               if (!roomElement) return;
+   
+               const unreadBadge = roomElement.querySelector('.unread-badge');
+               if (unreadCount > 0) {
+                   unreadBadge.textContent = unreadCount;
+                   unreadBadge.classList.remove('hidden');
+               } else {
+                   unreadBadge.classList.add('hidden');
+               }
+           });
+       } catch (error) {
+           console.error('Error updating unread counts:', error);
+       }
+   }
+   
+   // Update last message details for all rooms
+   async function updateLastMessages() {
+       try {
+           const rooms = document.querySelectorAll('.room-item');
+           const updatePromises = Array.from(rooms).map(async (room) => {
+               const roomCode = room.getAttribute('data-room-code');
+               try {
+                   const { last_message } = await fetchJSON(`/get_last_message/${roomCode}`);
+                   if (last_message) {
+                       const lastMessageTime = room.querySelector('.last-message-time');
+                       const lastMessageSender = room.querySelector('.last-message-sender');
+                       const lastMessageText = room.querySelector('.last-message-text');
+   
+                       if (lastMessageTime) lastMessageTime.textContent = last_message.timestamp;
+                       if (lastMessageSender) lastMessageSender.textContent = `${last_message.sender}:`;
+                       if (lastMessageText) {
+                           lastMessageText.textContent = last_message.content;
+                           lastMessageText.setAttribute('data-message-type', last_message.type);
+                       }
+                   }
+               } catch (error) {
+                   console.error(`Error updating last message for room ${roomCode}:`, error);
+               }
+           });
+   
+           await Promise.all(updatePromises);
+       } catch (error) {
+           console.error('Error updating last messages:', error);
+       }
+   }
+   
+   // Main function to update all room data
+   async function updateRoomData() {
+       await Promise.all([updateUnreadCounts(), updateLastMessages()]);
+   }
+   
+   // Initialize updates on page load
+   (async function initRoomDataUpdater() {
+       document.addEventListener('DOMContentLoaded', updateRoomData);
+       setInterval(updateRoomData, UPDATE_INTERVAL);
+   })();
+   
    
    // Copy room code to clipboard with toast
    function copyRoomCode() {
