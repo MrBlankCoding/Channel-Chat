@@ -421,6 +421,17 @@
 <script type="module" defer src="{{ url_for('static', filename='js/notif.js') }}"></script>
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 <script>
+   // Get message input element
+const messageInputs = document.getElementById('message');
+
+// Add event listener to document
+document.addEventListener('keydown', function(event) {
+    // Check if Enter key is pressed and input isn't already focused
+    if (event.key === 'Enter' && document.activeElement !== messageInputs) {
+        event.preventDefault();
+        messageInputs.focus();
+    }
+});
    const imageModal = document.getElementById('imageModal');
    const modalImage = document.getElementById('modalImage');
    const modalLoader = document.getElementById('modalLoader');
