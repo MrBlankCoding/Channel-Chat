@@ -378,7 +378,7 @@ const getResponsiveMaxWidth = () => {
   return MESSAGE.maxWidth.largeDesktop; // Large desktop screens
 };
 
-const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal', video = null) => {
+const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal', video = null, timestamp = '') => {
     // Handle system messages differently
     if (type === 'system') {
         const element = document.createElement("div");
@@ -424,7 +424,7 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
     element.style.alignItems = 'flex-start';
     element.style.gap = `${MESSAGE.photo.gap}px`;
     element.dataset.messageId = messageId;
-    element.className = 'message group hover:bg-gray-50/5 transition-colors duration-200';
+    element.className = 'message group hover:bg-gray-50/5 transition-colors duration-200 mb-6 relative';
 
     // Profile photo section
     if (!isCurrentUser) {
@@ -445,7 +445,65 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
 
     const messageContainer = document.createElement("div");
     messageContainer.style.maxWidth = getResponsiveMaxWidth();
-    messageContainer.className = "relative";
+    messageContainer.className = "relative group";
+
+    const timestampElement = document.createElement("div");
+    timestampElement.className = "timestamp mt-1 text-xs text-gray-500 dark:text-gray-400 flex justify-end";
+    
+    // Align timestamp based on message sender
+    if (!isCurrentUser) {
+        timestampElement.style.justifyContent = 'flex-start';
+    }    
+
+    // Format timestamp with ISO string parsing
+    if (timestamp) {
+        try {
+            // Parse ISO format string
+            const date = new Date(timestamp + 'Z'); // Add 'Z' to ensure UTC parsing
+            
+            // Get user's timezone offset in minutes
+            const timezoneOffset = date.getTimezoneOffset();
+            
+            // Adjust for local timezone
+            const localDate = new Date(date.getTime() - (timezoneOffset * 60000));
+            
+            // Format the date
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            let formattedDate;
+            if (localDate.toDateString() === today.toDateString()) {
+                // Today - show only time
+                formattedDate = localDate.toLocaleTimeString('default', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            } else if (localDate.toDateString() === yesterday.toDateString()) {
+                // Yesterday - show "Yesterday" and time
+                formattedDate = `Yesterday at ${localDate.toLocaleTimeString('default', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                })}`;
+            } else {
+                // Other dates - show full date and time
+                formattedDate = localDate.toLocaleString('default', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            }
+            
+            timestampElement.textContent = formattedDate;
+        } catch (e) {
+            console.error('Error formatting timestamp:', e);
+            timestampElement.textContent = 'Invalid date';
+        }
+    }
 
     const messageHeader = document.createElement("div");
     messageHeader.style.display = 'flex';
@@ -586,6 +644,8 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
     element.appendChild(messageContainer);
 
     addEventListeners(messageBubble, messageId, msg);
+
+    messageContainer.appendChild(timestampElement);
 
     return element;
 };
@@ -755,6 +815,14 @@ style.textContent = `
     transform: translateY(-4px);
     opacity: 1;
   }
+}
+  .message .timestamp {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.message:hover .timestamp {
+    opacity: 1;
 }
 `;
 document.head.appendChild(style);
@@ -1564,110 +1632,94 @@ const findMessageById = (messageId) => {
 };
 
 socketio.on("message", (data) => {
-  // Handle system messages
-  if (data.type === 'system') {
-      const messageElement = createMessageElement(
-          data.name,
-          data.message,
-          null,
-          data.id,
-          null,
-          false,
-          {},
-          data.read_by || [],
-          'system'
-      );
-      addMessageToDOM(messageElement);
-      return;
-  }
+    // Handle system messages
+    if (data.type === 'system') {
+        const messageElement = createMessageElement(
+            data.name,
+            data.message,
+            null,
+            data.id,
+            null,
+            false,
+            {},
+            data.read_by || [],
+            'system',
+            null,
+            data.timestamp // Include timestamp
+        );
+        addMessageToDOM(messageElement);
+        return;
+    }
 
-  // Handle regular messages
-  let replyToData = null;
-  if (data.reply_to) {
-      replyToData = {
-          id: data.reply_to.id || data.reply_to,
-          message: data.reply_to.message || findMessageById(data.reply_to)
-      };
-  }
+    // Handle regular messages
+    let replyToData = null;
+    if (data.reply_to) {
+        replyToData = {
+            id: data.reply_to.id || data.reply_to,
+            message: data.reply_to.message || findMessageById(data.reply_to)
+        };
+    }
 
-  const messageElement = createMessageElement(
-      data.name,
-      data.message,
-      data.image,
-      data.id,
-      replyToData,
-      data.edited || false,
-      data.reactions || {},
-      data.read_by || [],
-      'normal',
-      data.video
-  );
-  addMessageToDOM(messageElement);
+    const messageElement = createMessageElement(
+        data.name,
+        data.message,
+        data.image,
+        data.id,
+        replyToData,
+        data.edited || false,
+        data.reactions || {},
+        data.read_by || [],
+        'normal',
+        data.video,
+        data.timestamp // Include timestamp
+    );
+    addMessageToDOM(messageElement);
 
-  if (data.name !== currentUser) {
-      unreadMessages.add(data.id);
-      if (isTabActive) {
-          markMessagesAsRead();
-      } else {
-          unreadCount++;
-          updatePageTitle();
-      }
-  }
+    if (data.name !== currentUser) {
+        unreadMessages.add(data.id);
+        if (isTabActive) {
+            markMessagesAsRead();
+        } else {
+            unreadCount++;
+            updatePageTitle();
+        }
+    }
 
-  // Handle reply info click events
-  const replyInfo = messageElement.querySelector('[data-reply-to]');
-  if (replyInfo) {
-      replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
-  }
+    // Handle reply info click events
+    const replyInfo = messageElement.querySelector('[data-reply-to]');
+    if (replyInfo) {
+        replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
+    }
 
-  // Add action buttons
-  const actionButtons = messageElement.querySelectorAll('.action-btn');
-  actionButtons.forEach(button => {
-      const buttonTitle = button.getAttribute('title');
+    // Add action buttons
+    const actionButtons = messageElement.querySelectorAll('.action-btn');
+    actionButtons.forEach(button => {
+        const buttonTitle = button.getAttribute('title');
 
-      switch (buttonTitle) {
-          case 'Edit':
-              if (data.name === currentUser) {
-                  button.addEventListener('click', () => editMessage(data.id));
-              }
-              break;
+        switch (buttonTitle) {
+            case 'Edit':
+                if (data.name === currentUser) {
+                    button.addEventListener('click', () => editMessage(data.id));
+                }
+                break;
 
-          case 'Delete':
-              if (data.name === currentUser) {
-                  button.addEventListener('click', () => deleteMessage(data.id));
-              }
-              break;
+            case 'Delete':
+                if (data.name === currentUser) {
+                    button.addEventListener('click', () => deleteMessage(data.id));
+                }
+                break;
 
-          case 'Reply':
-              button.addEventListener('click', () => startReply(data.id, data.message));
-              break;
+            case 'Reply':
+                button.addEventListener('click', () => startReply(data.id, data.message));
+                break;
 
-          case 'React':
-              button.addEventListener('click', () => createReactionPicker(data.id));
-              break;
-      }
-  });
+            case 'React':
+                button.addEventListener('click', () => createReactionPicker(data.id));
+                break;
+        }
+    });
 });
 
-socketio.on("messages_read", (data) => {
-  const {
-      reader,
-      message_ids
-  } = data;
-
-  message_ids.forEach(id => {
-      const messageContainer = document.querySelector(`[data-message-id="${id}"]`);
-      if (messageContainer) {
-          const messageSender = messageContainer.querySelector('.text-sm.font-medium')?.textContent;
-
-          // Only update the visual status if the message was sent by the current user
-          // and was read by someone else
-          if ((!messageSender || messageSender === currentUser) && reader !== currentUser) {
-              updateMessageReadStatus(messageContainer, true);
-          }
-      }
-  });
-});
 
 socketio.on("chat_history", (data) => {
   const messageContainer = document.createElement('div');
@@ -1685,7 +1737,9 @@ socketio.on("chat_history", (data) => {
               false, // system messages can't be edited
               {}, // system messages don't have reactions
               [], // system messages don't track read status
-              'system'
+              'system',
+              null, // No video for system messages
+              message.timestamp // Include timestamp
           );
           messageContainer.appendChild(messageElement);
           return;
@@ -1710,7 +1764,10 @@ socketio.on("chat_history", (data) => {
           replyToData,
           message.edited || false,
           message.reactions || {},
-          validReaders
+          validReaders,
+          'normal',
+          message.video,
+          message.timestamp // Include timestamp
       );
       messageContainer.appendChild(messageElement);
 
@@ -1759,7 +1816,9 @@ socketio.on("more_messages", (data) => {
               false, // system messages can't be edited
               {}, // system messages don't have reactions
               [], // system messages don't track read status
-              'system'
+              'system',
+              null, // No video for system messages
+              message.timestamp // Include timestamp
           );
           fragment.appendChild(messageElement);
           return;
@@ -1784,7 +1843,10 @@ socketio.on("more_messages", (data) => {
           replyToData,
           message.edited || false,
           message.reactions || {},
-          validReaders
+          validReaders,
+          'normal',
+          message.video,
+          message.timestamp // Include timestamp
       );
       fragment.appendChild(messageElement);
 
@@ -1810,6 +1872,27 @@ socketio.on("more_messages", (data) => {
 
   const newScrollHeight = messages.scrollHeight;
   messages.scrollTop = newScrollHeight - oldScrollHeight + messages.scrollTop;
+});
+
+
+socketio.on("messages_read", (data) => {
+  const {
+      reader,
+      message_ids
+  } = data;
+
+  message_ids.forEach(id => {
+      const messageContainer = document.querySelector(`[data-message-id="${id}"]`);
+      if (messageContainer) {
+          const messageSender = messageContainer.querySelector('.text-sm.font-medium')?.textContent;
+
+          // Only update the visual status if the message was sent by the current user
+          // and was read by someone else
+          if ((!messageSender || messageSender === currentUser) && reader !== currentUser) {
+              updateMessageReadStatus(messageContainer, true);
+          }
+      }
+  });
 });
 
 function createLoadMoreButton() {
