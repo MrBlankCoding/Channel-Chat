@@ -907,25 +907,26 @@ const emojiMap = {
    
    // Update unread message counts for all rooms
    async function updateUnreadCounts() {
-       try {
-           const unreadData = await fetchJSON('/get_unread_messages');
-   
-           Object.entries(unreadData).forEach(([roomCode, { unread_count }]) => {
-               const roomElement = document.getElementById(`room-${roomCode}`);
-               if (!roomElement) return;
-   
-               const unreadBadge = roomElement.querySelector('.unread-badge');
-               if (unreadCount > 0) {
-                   unreadBadge.textContent = unreadCount;
-                   unreadBadge.classList.remove('hidden');
-               } else {
-                   unreadBadge.classList.add('hidden');
-               }
-           });
-       } catch (error) {
-           console.error('Error updating unread counts:', error);
-       }
+      try {
+         const unreadData = await fetchJSON('/get_unread_messages');
+
+         Object.entries(unreadData).forEach(([roomCode, { unread_count }]) => {
+            const roomElement = document.getElementById(`room-${roomCode}`);
+            if (!roomElement) return;
+
+            const unreadBadge = roomElement.querySelector('.unread-badge');
+            if (unread_count > 0) {
+                  unreadBadge.textContent = unread_count; // Correct variable used
+                  unreadBadge.classList.remove('hidden');
+            } else {
+                  unreadBadge.classList.add('hidden');
+            }
+         });
+      } catch (error) {
+         console.error('Error updating unread counts:', error);
+      }
    }
+
    
    // Update last message details for all rooms
    async function updateLastMessages() {
