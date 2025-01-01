@@ -506,9 +506,9 @@ const emojiMap = {
  
  messageInputs.addEventListener('keydown', (e) => {
    if (!suggestionBox || suggestionBox.style.display === 'none') return;
-   
+ 
    const suggestions = Array.from(suggestionBox.children);
-   
+ 
    switch (e.key) {
      case 'ArrowDown':
        e.preventDefault();
@@ -518,7 +518,7 @@ const emojiMap = {
        e.preventDefault();
        selectedIndex = Math.max(selectedIndex - 1, 0);
        break;
-     case 'Enter':
+     case 'Tab': // Change here to handle the Tab key
        e.preventDefault();
        if (suggestions[selectedIndex]) {
          const suggestion = suggestions[selectedIndex].dataset.suggestion;
@@ -532,9 +532,9 @@ const emojiMap = {
        hideSuggestions();
        break;
    }
-   
+ 
    showSuggestions(suggestions.map(div => div.dataset.suggestion));
- });
+ }); 
  
  // Handle clicks on suggestions
  document.addEventListener('click', (e) => {
