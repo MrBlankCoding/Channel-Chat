@@ -432,7 +432,6 @@ document.addEventListener('keydown', function(event) {
         messageInputs.focus();
     }
 });
-// Emoji mappings
 const emojiMap = {
    ':thumbsup:': '👍',
    ':smile:': '😊',
@@ -497,7 +496,6 @@ const emojiMap = {
    
    hideSuggestions();
    
-   // Convert emoji codes
    const replaced = value.replace(/:[a-z]+:/g, match => emojiMap[match] || match);
    if (replaced !== value) {
      e.target.value = replaced;
@@ -518,25 +516,26 @@ const emojiMap = {
        e.preventDefault();
        selectedIndex = Math.max(selectedIndex - 1, 0);
        break;
-     case 'Tab': // Change here to handle the Tab key
+     case 'Tab':
        e.preventDefault();
        if (suggestions[selectedIndex]) {
          const suggestion = suggestions[selectedIndex].dataset.suggestion;
          const value = messageInputs.value;
          const lastColon = value.lastIndexOf(':');
          messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion];
-         hideSuggestions();
        }
+       hideSuggestions();
        break;
      case 'Escape':
        hideSuggestions();
        break;
    }
  
-   showSuggestions(suggestions.map(div => div.dataset.suggestion));
- }); 
+   if (suggestionBox.style.display !== 'none') {
+     showSuggestions(suggestions.map(div => div.dataset.suggestion));
+   }
+ });
  
- // Handle clicks on suggestions
  document.addEventListener('click', (e) => {
    const suggestion = e.target.closest('[data-suggestion]');
    if (suggestion) {
