@@ -320,58 +320,122 @@
    </div>
 </div>
 <div id="imageModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm">
-   <!-- Loading Spinner -->
-   <div id="modalLoader" class="hidden absolute inset-0 items-center justify-center">
-      <div class="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent"></div>
+   <div class="relative max-w-6xl w-full mx-auto p-6">
+     <!-- Image Container -->
+     <div class="relative w-full max-h-[80vh] bg-black rounded-lg overflow-hidden shadow-lg">
+       <!-- Loader -->
+       <div
+         id="modalLoader"
+         class="absolute inset-0 flex items-center justify-center bg-black/70"
+         role="alert"
+         aria-live="polite"
+       >
+         <div class="loader border-t-4 border-gray-300 w-8 h-8 rounded-full animate-spin"></div>
+       </div>
+ 
+       <!-- Main Image -->
+       <img
+         id="modalImage"
+         src=""
+         alt="Expanded view of the selected image"
+         class="w-full h-auto object-contain transition-transform duration-200 ease-in-out"
+       />
+     </div>
+ 
+     <!-- Close Button -->
+     <button
+       id="closeModal"
+       class="absolute top-4 right-4 text-white bg-gray-700 hover:bg-red-600 rounded-full p-3 shadow-lg focus:outline-none transition duration-150"
+       aria-label="Close modal"
+     >
+       ✕
+     </button>
+ 
+     <!-- Navigation Buttons -->
+     <button
+       id="prevImage"
+       class="absolute left-6 top-1/2 -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
+       aria-label="Previous image"
+     >
+       ◀
+     </button>
+     <button
+       id="nextImage"
+       class="absolute right-6 top-1/2 -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
+       aria-label="Next image"
+     >
+       ▶
+     </button>
+ 
+     <!-- Image Counter -->
+     <div
+       id="imageCounter"
+       class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-gray-700/80 px-3 py-1 rounded shadow-md"
+       role="status"
+     >
+       <!-- Populated dynamically -->
+     </div>
    </div>
-   <!-- Navigation Buttons -->
-   <button id="prevImage" class="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-white/75 hover:text-white transition-colors">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-   </button>
-   <button id="nextImage" class="absolute right-4 top-1/2 -translate-y-1/2 p-2 text-white/75 hover:text-white transition-colors">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-      </svg>
-   </button>
-   <div class="relative max-w-7xl w-full mx-auto p-4">
-      <!-- Controls Bar -->
-      <div class="absolute top-0 left-0 right-0 flex justify-between items-center p-4 bg-black/75 rounded-t-lg">
-         <!-- Image Counter -->
-         <div id="imageCounter" class="text-white text-sm font-medium"></div>
-         <!-- Controls -->
-         <div class="flex items-center gap-4">
-            <!-- Zoom Controls -->
-            <button id="zoomOut" class="p-2 text-white/75 hover:text-white transition-colors">
-               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
-               </svg>
-            </button>
-            <button id="zoomIn" class="p-2 text-white/75 hover:text-white transition-colors">
-               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
-               </svg>
-            </button>
-            <!-- Close Button -->
-            <button id="closeModal" class="p-2 text-white/75 hover:text-white transition-colors">
-               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-               </svg>
-            </button>
-         </div>
-      </div>
-      <!-- Image Container -->
-      <div class="relative w-full max-h-[80vh] h-auto bg-transparent rounded-lg overflow-hidden mt-8">
-         <img
-            id="modalImage"
-            src=""
-            alt="Modal image"
-            class="w-full h-full object-contain transition-transform duration-200 cursor-zoom-in"
-            />
-      </div>
+ </div>
+ <div id="imageModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm">
+   <div class="relative max-w-6xl w-full mx-auto p-6">
+     <!-- Image Container -->
+     <div class="relative w-full max-h-[80vh] bg-black rounded-lg overflow-hidden shadow-lg">
+       <!-- Loader -->
+       <div
+         id="modalLoader"
+         class="absolute inset-0 flex items-center justify-center bg-black/70"
+         role="alert"
+         aria-live="polite"
+       >
+         <div class="loader border-t-4 border-gray-300 w-8 h-8 rounded-full animate-spin"></div>
+       </div>
+ 
+       <!-- Main Image -->
+       <img
+         id="modalImage"
+         src=""
+         alt="Expanded view of the selected image"
+         class="w-full h-auto object-contain transition-transform duration-200 ease-in-out"
+       />
+     </div>
+ 
+     <!-- Close Button -->
+     <button
+       id="closeModal"
+       class="absolute top-4 right-4 text-white bg-gray-700 hover:bg-red-600 rounded-full p-3 shadow-lg focus:outline-none transition duration-150"
+       aria-label="Close modal"
+     >
+       ✕
+     </button>
+ 
+     <!-- Navigation Buttons -->
+     <button
+       id="prevImage"
+       class="absolute left-6 top-1/2 -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
+       aria-label="Previous image"
+     >
+       ◀
+     </button>
+     <button
+       id="nextImage"
+       class="absolute right-6 top-1/2 -translate-y-1/2 bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
+       aria-label="Next image"
+     >
+       ▶
+     </button>
+ 
+     <!-- Image Counter -->
+     <div
+       id="imageCounter"
+       class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-sm bg-gray-700/80 px-3 py-1 rounded shadow-md"
+       role="status"
+     >
+       <!-- Populated dynamically -->
+     </div>
    </div>
-</div>
+ </div>
+ 
 <div id="invite-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
    <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-auto">
       <h3 class="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Invite Friends</h3>
@@ -621,290 +685,137 @@ document.addEventListener('click', (e) => {
    }
 });
 
-   const imageModal = document.getElementById('imageModal');
-   const modalImage = document.getElementById('modalImage');
-   const modalLoader = document.getElementById('modalLoader');
-   const prevButton = document.getElementById('prevImage');
-   const nextButton = document.getElementById('nextImage');
-   const closeButton = document.getElementById('closeModal');
-   const zoomInButton = document.getElementById('zoomIn');
-   const zoomOutButton = document.getElementById('zoomOut');
-   const imageCounter = document.getElementById('imageCounter');
-   
-   let currentImages = [];
-   let currentImageIndex = 0;
-   let currentScale = 1;
-   let isDragging = false;
-   let startPos = { x: 0, y: 0 };
-   let currentPos = { x: 0, y: 0 };
-   
-   // Touch handling variables
-   let touchStartX = 0;
-   let touchEndX = 0;
-   
-   // Function to show loading state
-   function showLoader() {
-     modalLoader.classList.remove('hidden');
+// DOM Elements
+const elements = {
+   imageModal: document.getElementById('imageModal'),
+   modalImage: document.getElementById('modalImage'),
+   modalLoader: document.getElementById('modalLoader'),
+   prevButton: document.getElementById('prevImage'),
+   nextButton: document.getElementById('nextImage'),
+   closeButton: document.getElementById('closeModal'),
+   imageCounter: document.getElementById('imageCounter'),
+ };
+ 
+ let state = {
+   currentImages: [],
+   currentImageIndex: 0,
+   isDragging: false,
+   startPos: { x: 0, y: 0 },
+   currentPos: { x: 0, y: 0 },
+   touchStartX: 0,
+   touchEndX: 0,
+ };
+ 
+ // Helper Functions
+ const toggleVisibility = (element, condition) => element.classList.toggle('hidden', !condition);
+ const setTransform = () => {
+   elements.modalImage.style.transform = `translate(${state.currentPos.x}px, ${state.currentPos.y}px)`;
+ };
+ 
+ const resetPosition = () => {
+   state.currentPos = { x: 0, y: 0 };
+   setTransform();
+ };
+ 
+ const updateNavigation = () => {
+   toggleVisibility(elements.prevButton, state.currentImages.length > 1 && state.currentImageIndex > 0);
+   toggleVisibility(elements.nextButton, state.currentImages.length > 1 && state.currentImageIndex < state.currentImages.length - 1);
+   elements.imageCounter.textContent = state.currentImages.length > 1 ? `${state.currentImageIndex + 1} / ${state.currentImages.length}` : '';
+ };
+ 
+ const updateImage = (index) => {
+   state.currentImageIndex = index;
+   elements.modalImage.src = state.currentImages[index];
+   resetPosition();
+   updateNavigation();
+ };
+ 
+ const handleSwipe = () => {
+   const diff = state.touchStartX - state.touchEndX;
+   if (Math.abs(diff) > 50) {
+     if (diff > 0 && state.currentImageIndex < state.currentImages.length - 1) updateImage(state.currentImageIndex + 1);
+     if (diff < 0 && state.currentImageIndex > 0) updateImage(state.currentImageIndex - 1);
    }
-   
-   // Function to hide loading state
-   function hideLoader() {
-     modalLoader.classList.add('hidden');
-   }
-   
-   // Format timestamp adaptively based on how long ago it was
-   function formatTimestamp(timestamp) {
-   // Remove microseconds and ensure proper timezone handling
-   const cleanTimestamp = timestamp.split('.')[0] + 'Z';
-   const date = new Date(cleanTimestamp);
-   const now = new Date();
-   const diffInSeconds = Math.floor((now - date) / 1000);
-   const diffInMinutes = Math.floor(diffInSeconds / 60);
-   const diffInHours = Math.floor(diffInMinutes / 60);
-   const diffInDays = Math.floor(diffInHours / 24);
-   
-   // If invalid date, return empty string
-   if (isNaN(date.getTime())) {
-       console.log('Invalid date for timestamp:', timestamp);
-       return '';
-   }
-   
-   // Just now - less than a minute ago
-   if (diffInSeconds < 60) {
-       return 'Just now';
-   }
-   
-   // Minutes ago - less than an hour ago
-   if (diffInMinutes < 60) {
-       return `${diffInMinutes}m ago`;
-   }
-   
-   // Hours ago - less than 24 hours ago
-   if (diffInHours < 24) {
-       return `${diffInHours}h ago`;
-   }
-   
-   // Days ago - less than 7 days ago
-   if (diffInDays < 7) {
-       return `${diffInDays}d ago`;
-   }
-   
-   // This year - show month and day
-   if (date.getFullYear() === now.getFullYear()) {
-       return date.toLocaleDateString('en-US', {
-           month: 'short',
-           day: 'numeric'
-       });
-   }
-   
-   // Different year - show month, day and year
-   return date.toLocaleDateString('en-US', {
-       month: 'short',
-       day: 'numeric',
-       year: 'numeric'
+ };
+ 
+ // Event Handlers
+ const openImageModal = (imageSrc) => {
+   state.currentImages = Array.from(document.querySelectorAll('.message img.sent-img')).map((img) => img.src);
+   state.currentImageIndex = state.currentImages.indexOf(imageSrc);
+ 
+   elements.imageModal.classList.remove('hidden');
+   elements.imageModal.classList.add('flex');
+   document.body.style.overflow = 'hidden';
+ 
+   updateImage(state.currentImageIndex);
+ };
+ 
+ const closeImageModal = () => {
+   elements.imageModal.classList.add('hidden');
+   elements.imageModal.classList.remove('flex');
+   document.body.style.overflow = '';
+   resetPosition();
+ };
+ 
+ // Initialize
+ const initialize = () => {
+   elements.closeButton.addEventListener('click', closeImageModal);
+   elements.modalImage.addEventListener('load', () => elements.modalLoader.classList.add('hidden'));
+ 
+   elements.prevButton.addEventListener('click', () => {
+     if (state.currentImageIndex > 0) updateImage(state.currentImageIndex - 1);
    });
-   }
-   
-   // Helper function to update all timestamps on the page
-   function updateAllTimestamps() {
-   const timestamps = document.querySelectorAll('[data-timestamp]');
-   timestamps.forEach(element => {
-       const timestamp = element.getAttribute('data-timestamp');
-       element.textContent = formatTimestamp(timestamp);
+ 
+   elements.nextButton.addEventListener('click', () => {
+     if (state.currentImageIndex < state.currentImages.length - 1) updateImage(state.currentImageIndex + 1);
    });
-   }
-   
-   // Update timestamps initially and every minute
-   document.addEventListener('DOMContentLoaded', () => {
-   updateAllTimestamps();
-   setInterval(updateAllTimestamps, 60000); // Update every minute
+ 
+   elements.modalImage.addEventListener('mousedown', (e) => {
+     state.isDragging = true;
+     state.startPos = { x: e.clientX - state.currentPos.x, y: e.clientY - state.currentPos.y };
+     elements.modalImage.classList.add('cursor-grabbing');
    });
-   
-   // Function to update navigation visibility
-   function updateNavigation() {
-     prevButton.classList.toggle('hidden', currentImages.length <= 1 || currentImageIndex === 0);
-     nextButton.classList.toggle('hidden', currentImages.length <= 1 || currentImageIndex === currentImages.length - 1);
-     imageCounter.textContent = currentImages.length > 1 ? `${currentImageIndex + 1} / ${currentImages.length}` : '';
-   }
-   
-   // Function to update image
-   function updateImage(index) {
-     showLoader();
-     currentImageIndex = index;
-     modalImage.src = currentImages[index];
-     resetZoom();
-     updateNavigation();
-   }
-   
-   // Zoom functions
-   function resetZoom() {
-     currentScale = 1;
-     currentPos = { x: 0, y: 0 };
-     updateImageTransform();
-     modalImage.classList.add('cursor-zoom-in');
-     modalImage.classList.remove('cursor-zoom-out', 'cursor-grab', 'cursor-grabbing');
-   }
-   
-   function updateImageTransform() {
-     modalImage.style.transform = `translate(${currentPos.x}px, ${currentPos.y}px) scale(${currentScale})`;
-   }
-   function openRoomModal() {
-      document.getElementById('room-modal').classList.remove('hidden');
-      document.getElementById('room-modal-backdrop').classList.remove('hidden');
-   }
-   
-   function closeRoomModal() {
-      document.getElementById('room-modal').classList.add('hidden');
-      document.getElementById('room-modal-backdrop').classList.add('hidden');
-   }
-   
-   function zoom(delta) {
-     const oldScale = currentScale;
-     currentScale = Math.max(1, Math.min(4, currentScale + delta));
-     
-     // Adjust cursor style
-     if (currentScale > 1) {
-       modalImage.classList.remove('cursor-zoom-in');
-       modalImage.classList.add('cursor-zoom-out');
-     } else {
-       modalImage.classList.add('cursor-zoom-in');
-       modalImage.classList.remove('cursor-zoom-out');
-     }
-     
-     // If zooming out to 1, reset position
-     if (currentScale === 1) {
-       currentPos = { x: 0, y: 0 };
-     }
-     
-     updateImageTransform();
-   }
-   
-   // Open modal function
-   function openImageModal(imageSrc) {
-     // Get all images in the chat
-     const messageImages = Array.from(document.querySelectorAll('.message img')).map(img => img.src);
-     currentImages = messageImages;
-     currentImageIndex = messageImages.indexOf(imageSrc);
-     
-     showLoader();
-     imageModal.classList.remove('hidden');
-     imageModal.classList.add('flex');
-     document.body.style.overflow = 'hidden';
-     
-     updateImage(currentImageIndex);
-     updateNavigation();
-   }
-   
-   // Close modal function
-   function closeImageModal() {
-     imageModal.classList.add('hidden');
-     imageModal.classList.remove('flex');
-     document.body.style.overflow = '';
-     resetZoom();
-   }
-   
-   document.getElementById('closeModal').addEventListener('click', closeImageModal);
-   
-   
-   // Event Listeners
-   modalImage.addEventListener('load', hideLoader);
-   
-   zoomInButton.addEventListener('click', () => zoom(0.5));
-   zoomOutButton.addEventListener('click', () => zoom(-0.5));
-   
-   prevButton.addEventListener('click', () => {
-     if (currentImageIndex > 0) {
-       updateImage(currentImageIndex - 1);
-     }
-   });
-   
-   nextButton.addEventListener('click', () => {
-     if (currentImageIndex < currentImages.length - 1) {
-       updateImage(currentImageIndex + 1);
-     }
-   });
-   
-   // Mouse drag handling
-   modalImage.addEventListener('mousedown', (e) => {
-     if (currentScale > 1) {
-       isDragging = true;
-       startPos = {
-         x: e.clientX - currentPos.x,
-         y: e.clientY - currentPos.y
-       };
-       modalImage.classList.add('cursor-grabbing');
-     }
-   });
-   
+ 
    window.addEventListener('mousemove', (e) => {
-     if (isDragging) {
-       currentPos = {
-         x: e.clientX - startPos.x,
-         y: e.clientY - startPos.y
-       };
-       updateImageTransform();
+     if (state.isDragging) {
+       state.currentPos = { x: e.clientX - state.startPos.x, y: e.clientY - state.startPos.y };
+       setTransform();
      }
    });
-   
+ 
    window.addEventListener('mouseup', () => {
-     isDragging = false;
-     modalImage.classList.remove('cursor-grabbing');
+     state.isDragging = false;
+     elements.modalImage.classList.remove('cursor-grabbing');
    });
-   
-   // Touch handling for swipe
-   imageModal.addEventListener('touchstart', (e) => {
-     touchStartX = e.changedTouches[0].screenX;
+ 
+   elements.imageModal.addEventListener('touchstart', (e) => {
+     state.touchStartX = e.changedTouches[0].screenX;
    });
-   
-   imageModal.addEventListener('touchend', (e) => {
-     touchEndX = e.changedTouches[0].screenX;
+ 
+   elements.imageModal.addEventListener('touchend', (e) => {
+     state.touchEndX = e.changedTouches[0].screenX;
      handleSwipe();
    });
-   
-   function handleSwipe() {
-     const SWIPE_THRESHOLD = 50;
-     const touchDiff = touchStartX - touchEndX;
-   
-     if (Math.abs(touchDiff) > SWIPE_THRESHOLD) {
-       if (touchDiff > 0 && currentImageIndex < currentImages.length - 1) {
-         // Swipe left
-         updateImage(currentImageIndex + 1);
-       } else if (touchDiff < 0 && currentImageIndex > 0) {
-         // Swipe right
-         updateImage(currentImageIndex - 1);
-       }
-     }
-   }
-   
-   // Keyboard navigation
+ 
    document.addEventListener('keydown', (e) => {
-     if (imageModal.classList.contains('hidden')) return;
-     
-     switch (e.key) {
-       case 'ArrowLeft':
-         if (currentImageIndex > 0) updateImage(currentImageIndex - 1);
-         break;
-       case 'ArrowRight':
-         if (currentImageIndex < currentImages.length - 1) updateImage(currentImageIndex + 1);
-         break;
-       case 'Escape':
-         closeImageModal();
-         break;
-       case '+':
-         zoom(0.5);
-         break;
-       case '-':
-         zoom(-0.5);
-         break;
-     }
+     if (elements.imageModal.classList.contains('hidden')) return;
+ 
+     const actions = {
+       ArrowLeft: () => state.currentImageIndex > 0 && updateImage(state.currentImageIndex - 1),
+       ArrowRight: () => state.currentImageIndex < state.currentImages.length - 1 && updateImage(state.currentImageIndex + 1),
+       Escape: closeImageModal,
+     };
+ 
+     if (actions[e.key]) actions[e.key]();
    });
-   
-   // Close modal when clicking outside
-   imageModal.addEventListener('click', (e) => {
-     if (e.target === imageModal) {
-       closeImageModal();
-     }
+ 
+   elements.imageModal.addEventListener('click', (e) => {
+     if (e.target === elements.imageModal) closeImageModal();
    });
+ };
+ 
+ document.addEventListener('DOMContentLoaded', initialize);
+ 
    
    // Element selectors for reuse
    const messageContainer = document.getElementById('messages');
@@ -1147,6 +1058,67 @@ document.addEventListener('click', (e) => {
      }
    }, 200);
    });
+      // Format timestamp adaptively based on how long ago it was
+      function formatTimestamp(timestamp) {
+         // Remove microseconds and ensure proper timezone handling
+         const cleanTimestamp = timestamp.split('.')[0] + 'Z';
+         const date = new Date(cleanTimestamp);
+         const now = new Date();
+         const diffInSeconds = Math.floor((now - date) / 1000);
+         const diffInMinutes = Math.floor(diffInSeconds / 60);
+         const diffInHours = Math.floor(diffInMinutes / 60);
+         const diffInDays = Math.floor(diffInHours / 24);
+         
+         // If invalid date, return empty string
+         if (isNaN(date.getTime())) {
+             console.log('Invalid date for timestamp:', timestamp);
+             return '';
+         }
+         
+         // Just now - less than a minute ago
+         if (diffInSeconds < 60) {
+             return 'Just now';
+         }
+         
+         // Minutes ago - less than an hour ago
+         if (diffInMinutes < 60) {
+             return `${diffInMinutes}m ago`;
+         }
+         
+         // Hours ago - less than 24 hours ago
+         if (diffInHours < 24) {
+             return `${diffInHours}h ago`;
+         }
+         
+         // Days ago - less than 7 days ago
+         if (diffInDays < 7) {
+             return `${diffInDays}d ago`;
+         }
+         
+         // This year - show month and day
+         if (date.getFullYear() === now.getFullYear()) {
+             return date.toLocaleDateString('en-US', {
+                 month: 'short',
+                 day: 'numeric'
+             });
+         }
+         
+         // Different year - show month, day and year
+         return date.toLocaleDateString('en-US', {
+             month: 'short',
+             day: 'numeric',
+             year: 'numeric'
+         });
+         }
+         
+         // Helper function to update all timestamps on the page
+         function updateAllTimestamps() {
+         const timestamps = document.querySelectorAll('[data-timestamp]');
+         timestamps.forEach(element => {
+             const timestamp = element.getAttribute('data-timestamp');
+             element.textContent = formatTimestamp(timestamp);
+         });
+         }
 </script>
 <style>
    html, body {
@@ -1247,15 +1219,6 @@ document.addEventListener('click', (e) => {
        display: none;
      }
    }
-    /* Modal Image */
-    #modalImage {
-    width: 100%;
-    max-width: clamp(300px, 80vw, 1200px);
-    max-height: clamp(200px, 80vh, 900px);
-    object-fit: contain;
-    transition: transform 0.2s;
-    cursor: zoom-in;
-    }
     /* Set viewport height for mobile browsers */
     @supports (-webkit-touch-callout: none) {
     .fixed.inset-0 {

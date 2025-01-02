@@ -571,7 +571,7 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
         img.src = image;
         img.alt = "Uploaded image";
         img.style.marginTop = `${MESSAGE.text.spacing}px`;
-        img.className = "max-w-[120px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 opacity-50";
+        img.className = "max-w-[120px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 opacity-50 sent-img";
         img.onload = () => img.classList.remove('opacity-50');
         img.onerror = () => {
             img.src = '/static/images/image-error.png';
