@@ -433,6 +433,7 @@ document.addEventListener('keydown', function(event) {
     }
 });
 const emojiMap = {
+   // Basic smileys
    ':thumbsup:': '👍',
    ':smile:': '😊',
    ':heart:': '❤️',
@@ -441,127 +442,185 @@ const emojiMap = {
    ':wave:': '👋',
    ':ok:': '👌',
    ':clap:': '👏',
-   ':rocket:': '🚀',
-   ':star:': '⭐'
+   
+   // Additional popular smileys
+   ':joy:': '😂',
+   ':heart_eyes:': '😍',
+   ':crying:': '😢',
+   ':sob:': '😭',
+   ':thinking:': '🤔',
+   ':wink:': '😉',
+   ':thumbsdown:': '👎',
+   ':pray:': '🙏',
+   
+   // Hearts and emotions
+   ':broken_heart:': '💔',
+   ':purple_heart:': '💜',
+   ':blue_heart:': '💙',
+   ':green_heart:': '💚',
+   ':yellow_heart:': '💛',
+   
+   // Hands and gestures
+   ':raised_hands:': '🙌',
+   ':muscle:': '💪',
+   ':point_up:': '☝️',
+   ':victory:': '✌️',
+   ':handshake:': '🤝',
+   
+   // Face expressions
+   ':rolling_eyes:': '🙄',
+   ':smirk:': '😏',
+   ':sleeping:': '😴',
+   ':sunglasses:': '😎',
+   ':kissing:': '😘',
+   
+   // Objects and symbols
+   ':star:': '⭐',
+   ':sparkles:': '✨',
+   ':100:': '💯',
+   ':trophy:': '🏆',
+   ':check:': '✅',
+   ':x:': '❌',
+   
+   // Nature and weather
+   ':sun:': '☀️',
+   ':moon:': '🌙',
+   ':rainbow:': '🌈',
+   ':cloud:': '☁️',
+   
+   // Food and drinks
+   ':pizza:': '🍕',
+   ':coffee:': '☕',
+   ':beer:': '🍺',
+   ':cake:': '🎂'
  };
- 
- let suggestionBox = null;
- let selectedIndex = 0;
- 
- function createSuggestionBox() {
+
+let suggestionBox = null;
+let selectedIndex = 0;
+
+function createSuggestionBox() {
    const box = document.createElement('div');
-   box.className = 'absolute bottom-full mb-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto';
+   box.className = `absolute bottom-full mb-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto transition-transform duration-300`;
+   box.style.maxHeight = '12rem';
+   box.style.overflowY = 'auto';
+   box.style.scrollBehavior = 'smooth';
    messageInputs.parentElement.appendChild(box);
    return box;
- }
- 
- function showSuggestions(suggestions) {
+}
+
+function showSuggestions(suggestions) {
    if (!suggestionBox) {
-     suggestionBox = createSuggestionBox();
+      suggestionBox = createSuggestionBox();
    }
-   
+
    suggestionBox.innerHTML = suggestions.map((suggestion, index) => `
-     <div class="px-4 py-2 cursor-pointer ${index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''}"
-          data-suggestion="${suggestion}">
-       <span class="mr-2">${emojiMap[suggestion]}</span>
-       <span class="text-sm text-gray-700 dark:text-gray-300">${suggestion}</span>
-     </div>
+      <div class="px-4 py-2 cursor-pointer flex items-center ${index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''}" 
+           data-suggestion="${suggestion}">
+        <span class="mr-3 text-xl">${emojiMap[suggestion]}</span>
+        <span class="text-sm text-gray-700 dark:text-gray-300">${suggestion}</span>
+      </div>
    `).join('');
-   
+
    suggestionBox.style.display = 'block';
- }
- 
- function hideSuggestions() {
-   if (suggestionBox) {
-     suggestionBox.style.display = 'none';
-     selectedIndex = 0;
+
+   // Ensure the selected item is visible
+   const selectedItem = suggestionBox.children[selectedIndex];
+   if (selectedItem) {
+      selectedItem.scrollIntoView({ block: 'nearest' });
    }
- }
- 
- function replaceEmoji(value) {
+}
+
+function hideSuggestions() {
+   if (suggestionBox) {
+      suggestionBox.style.display = 'none';
+      selectedIndex = 0;
+   }
+}
+
+function replaceEmoji(value) {
    return value.replace(/:[a-z]+:/g, match => emojiMap[match] || match);
- }
- 
- messageInputs.addEventListener('input', (e) => {
+}
+
+messageInputs.addEventListener('input', (e) => {
    const value = e.target.value;
    const lastColon = value.lastIndexOf(':');
    const secondLastColon = value.slice(0, lastColon).lastIndexOf(':');
-   
-   // Check if we just completed an emoji code
+
    if (lastColon !== -1 && secondLastColon !== -1) {
-     const potentialEmoji = value.slice(secondLastColon, lastColon + 1);
-     if (emojiMap[potentialEmoji]) {
-       e.target.value = replaceEmoji(value);
-       hideSuggestions();
-       return;
-     }
+      const potentialEmoji = value.slice(secondLastColon, lastColon + 1);
+      if (emojiMap[potentialEmoji]) {
+         e.target.value = replaceEmoji(value);
+         hideSuggestions();
+         return;
+      }
    }
-   
+
    if (lastColon !== -1 && !value.endsWith('::')) {
-     const partial = value.slice(lastColon);
-     const suggestions = Object.keys(emojiMap).filter(key => 
-       key.toLowerCase().includes(partial.toLowerCase())
-     );
-     
-     if (suggestions.length > 0) {
-       showSuggestions(suggestions);
-       return;
-     }
+      const partial = value.slice(lastColon);
+      const suggestions = Object.keys(emojiMap).filter(key => 
+         key.toLowerCase().includes(partial.toLowerCase())
+      );
+
+      if (suggestions.length > 0) {
+         showSuggestions(suggestions);
+         return;
+      }
    }
-   
+
    hideSuggestions();
-   
+
    const replaced = replaceEmoji(value);
    if (replaced !== value) {
-     e.target.value = replaced;
+      e.target.value = replaced;
    }
- });
- 
- messageInputs.addEventListener('keydown', (e) => {
+});
+
+messageInputs.addEventListener('keydown', (e) => {
    if (!suggestionBox || suggestionBox.style.display === 'none') return;
- 
+
    const suggestions = Array.from(suggestionBox.children);
- 
+
    switch (e.key) {
-     case 'ArrowDown':
-       e.preventDefault();
-       selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
-       break;
-     case 'ArrowUp':
-       e.preventDefault();
-       selectedIndex = Math.max(selectedIndex - 1, 0);
-       break;
-     case 'Tab':
-       e.preventDefault();
-       if (suggestions[selectedIndex]) {
-         const suggestion = suggestions[selectedIndex].dataset.suggestion;
-         const value = messageInputs.value;
-         const lastColon = value.lastIndexOf(':');
-         messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion];
-       }
-       hideSuggestions();
-       break;
-     case 'Escape':
-       hideSuggestions();
-       break;
+      case 'ArrowDown':
+         e.preventDefault();
+         selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+         break;
+      case 'ArrowUp':
+         e.preventDefault();
+         selectedIndex = Math.max(selectedIndex - 1, 0);
+         break;
+      case 'Tab':
+         e.preventDefault();
+         if (suggestions[selectedIndex]) {
+            const suggestion = suggestions[selectedIndex].dataset.suggestion;
+            const value = messageInputs.value;
+            const lastColon = value.lastIndexOf(':');
+            messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion];
+         }
+         hideSuggestions();
+         break;
+      case 'Escape':
+         hideSuggestions();
+         break;
    }
- 
+
    if (suggestionBox.style.display !== 'none') {
-     showSuggestions(suggestions.map(div => div.dataset.suggestion));
+      showSuggestions(suggestions.map(div => div.dataset.suggestion));
    }
- });
- 
- document.addEventListener('click', (e) => {
+});
+
+document.addEventListener('click', (e) => {
    const suggestion = e.target.closest('[data-suggestion]');
    if (suggestion) {
-     const value = messageInputs.value;
-     const lastColon = value.lastIndexOf(':');
-     messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion.dataset.suggestion];
-     hideSuggestions();
+      const value = messageInputs.value;
+      const lastColon = value.lastIndexOf(':');
+      messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion.dataset.suggestion];
+      hideSuggestions();
    } else if (!e.target.closest('#message')) {
-     hideSuggestions();
+      hideSuggestions();
    }
- });
+});
+
    const imageModal = document.getElementById('imageModal');
    const modalImage = document.getElementById('modalImage');
    const modalLoader = document.getElementById('modalLoader');
