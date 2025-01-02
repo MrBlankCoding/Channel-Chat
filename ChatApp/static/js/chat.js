@@ -593,37 +593,7 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
         videoElement.controls = true;
         videoElement.preload = "metadata";
         
-        const playButton = document.createElement("button");
-        playButton.className = "absolute inset-0 flex items-center justify-center bg-black bg-opacity-30 rounded-lg transition-opacity duration-200 hover:bg-opacity-40";
-        playButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        `;
-        
         videoContainer.appendChild(videoElement);
-        videoContainer.appendChild(playButton);
-        
-        videoElement.addEventListener('play', () => {
-            playButton.style.display = 'none';
-        });
-        
-        videoElement.addEventListener('pause', () => {
-            playButton.style.display = 'flex';
-        });
-        
-        videoElement.addEventListener('ended', () => {
-            playButton.style.display = 'flex';
-        });
-        
-        playButton.addEventListener('click', () => {
-            if (videoElement.paused) {
-                videoElement.play();
-            } else {
-                videoElement.pause();
-            }
-        });
         
         messageBubble.appendChild(videoContainer);
     }
