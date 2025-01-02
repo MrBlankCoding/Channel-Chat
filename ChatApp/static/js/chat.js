@@ -2047,5 +2047,9 @@ socketio.on("disconnect", () => {
   console.log("Disconnected from server");
 });
 
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById("sendButton").addEventListener("click", sendMessage);
+  });
+
 // Call saveToLocalStorage before the page unloads
 window.addEventListener('beforeunload', saveToLocalStorage);
