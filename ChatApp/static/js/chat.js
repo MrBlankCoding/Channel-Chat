@@ -538,15 +538,16 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
     if (replyTo) {
         const replyInfo = document.createElement("div");
         replyInfo.style.marginBottom = `${MESSAGE.text.spacing}px`;
-        replyInfo.className = `text-xs rounded px-2 py-0.5 border-l-2 ${
+        replyInfo.className = `text-xs rounded px-2 py-0.5 border-l-2 cursor-pointer hover:opacity-80 ${
             isCurrentUser
                 ? 'bg-blue-600/50 border-blue-300'
                 : 'bg-gray-200 dark:bg-gray-700 border-gray-400 dark:border-gray-500'
         }`;
-
+    
         replyInfo.dataset.replyTo = replyTo.id;
         const replyMessage = replyTo.message || "Message not available";
         replyInfo.innerHTML = `<span class="opacity-75">Replying to:</span> ${replyMessage}`;
+        replyInfo.addEventListener('click', () => scrollToMessage(replyTo.id));
         messageBubble.appendChild(replyInfo);
     }
 
@@ -1127,36 +1128,90 @@ const addMessageToDOM = (element) => {
   observer.observe(element);
 };
 
-const scrollToMessage = (messageId) => {
-  const targetMessage = document.querySelector(`[data-message-id="${messageId}"]`);
-  if (targetMessage) {
-      // Add a slight delay to ensure the DOM is ready
-      setTimeout(() => {
-          targetMessage.scrollIntoView({
-              behavior: 'smooth',
-              block: 'center'
-          });
+const scrollToMessage = async (messageId) => {
+    const targetMessage = document.querySelector(`[data-message-id="${messageId}"]`);
+    
+    if (targetMessage) {
+        highlightAndScrollTo(targetMessage);
+    } else {
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded shadow-lg';
+        loadingDiv.textContent = 'Loading message...';
+        document.body.appendChild(loadingDiv);
 
-          // Add highlight animation
-          targetMessage.classList.add('highlight-message');
+        // Request message and wait for response
+        return new Promise((resolve) => {
+            socketio.emit('find_message', { message_id: messageId });
+            
+            socketio.once('message_found', (data) => {
+                loadingDiv.remove();
+                
+                if (!data.found) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg';
+                    errorDiv.textContent = 'Original message not found';
+                    document.body.appendChild(errorDiv);
+                    setTimeout(() => errorDiv.remove(), 3000);
+                    resolve(false);
+                    return;
+                }
 
-          // Remove highlight after animation
-          setTimeout(() => {
-              targetMessage.classList.remove('highlight-message');
-          }, 2000);
-      }, 100);
-  }
+                // Update messages container
+                const messageContainer = messages.querySelector('.flex.flex-col') || document.createElement('div');
+                messageContainer.className = 'flex flex-col space-y-4 p-4';
+                messageContainer.innerHTML = '';
+                messages.innerHTML = '';
+                messages.appendChild(messageContainer);
+
+                // Add received messages
+                data.messages.forEach(message => {
+                    const messageElement = createMessageElement(
+                        message.name,
+                        message.message,
+                        message.image,
+                        message.id,
+                        message.reply_to,
+                        message.edited || false,
+                        message.reactions || {},
+                        message.read_by || [],
+                        message.type || 'normal',
+                        message.video,
+                        message.timestamp
+                    );
+                    messageContainer.appendChild(messageElement);
+                });
+
+                hasMoreMessages = data.has_more;
+                updateLoadMoreButton();
+
+                // Find and scroll after messages are loaded
+                setTimeout(() => {
+                    const targetMessage = document.querySelector(`[data-message-id="${messageId}"]`);
+                    if (targetMessage) {
+                        highlightAndScrollTo(targetMessage);
+                    }
+                    resolve(true);
+                }, 100);
+            });
+        });
+    }
 };
 
-const highlightMessage = (messageElement) => {
-  // Add a temporary highlight class
-  messageElement.classList.add('highlight-animation');
+const highlightAndScrollTo = (element) => {
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  // Remove the highlight after animation completes
-  setTimeout(() => {
-      messageElement.classList.remove('highlight-animation');
-  }, 2000);
+    // Add noticeable highlight styles
+    element.style.transition = 'background-color 0.3s, border 0.3s';
+    element.style.backgroundColor = 'rgba(255, 230, 100, 0.6)'; // Bright yellowish color
+    element.style.border = '2px solid rgba(255, 193, 7, 0.9)'; // Strong border
+
+    // Remove the highlight after 2 seconds
+    setTimeout(() => {
+        element.style.backgroundColor = '';
+        element.style.border = '';
+    }, 5000);
 };
+
 
 const stylessss = document.createElement('style');
 stylessss.textContent = `
@@ -1655,12 +1710,6 @@ socketio.on("message", (data) => {
         }
     }
 
-    // Handle reply info click events
-    const replyInfo = messageElement.querySelector('[data-reply-to]');
-    if (replyInfo) {
-        replyInfo.addEventListener('click', () => scrollToMessage(replyInfo.dataset.replyTo));
-    }
-
     // Add action buttons
     const actionButtons = messageElement.querySelectorAll('.action-btn');
     actionButtons.forEach(button => {
@@ -1759,6 +1808,55 @@ socketio.on("chat_history", (data) => {
   markMessagesAsRead();
 
   messages.scrollTop = messages.scrollHeight;
+});
+
+socketio.on('message_found', (data) => {
+    const loadingDiv = document.querySelector('.fixed.top-4.right-4.bg-blue-500');
+    if (loadingDiv) loadingDiv.remove();
+
+    if (!data.found) {
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg';
+        errorDiv.textContent = 'Original message not found';
+        document.body.appendChild(errorDiv);
+        setTimeout(() => errorDiv.remove(), 3000);
+        return;
+    }
+
+    // Clear existing messages
+    const messageContainer = messages.querySelector('.flex.flex-col') || document.createElement('div');
+    messageContainer.className = 'flex flex-col space-y-4 p-4';
+    messageContainer.innerHTML = '';
+    messages.innerHTML = '';
+    messages.appendChild(messageContainer);
+
+    // Add messages
+    data.messages.forEach(message => {
+        const messageElement = createMessageElement(
+            message.name,
+            message.message,
+            message.image,
+            message.id,
+            message.reply_to,
+            message.edited || false,
+            message.reactions || {},
+            message.read_by || [],
+            message.type || 'normal',
+            message.video,
+            message.timestamp
+        );
+        messageContainer.appendChild(messageElement);
+    });
+
+    // Update pagination state
+    hasMoreMessages = data.has_more;
+    updateLoadMoreButton();
+
+    // Find and highlight target message
+    const targetMessage = document.querySelector(`[data-message-id="${message.id}"]`);
+    if (targetMessage) {
+        highlightAndScrollTo(targetMessage);
+    }
 });
 
 socketio.on("more_messages", (data) => {
@@ -1947,53 +2045,6 @@ socketio.on("connect", () => {
 
 socketio.on("disconnect", () => {
   console.log("Disconnected from server");
-});
-
-socketio.on('dismiss_notifications', function(data) {
-    // Remove notifications for the given message IDs from the UI
-    data.message_ids.forEach(messageId => {
-        // Remove notification from your UI
-        removeNotificationFromUI(messageId);
-    });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById("sendButton").addEventListener("click", sendMessage);
-  // Get message ID from URL parameters
-  loadFromLocalStorage()
-  const urlParams = new URLSearchParams(window.location.search);
-  const highlightMessageId = urlParams.get('highlight');
-
-  if (highlightMessageId) {
-      // Remove the URL parameter without refreshing the page
-      const newUrl = window.location.pathname + window.location.hash;
-      window.history.replaceState({}, '', newUrl);
-
-      // Function to attempt scrolling to the message
-      const attemptScroll = () => {
-          const targetMessage = document.querySelector(`[data-message-id="${highlightMessageId}"]`);
-          if (targetMessage) {
-              // Message found, scroll to it
-              setTimeout(() => {
-                  targetMessage.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'center'
-                  });
-                  highlightMessage(targetMessage);
-              }, 100);
-          } else {
-              // Message not found yet, try again
-              if (document.querySelector('.flex.flex-col.space-y-4')) {
-                  // Messages container exists but message not found
-                  // This might mean we're still loading messages
-                  setTimeout(attemptScroll, 100);
-              }
-          }
-      };
-
-      // Start attempting to scroll
-      attemptScroll();
-  }
 });
 
 // Call saveToLocalStorage before the page unloads

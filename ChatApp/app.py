@@ -2041,6 +2041,60 @@ def is_valid_video(file):
     file_type, _ = mimetypes.guess_type(file.name)
     return file_type in ALLOWED_VIDEO_TYPES
 
+@socketio.on("find_message")
+def find_message(data):
+    room = session.get("room")
+    message_id = data.get("message_id")
+    
+    if not room or not message_id:
+        socketio.emit("message_found", {"found": False}, room=request.sid)
+        return
+        
+    # Find message in room
+    message_data = rooms_collection.find_one(
+        {"_id": room, "messages.id": message_id},
+        {"messages.$": 1}
+    )
+    
+    if not message_data:
+        socketio.emit("message_found", {"found": False}, room=request.sid)
+        return
+        
+    # Get message index
+    room_data = rooms_collection.find_one({"_id": room})
+    message_index = next(
+        (i for i, msg in enumerate(room_data["messages"]) 
+         if msg["id"] == message_id), None
+    )
+    
+    if message_index is None:
+        socketio.emit("message_found", {"found": False}, room=request.sid)
+        return
+        
+    # Get messages around target (10 before, 10 after)
+    start_index = max(0, message_index - 10)
+    end_index = min(len(room_data["messages"]), message_index + 11)
+    context_messages = room_data["messages"][start_index:end_index]
+    
+    # Format messages
+    messages_with_read_status = []
+    for msg in context_messages:
+        msg_copy = msg.copy()
+        msg_copy["read_by"] = msg_copy.get("read_by", [])
+        for key, value in msg_copy.items():
+            if isinstance(value, datetime):
+                msg_copy[key] = datetime_to_iso(value)
+        messages_with_read_status.append(msg_copy)
+    
+    socketio.emit(
+        "message_found", 
+        {
+            "found": True,
+            "messages": messages_with_read_status,
+            "has_more": start_index > 0 or end_index < len(room_data["messages"])
+        },
+        room=request.sid
+    )
 
 @socketio.on("message")
 def message(data):
