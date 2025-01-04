@@ -48,3 +48,6 @@ idna
 uvicorn
 asgiref
 hypercorn
+
+#timezone
+pytz
