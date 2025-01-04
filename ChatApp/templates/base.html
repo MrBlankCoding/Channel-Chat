@@ -83,6 +83,17 @@
              }
          });
       </script>
+      <script>
+        // During login or page load
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        fetch('/update_timezone', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ timezone }),
+        });
+    </script>
       <!-- Heartbeat Logic for Server Connection -->
       <script>
          let heartbeatInterval;

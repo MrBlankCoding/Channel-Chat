@@ -11,6 +11,7 @@ import mimetypes
 
 # Third-party library imports
 from asgiref.wsgi import WsgiToAsgi
+import pytz
 from flask import (
     Flask,
     render_template,
@@ -2096,6 +2097,19 @@ def find_message(data):
         room=request.sid
     )
 
+@app.route("/update_timezone", methods=["POST"])
+@login_required
+def update_timezone():
+    timezone = request.json.get("timezone")
+    if timezone in pytz.all_timezones:
+        users_collection.update_one(
+            {"username": current_user.username},
+            {"$set": {"timezone": timezone}}
+        )
+        session["timezone"] = timezone
+        return jsonify({"status": "success"})
+    return jsonify({"status": "error", "message": "Invalid timezone"}), 400
+
 @socketio.on("message")
 def message(data):
     room = session.get("room")
@@ -2121,6 +2135,16 @@ def message(data):
                     "message": original_message["messages"][0]["message"],
                 }
 
+    # Get user's timezone from session or default to UTC
+    user_timezone = session.get("timezone", "UTC")
+    
+    # Create timezone-aware UTC timestamp
+    utc_now = datetime.now(pytz.UTC)
+    
+    # Convert to user's timezone
+    user_tz = pytz.timezone(user_timezone)
+    local_time = utc_now.astimezone(user_tz)
+
     content = {
         "id": str(ObjectId()),
         "name": current_user.username,
@@ -2130,12 +2154,25 @@ def message(data):
         "image": data.get("image"),
         "video": data.get("video"),
         "reactions": {},
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": utc_now.isoformat(),
+        "timezone": user_timezone,
+        "local_timestamp": local_time.isoformat()
     }
 
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
 
-    send(content, to=room)
+    # Convert timestamp for each recipient based on their timezone
+    for recipient in room_data["users"]:
+        recipient_data = users_collection.find_one({"username": recipient})
+        recipient_timezone = recipient_data.get("timezone", "UTC")
+        recipient_tz = pytz.timezone(recipient_timezone)
+        recipient_local_time = utc_now.astimezone(recipient_tz)
+        
+        recipient_content = content.copy()
+        recipient_content["local_timestamp"] = recipient_local_time.isoformat()
+        recipient_content["timezone"] = recipient_timezone
+        
+        send(recipient_content, to=request.sid if recipient == current_user.username else recipient)
 
     # Schedule delayed notifications for all other users in the room
     sender_username = current_user.username
@@ -2143,7 +2180,6 @@ def message(data):
 
     for username in room_users:
         if username != sender_username:
-            # Schedule a delayed notification check
             socketio.start_background_task(
                 check_and_notify,
                 message_id=content["id"],
@@ -2152,7 +2188,6 @@ def message(data):
                 sender_username=sender_username,
                 message_text=content["message"],
             )
-
 
 def check_and_notify(
     message_id, room_id, recipient_username, sender_username, message_text

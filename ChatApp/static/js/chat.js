@@ -453,24 +453,24 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
     // Align timestamp based on message sender
     if (!isCurrentUser) {
         timestampElement.style.justifyContent = 'flex-start';
-    }    
+    }     
 
     // Format timestamp with ISO string parsing
     if (timestamp) {
         try {
-            // Parse ISO format string
-            const date = new Date(timestamp + 'Z'); // Add 'Z' to ensure UTC parsing
+            // Parse the ISO timestamp - it should now come with timezone info from backend
+            const date = new Date(timestamp);
             
-            // Get user's timezone offset in minutes
-            const timezoneOffset = date.getTimezoneOffset();
+            // Get the local timezone if none provided
+            const userTimezone = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
             
-            // Adjust for local timezone
-            const localDate = new Date(date.getTime() - (timezoneOffset * 60000));
-            
-            // Format the date
+            // Format the date in user's timezone
             const today = new Date();
             const yesterday = new Date(today);
             yesterday.setDate(yesterday.getDate() - 1);
+            
+            // Convert date to user's timezone
+            const localDate = new Date(date.toLocaleString('en-US', { timeZone: userTimezone }));
             
             let formattedDate;
             if (localDate.toDateString() === today.toDateString()) {
@@ -478,14 +478,16 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
                 formattedDate = localDate.toLocaleTimeString('default', {
                     hour: 'numeric',
                     minute: '2-digit',
-                    hour12: true
+                    hour12: true,
+                    timeZone: userTimezone
                 });
             } else if (localDate.toDateString() === yesterday.toDateString()) {
                 // Yesterday - show "Yesterday" and time
                 formattedDate = `Yesterday at ${localDate.toLocaleTimeString('default', {
                     hour: 'numeric',
                     minute: '2-digit',
-                    hour12: true
+                    hour12: true,
+                    timeZone: userTimezone
                 })}`;
             } else {
                 // Other dates - show full date and time
@@ -494,11 +496,18 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
                     day: 'numeric',
                     hour: 'numeric',
                     minute: '2-digit',
-                    hour12: true
+                    hour12: true,
+                    timeZone: userTimezone
                 });
             }
             
             timestampElement.textContent = formattedDate;
+            
+            // Add timezone indicator on hover
+            timestampElement.title = new Date(timestamp).toLocaleString('default', {
+                timeZoneName: 'short',
+                timeZone: userTimezone
+            });
         } catch (e) {
             console.error('Error formatting timestamp:', e);
             timestampElement.textContent = 'Invalid date';
