@@ -249,5 +249,41 @@
           attributeFilter: ['class']
       });
    </script>
+   <script>
+// Frontend JavaScript
+const syncTimezone = async () => {
+    // Get browser timezone
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Check localStorage first
+    const storedTimezone = localStorage.getItem('userTimezone');
+    
+    // Only update if timezone has changed or isn't stored
+    if (storedTimezone !== browserTimezone) {
+        try {
+            const response = await fetch('/update_timezone', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ timezone: browserTimezone }),
+            });
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                localStorage.setItem('userTimezone', browserTimezone);
+            } else {
+                console.error('Failed to update timezone:', data.message);
+            }
+        } catch (error) {
+            console.error('Error syncing timezone:', error);
+        }
+    }
+};
+
+// Call on page load
+document.addEventListener('DOMContentLoaded', syncTimezone);
+</script>
 </div>
 {% endblock %}

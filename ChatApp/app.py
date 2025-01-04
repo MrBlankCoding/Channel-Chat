@@ -2135,16 +2135,6 @@ def message(data):
                     "message": original_message["messages"][0]["message"],
                 }
 
-    # Get user's timezone from session or default to UTC
-    user_timezone = session.get("timezone", "UTC")
-    
-    # Create timezone-aware UTC timestamp
-    utc_now = datetime.now(pytz.UTC)
-    
-    # Convert to user's timezone
-    user_tz = pytz.timezone(user_timezone)
-    local_time = utc_now.astimezone(user_tz)
-
     content = {
         "id": str(ObjectId()),
         "name": current_user.username,
@@ -2154,25 +2144,12 @@ def message(data):
         "image": data.get("image"),
         "video": data.get("video"),
         "reactions": {},
-        "timestamp": utc_now.isoformat(),
-        "timezone": user_timezone,
-        "local_timestamp": local_time.isoformat()
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
 
-    # Convert timestamp for each recipient based on their timezone
-    for recipient in room_data["users"]:
-        recipient_data = users_collection.find_one({"username": recipient})
-        recipient_timezone = recipient_data.get("timezone", "UTC")
-        recipient_tz = pytz.timezone(recipient_timezone)
-        recipient_local_time = utc_now.astimezone(recipient_tz)
-        
-        recipient_content = content.copy()
-        recipient_content["local_timestamp"] = recipient_local_time.isoformat()
-        recipient_content["timezone"] = recipient_timezone
-        
-        send(recipient_content, to=request.sid if recipient == current_user.username else recipient)
+    send(content, to=room)
 
     # Schedule delayed notifications for all other users in the room
     sender_username = current_user.username
@@ -2180,6 +2157,7 @@ def message(data):
 
     for username in room_users:
         if username != sender_username:
+            # Schedule a delayed notification check
             socketio.start_background_task(
                 check_and_notify,
                 message_id=content["id"],
@@ -2188,6 +2166,7 @@ def message(data):
                 sender_username=sender_username,
                 message_text=content["message"],
             )
+
 
 def check_and_notify(
     message_id, room_id, recipient_username, sender_username, message_text
