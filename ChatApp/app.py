@@ -125,6 +125,12 @@ def allowed_file(filename):
         and filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_IMAGE_TYPES"]
     )
 
+@app.route('/sounds/<filename>')
+def serve_sound(filename):
+    """
+    Serve sound files from the static/sounds directory.
+    """
+    return send_from_directory('static/sounds', filename)
 
 @app.route("/notification-settings", methods=["GET", "POST"])
 @login_required
