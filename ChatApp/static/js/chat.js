@@ -372,7 +372,7 @@ const getResponsiveMaxWidth = () => {
     return MESSAGE.maxWidth.largeDesktop; // Large desktop screens
 };
 
-const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal', video = null, timestamp = '') => {
+const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal', video = null, timestamp = '', gif = null) => {
     // Handle system messages differently
     if (type === 'system') {
         const element = document.createElement("div");
@@ -532,6 +532,26 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
 
     if (isCurrentUser && isRead) {
         messageBubble.classList.add('bg-indigo-700');
+    }
+
+    if (gif) {
+        const gifContainer = document.createElement("div");
+        gifContainer.className = "relative mt-2";
+
+        const gifElement = document.createElement("img");
+        gifElement.src = gif.url;
+        gifElement.alt = gif.title || "GIF";
+        gifElement.className = "max-w-[240px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200";
+        gifElement.loading = "lazy"; // Lazy load GIFs for better performance
+        
+        // Add attribution if required by Tenor
+        const attribution = document.createElement("div");
+        attribution.className = "text-xs text-gray-500 mt-1";
+        attribution.textContent = "GIF via Tenor";
+        
+        gifContainer.appendChild(gifElement);
+        gifContainer.appendChild(attribution);
+        messageBubble.appendChild(gifContainer);
     }
 
     // Reply section
@@ -775,6 +795,83 @@ const createTypingIndicator = (name) => {
     element.appendChild(messageContainer);
 
     return element;
+};
+
+document.getElementById('gifButton').addEventListener('click', () => {
+    createGifPicker();
+    // Close the plus menu after opening GIF picker
+    document.getElementById('plusMenu').classList.add('hidden');
+});
+
+const createGifPicker = async () => {
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50";
+    
+    const content = document.createElement("div");
+    content.className = "bg-white dark:bg-gray-800 rounded-lg p-4 w-full max-w-lg max-h-[80vh] overflow-y-auto";
+    
+    const searchInput = document.createElement("input");
+    searchInput.type = "text";
+    searchInput.placeholder = "Search GIFs...";
+    searchInput.className = "w-full p-2 mb-4 border rounded-lg dark:bg-gray-700 dark:border-gray-600";
+    
+    const gifGrid = document.createElement("div");
+    gifGrid.className = "grid grid-cols-2 gap-2";
+    
+    let searchTimeout;
+    
+    const searchGifs = async (query) => {
+        try {
+            const response = await fetch(`/api/search-gifs?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            gifGrid.innerHTML = "";
+            data.results.forEach(gif => {
+                const gifElement = document.createElement("img");
+                gifElement.src = gif.media_formats.tinygif.url;
+                gifElement.className = "w-full rounded cursor-pointer hover:opacity-80";
+                gifElement.addEventListener("click", () => {
+                    const messageData = {
+                        data: "",
+                        gif: {
+                            url: gif.media_formats.gif.url,
+                            title: gif.content_description
+                        },
+                        replyTo: replyingTo ? {
+                            id: replyingTo.id,
+                            message: replyingTo.message
+                        } : null
+                    };
+                    
+                    socketio.emit("message", messageData);
+                    cancelReply(); // Clear any reply state
+                    modal.remove();
+                });
+                gifGrid.appendChild(gifElement);
+            });
+        } catch (error) {
+            console.error("Error searching GIFs:", error);
+        }
+    };
+    
+    searchInput.addEventListener("input", (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => searchGifs(e.target.value), 300);
+    });
+    
+    content.appendChild(searchInput);
+    content.appendChild(gifGrid);
+    modal.appendChild(content);
+    
+    // Close on background click
+    modal.addEventListener("click", (e) => {
+        if (e.target === modal) modal.remove();
+    });
+    
+    document.body.appendChild(modal);
+    
+    // Load trending GIFs initially
+    searchGifs("");
 };
 
 // Add CSS animation
@@ -1677,7 +1774,7 @@ socketio.on("message", (data) => {
             data.read_by || [],
             'system',
             null,
-            data.timestamp // Include timestamp
+            data.timestamp
         );
         addMessageToDOM(messageElement);
         return;
@@ -1703,10 +1800,12 @@ socketio.on("message", (data) => {
         data.read_by || [],
         'normal',
         data.video,
-        data.timestamp // Include timestamp
+        data.timestamp,
+        data.gif  // Add GIF parameter
     );
     addMessageToDOM(messageElement);
 
+    // Handle unread messages
     if (data.name !== currentUser) {
         unreadMessages.add(data.id);
 
@@ -1737,7 +1836,7 @@ socketio.on("message", (data) => {
                 break;
 
             case 'Reply':
-                button.addEventListener('click', () => startReply(data.id, data.message));
+                button.addEventListener('click', () => startReply(data.id, data.message || 'Sent a GIF'));
                 break;
 
             case 'React':
@@ -1793,6 +1892,7 @@ socketio.on("chat_history", (data) => {
             validReaders,
             'normal',
             message.video,
+            message.gif,
             message.timestamp // Include timestamp
         );
         messageContainer.appendChild(messageElement);
@@ -1850,6 +1950,7 @@ socketio.on('message_found', (data) => {
             message.read_by || [],
             message.type || 'normal',
             message.video,
+            message.gif,
             message.timestamp
         );
         messageContainer.appendChild(messageElement);
@@ -1921,6 +2022,7 @@ socketio.on("more_messages", (data) => {
             validReaders,
             'normal',
             message.video,
+            message.gif,
             message.timestamp // Include timestamp
         );
         fragment.appendChild(messageElement);

@@ -11,6 +11,7 @@ import mimetypes
 
 # Third-party library imports
 from asgiref.wsgi import WsgiToAsgi
+import requests
 import pytz
 from flask import (
     Flask,
@@ -2121,6 +2122,29 @@ def update_timezone():
         return jsonify({"status": "success"})
     return jsonify({"status": "error", "message": "Invalid timezone"}), 400
 
+TENOR_API_KEY = os.getenv("TENOR_API_KEY")
+TENOR_BASE_URL = "https://tenor.googleapis.com/v2"
+
+@app.route("/api/search-gifs")
+def search_gifs():
+    query = request.args.get("q", "")
+    limit = request.args.get("limit", 20)
+    
+    try:
+        response = requests.get(
+            f"{TENOR_BASE_URL}/search",
+            params={
+                "q": query or "trending",
+                "key": TENOR_API_KEY,
+                "client_key": "web",
+                "limit": limit,
+                "media_filter": "minimal"
+            }
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 
 @socketio.on("message")
 def message(data):
@@ -2128,6 +2152,9 @@ def message(data):
     room_data = rooms_collection.find_one({"_id": room})
     if not room or not room_data:
         return
+    
+    # Handle GIF data
+    gif = data.get("gif")
 
     # Handle reply_to data structure
     reply_to = None
@@ -2155,6 +2182,7 @@ def message(data):
         "read_by": [session.get("username")],
         "image": data.get("image"),
         "video": data.get("video"),
+        "gif": gif,
         "reactions": {},
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }

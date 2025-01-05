@@ -51,3 +51,5 @@ hypercorn
 
 #timezone
 pytz
+
+requests
