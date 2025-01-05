@@ -2036,7 +2036,7 @@ socketio.on("more_messages", (data) => {
             return;
         }
 
-        // Handle regular messages
+        // Handle regular messages including GIFs
         const validReaders = (message.read_by || []).filter(reader =>
             reader !== null &&
             reader !== message.name
@@ -2058,8 +2058,8 @@ socketio.on("more_messages", (data) => {
             validReaders,
             'normal',
             message.video,
-            message.gif,
-            message.timestamp // Include timestamp
+            message.timestamp, // Include timestamp
+            message.gif // Include GIF data
         );
         fragment.appendChild(messageElement);
 
@@ -2086,7 +2086,6 @@ socketio.on("more_messages", (data) => {
     const newScrollHeight = messages.scrollHeight;
     messages.scrollTop = newScrollHeight - oldScrollHeight + messages.scrollTop;
 });
-
 
 socketio.on("messages_read", (data) => {
     const {
