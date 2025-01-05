@@ -1,32 +1,4 @@
-5. Add a profile photo cache
-   - main.py
-   - service worker
-
-
-
-7. Fix jumping to messages
-   - I have no idea how to fix this
-
-
-
-11. Patch security vulnerabilities
-
-
-12. Dockerise it
-   - Use gevenlet for deploying
-
-
 11. Gif API
-
-
-14. Add themes to chats
-   - Toggle in settings
-   - Save to chat room DB
 
 15. I think Im going to move messages that are sent like in a row without interruption closer together and only do the PFP for the first one
 
-16. Timezones
-
-17. jumping to messages
-
-18. replys

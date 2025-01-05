@@ -3,7 +3,7 @@ import os
 import random
 import re
 import io
-from datetime import timedelta, datetime
+from datetime import datetime, timezone, timedelta
 import urllib.parse
 import string
 import tempfile
@@ -1556,6 +1556,7 @@ def prepare_room_message_data(room_info):
         "type": message_type,
     }
 
+
 @app.route("/room/", defaults={"code": None}, methods=["GET", "POST"])
 @app.route("/room/<code>", methods=["GET", "POST"])
 @login_required
@@ -1715,7 +1716,7 @@ def room(code):
         # Sort rooms by last_message timestamp (most recent first)
         rooms_with_messages.sort(
             key=lambda room: room["last_message"].get("timestamp", datetime.min),
-            reverse=True
+            reverse=True,
         )
 
         return render_template(
@@ -1735,7 +1736,6 @@ def room(code):
     except Exception as e:
         flash(f"Error loading room data: {str(e)}")
         return redirect(url_for("home"))
-
 
 
 @app.route("/exit_room/<code>")
@@ -2042,41 +2042,41 @@ def is_valid_video(file):
     file_type, _ = mimetypes.guess_type(file.name)
     return file_type in ALLOWED_VIDEO_TYPES
 
+
 @socketio.on("find_message")
 def find_message(data):
     room = session.get("room")
     message_id = data.get("message_id")
-    
+
     if not room or not message_id:
         socketio.emit("message_found", {"found": False}, room=request.sid)
         return
-        
+
     # Find message in room
     message_data = rooms_collection.find_one(
-        {"_id": room, "messages.id": message_id},
-        {"messages.$": 1}
+        {"_id": room, "messages.id": message_id}, {"messages.$": 1}
     )
-    
+
     if not message_data:
         socketio.emit("message_found", {"found": False}, room=request.sid)
         return
-        
+
     # Get message index
     room_data = rooms_collection.find_one({"_id": room})
     message_index = next(
-        (i for i, msg in enumerate(room_data["messages"]) 
-         if msg["id"] == message_id), None
+        (i for i, msg in enumerate(room_data["messages"]) if msg["id"] == message_id),
+        None,
     )
-    
+
     if message_index is None:
         socketio.emit("message_found", {"found": False}, room=request.sid)
         return
-        
+
     # Get messages around target (10 before, 10 after)
     start_index = max(0, message_index - 10)
     end_index = min(len(room_data["messages"]), message_index + 11)
     context_messages = room_data["messages"][start_index:end_index]
-    
+
     # Format messages
     messages_with_read_status = []
     for msg in context_messages:
@@ -2086,16 +2086,17 @@ def find_message(data):
             if isinstance(value, datetime):
                 msg_copy[key] = datetime_to_iso(value)
         messages_with_read_status.append(msg_copy)
-    
+
     socketio.emit(
-        "message_found", 
+        "message_found",
         {
             "found": True,
             "messages": messages_with_read_status,
-            "has_more": start_index > 0 or end_index < len(room_data["messages"])
+            "has_more": start_index > 0 or end_index < len(room_data["messages"]),
         },
-        room=request.sid
+        room=request.sid,
     )
+
 
 @app.route("/update_timezone", methods=["POST"])
 @login_required
@@ -2103,12 +2104,12 @@ def update_timezone():
     timezone = request.json.get("timezone")
     if timezone in pytz.all_timezones:
         users_collection.update_one(
-            {"username": current_user.username},
-            {"$set": {"timezone": timezone}}
+            {"username": current_user.username}, {"$set": {"timezone": timezone}}
         )
         session["timezone"] = timezone
         return jsonify({"status": "success"})
     return jsonify({"status": "error", "message": "Invalid timezone"}), 400
+
 
 @socketio.on("message")
 def message(data):
@@ -2144,7 +2145,7 @@ def message(data):
         "image": data.get("image"),
         "video": data.get("video"),
         "reactions": {},
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
     rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})

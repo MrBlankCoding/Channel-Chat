@@ -300,61 +300,6 @@ import {
   
       return loadingPreview;
   };
-
-  const formatMessageTimestamp = (timestamp) => {
-    if (!timestamp) return '';
-    
-    try {
-        // Get timezone from localStorage, fallback to browser's timezone
-        const userTimezone = localStorage.getItem('userTimezone') || 
-                           Intl.DateTimeFormat().resolvedOptions().timeZone;
-        
-        // Parse UTC timestamp
-        const utcDate = new Date(timestamp + 'Z'); // Ensure UTC parsing
-        
-        // Format date options
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        // Convert to user's timezone
-        const localDate = new Date(utcDate.toLocaleString('en-US', { timeZone: userTimezone }));
-        
-        let formattedDate;
-        if (localDate.toDateString() === today.toDateString()) {
-            // Today - show only time
-            formattedDate = localDate.toLocaleTimeString('default', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: userTimezone
-            });
-        } else if (localDate.toDateString() === yesterday.toDateString()) {
-            // Yesterday - show "Yesterday" and time
-            formattedDate = `Yesterday at ${localDate.toLocaleTimeString('default', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: userTimezone
-            })}`;
-        } else {
-            // Other dates - show full date and time
-            formattedDate = localDate.toLocaleString('default', {
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-                timeZone: userTimezone
-            });
-        }
-        
-        return formattedDate;
-    } catch (e) {
-        console.error('Error formatting timestamp:', e);
-        return 'Invalid date';
-    }
-};
   
   const updatePageTitle = () => {
     if (unreadCount > 0) {
@@ -376,15 +321,6 @@ import {
             updatePageTitle();
         }
     }
-  };
-  
-  // Load data from Local Storage
-  const loadFromLocalStorage = () => {
-    unreadCount = parseInt(localStorage.getItem(LS_KEYS.UNREAD_COUNT) || '0');
-    lastReadMessageId = localStorage.getItem(LS_KEYS.LAST_READ_MESSAGE_ID);
-    currentUser = localStorage.getItem(LS_KEYS.USERNAME) || username;
-  
-    updatePageTitle();
   };
   
   // Save data to Local Storage
@@ -1716,88 +1652,92 @@ import {
   };
   
   socketio.on("message", (data) => {
-      // Handle system messages
-      if (data.type === 'system') {
-          const messageElement = createMessageElement(
-              data.name,
-              data.message,
-              null,
-              data.id,
-              null,
-              false,
-              {},
-              data.read_by || [],
-              'system',
-              null,
-              data.timestamp // Include timestamp
-          );
-          addMessageToDOM(messageElement);
-          return;
-      }
-  
-      // Handle regular messages
-      let replyToData = null;
-      if (data.reply_to) {
-          replyToData = {
-              id: data.reply_to.id || data.reply_to,
-              message: data.reply_to.message || findMessageById(data.reply_to)
-          };
-      }
-  
-      const messageElement = createMessageElement(
-          data.name,
-          data.message,
-          data.image,
-          data.id,
-          replyToData,
-          data.edited || false,
-          data.reactions || {},
-          data.read_by || [],
-          'normal',
-          data.video,
-          data.timestamp // Include timestamp
-      );
-      addMessageToDOM(messageElement);
-  
-      if (data.name !== currentUser) {
-          unreadMessages.add(data.id);
-          if (isTabActive) {
-              markMessagesAsRead();
-          } else {
-              unreadCount++;
-              updatePageTitle();
-          }
-      }
-  
-      // Add action buttons
-      const actionButtons = messageElement.querySelectorAll('.action-btn');
-      actionButtons.forEach(button => {
-          const buttonTitle = button.getAttribute('title');
-  
-          switch (buttonTitle) {
-              case 'Edit':
-                  if (data.name === currentUser) {
-                      button.addEventListener('click', () => editMessage(data.id));
-                  }
-                  break;
-  
-              case 'Delete':
-                  if (data.name === currentUser) {
-                      button.addEventListener('click', () => deleteMessage(data.id));
-                  }
-                  break;
-  
-              case 'Reply':
-                  button.addEventListener('click', () => startReply(data.id, data.message));
-                  break;
-  
-              case 'React':
-                  button.addEventListener('click', () => createReactionPicker(data.id));
-                  break;
-          }
-      });
-  });
-  
+    // Handle system messages
+    if (data.type === 'system') {
+        const messageElement = createMessageElement(
+            data.name,
+            data.message,
+            null,
+            data.id,
+            null,
+            false,
+            {},
+            data.read_by || [],
+            'system',
+            null,
+            data.timestamp // Include timestamp
+        );
+        addMessageToDOM(messageElement);
+        return;
+    }
+
+    // Handle regular messages
+    let replyToData = null;
+    if (data.reply_to) {
+        replyToData = {
+            id: data.reply_to.id || data.reply_to,
+            message: data.reply_to.message || findMessageById(data.reply_to)
+        };
+    }
+
+    const messageElement = createMessageElement(
+        data.name,
+        data.message,
+        data.image,
+        data.id,
+        replyToData,
+        data.edited || false,
+        data.reactions || {},
+        data.read_by || [],
+        'normal',
+        data.video,
+        data.timestamp // Include timestamp
+    );
+    addMessageToDOM(messageElement);
+
+    if (data.name !== currentUser) {
+        unreadMessages.add(data.id);
+
+        if (isTabActive) {
+            markMessagesAsRead();
+        } else {
+            // Play notification sound if the tab is not active
+            const audio = new Audio('static/sounds/notification.mp3');
+            audio.play();
+
+            unreadCount++;
+            updatePageTitle();
+        }
+    }
+
+    // Add action buttons
+    const actionButtons = messageElement.querySelectorAll('.action-btn');
+    actionButtons.forEach(button => {
+        const buttonTitle = button.getAttribute('title');
+
+        switch (buttonTitle) {
+            case 'Edit':
+                if (data.name === currentUser) {
+                    button.addEventListener('click', () => editMessage(data.id));
+                }
+                break;
+
+            case 'Delete':
+                if (data.name === currentUser) {
+                    button.addEventListener('click', () => deleteMessage(data.id));
+                }
+                break;
+
+            case 'Reply':
+                button.addEventListener('click', () => startReply(data.id, data.message));
+                break;
+
+            case 'React':
+                button.addEventListener('click', () => createReactionPicker(data.id));
+                break;
+        }
+    });
+});
   
   socketio.on("chat_history", (data) => {
     const messageContainer = document.createElement('div');
