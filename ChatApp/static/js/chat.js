@@ -372,6 +372,46 @@ const getResponsiveMaxWidth = () => {
     return MESSAGE.maxWidth.largeDesktop; // Large desktop screens
 };
 
+const formatTimestamp = (timestamp) => {
+    try {
+        const userTimezone = localStorage.getItem('userTimezone') || 
+            Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        const date = new Date(timestamp);
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        
+        if (date.toDateString() === now.toDateString()) {
+            return date.toLocaleTimeString('default', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: userTimezone
+            });
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return `Yesterday at ${date.toLocaleTimeString('default', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: userTimezone
+            })}`;
+        }
+        
+        return date.toLocaleString('default', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: userTimezone
+        });
+    } catch (e) {
+        console.error('Error formatting timestamp:', e);
+        return 'Invalid date';
+    }
+};
+
 const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = false, reactions = {}, readBy = [], type = 'normal', video = null, timestamp = '', gif = null) => {
     // Handle system messages differently
     if (type === 'system') {
@@ -449,60 +489,9 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
         timestampElement.style.justifyContent = 'flex-start';
     }
 
-    // Format timestamp with timezone from localStorage
+    // Format timestamp using the formatTimestamp function
     if (timestamp) {
-        try {
-            // Get timezone from localStorage, fallback to browser's timezone
-            const userTimezone = localStorage.getItem('userTimezone') ||
-                Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-            // Parse UTC timestamp
-            const utcDate = new Date(timestamp);
-
-            // Format date options
-            const today = new Date();
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-
-            // Convert to user's timezone
-            const localDate = new Date(utcDate.toLocaleString('en-US', {
-                timeZone: userTimezone
-            }));
-
-            let formattedDate;
-            if (localDate.toDateString() === today.toDateString()) {
-                // Today - show only time
-                formattedDate = localDate.toLocaleTimeString('default', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                    timeZone: userTimezone
-                });
-            } else if (localDate.toDateString() === yesterday.toDateString()) {
-                // Yesterday - show "Yesterday" and time
-                formattedDate = `Yesterday at ${localDate.toLocaleTimeString('default', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                    timeZone: userTimezone
-                })}`;
-            } else {
-                // Other dates - show full date and time
-                formattedDate = localDate.toLocaleString('default', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true,
-                    timeZone: userTimezone
-                });
-            }
-
-            timestampElement.textContent = formattedDate;
-        } catch (e) {
-            console.error('Error formatting timestamp:', e);
-            timestampElement.textContent = 'Invalid date';
-        }
+        timestampElement.textContent = formatTimestamp(timestamp);
     }
 
     const messageHeader = document.createElement("div");
@@ -534,23 +523,71 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
         messageBubble.classList.add('bg-indigo-700');
     }
 
-    if (gif) {
+    // GIF handling
+    if (gif && gif.url) {
         const gifContainer = document.createElement("div");
         gifContainer.className = "relative mt-2";
 
+        const loadingPlaceholder = document.createElement("div");
+        loadingPlaceholder.className = "animate-pulse bg-gray-200 dark:bg-gray-700 rounded-lg";
+        loadingPlaceholder.style.width = "240px";
+        loadingPlaceholder.style.height = "180px";
+        gifContainer.appendChild(loadingPlaceholder);
+
         const gifElement = document.createElement("img");
-        gifElement.src = gif.url;
+        gifElement.className = "max-w-[240px] w-full rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer";
+        gifElement.loading = "lazy";
         gifElement.alt = gif.title || "GIF";
-        gifElement.className = "max-w-[240px] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200";
-        gifElement.loading = "lazy"; // Lazy load GIFs for better performance
-        
-        // Add attribution if required by Tenor
-        const attribution = document.createElement("div");
-        attribution.className = "text-xs text-gray-500 mt-1";
-        attribution.textContent = "GIF via Tenor";
         
         gifContainer.appendChild(gifElement);
-        gifContainer.appendChild(attribution);
+
+        gifElement.onload = () => {
+            loadingPlaceholder.remove();
+        };
+
+        gifElement.onerror = (error) => {
+            console.error('Failed to load GIF:', error);
+            loadingPlaceholder.remove();
+            const errorMessage = document.createElement("div");
+            errorMessage.className = "text-sm text-red-500 dark:text-red-400 p-2 bg-red-100 dark:bg-red-900/20 rounded";
+            errorMessage.textContent = "Failed to load GIF";
+            gifContainer.appendChild(errorMessage);
+            gifElement.remove();
+        };
+
+        gifElement.src = gif.url;
+
+        gifElement.addEventListener("click", () => {
+            const modal = document.createElement("div");
+            modal.className = "fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4";
+            
+            const modalContent = document.createElement("div");
+            modalContent.className = "relative max-w-2xl w-full";
+            
+            const fullSizeGif = document.createElement("img");
+            fullSizeGif.src = gif.url;
+            fullSizeGif.alt = gif.title || "GIF";
+            fullSizeGif.className = "w-full rounded-lg";
+            
+            const closeButton = document.createElement("button");
+            closeButton.className = "absolute top-2 right-2 text-white hover:text-gray-300";
+            closeButton.innerHTML = `
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            `;
+            
+            closeButton.onclick = () => modal.remove();
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.remove();
+            };
+            
+            modalContent.appendChild(fullSizeGif);
+            modalContent.appendChild(closeButton);
+            modal.appendChild(modalContent);
+            document.body.appendChild(modal);
+        });
+        
         messageBubble.appendChild(gifContainer);
     }
 
@@ -575,7 +612,7 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
     const {
         messageContent,
         previewsContainer
-    } = updateMessageContentWithLinks(msg || (video ? "Sent a video" : "Sent an image"), isCurrentUser);
+    } = updateMessageContentWithLinks(msg, isCurrentUser);
     messageBubble.appendChild(messageContent);
 
     if (previewsContainer) {
@@ -618,7 +655,6 @@ const createMessageElement = (name, msg, image, messageId, replyTo, isEdited = f
         videoElement.preload = "metadata";
 
         videoContainer.appendChild(videoElement);
-
         messageBubble.appendChild(videoContainer);
     }
 
@@ -1856,21 +1892,21 @@ socketio.on("chat_history", (data) => {
             const messageElement = createMessageElement(
                 message.name,
                 message.message,
-                null, // system messages don't have images
+                null,
                 message.id,
-                null, // system messages don't have replies
-                false, // system messages can't be edited
-                {}, // system messages don't have reactions
-                [], // system messages don't track read status
+                null,
+                false,
+                {},
+                [],
                 'system',
-                null, // No video for system messages
-                message.timestamp // Include timestamp
+                null,
+                message.timestamp
             );
             messageContainer.appendChild(messageElement);
             return;
         }
 
-        // Handle regular messages
+        // Handle regular messages including GIFs
         const validReaders = (message.read_by || []).filter(reader =>
             reader !== null &&
             reader !== message.name
@@ -1892,8 +1928,8 @@ socketio.on("chat_history", (data) => {
             validReaders,
             'normal',
             message.video,
-            message.gif,
-            message.timestamp // Include timestamp
+            message.timestamp,
+            message.gif  // Pass the gif data
         );
         messageContainer.appendChild(messageElement);
 

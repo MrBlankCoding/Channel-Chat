@@ -4,6 +4,7 @@ import random
 import re
 import io
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Dict, Any
 import urllib.parse
 import string
 import tempfile
@@ -2125,10 +2126,28 @@ def update_timezone():
 TENOR_API_KEY = os.getenv("TENOR_API_KEY")
 TENOR_BASE_URL = "https://tenor.googleapis.com/v2"
 
+def validate_gif_data(gif: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Validates and sanitizes GIF data before saving to database.
+    Returns None if invalid, sanitized dict if valid.
+    """
+    if not gif or not isinstance(gif, dict):
+        return None
+        
+    required_fields = {'url', 'title'}
+    if not all(field in gif for field in required_fields):
+        return None
+        
+    return {
+        'url': str(gif['url']),
+        'title': str(gif['title']),
+        'saved_at': datetime.now(timezone.utc).isoformat()
+    }
+
 @app.route("/api/search-gifs")
 def search_gifs():
     query = request.args.get("q", "")
-    limit = request.args.get("limit", 20)
+    limit = int(request.args.get("limit", 20))
     
     try:
         response = requests.get(
@@ -2153,8 +2172,8 @@ def message(data):
     if not room or not room_data:
         return
     
-    # Handle GIF data
-    gif = data.get("gif")
+    # Handle GIF data with validation
+    gif_data = validate_gif_data(data.get("gif"))
 
     # Handle reply_to data structure
     reply_to = None
@@ -2166,7 +2185,8 @@ def message(data):
             }
         else:
             original_message = rooms_collection.find_one(
-                {"_id": room, "messages.id": data["replyTo"]}, {"messages.$": 1}
+                {"_id": room, "messages.id": data["replyTo"]}, 
+                {"messages.$": 1}
             )
             if original_message and original_message.get("messages"):
                 reply_to = {
@@ -2182,22 +2202,33 @@ def message(data):
         "read_by": [session.get("username")],
         "image": data.get("image"),
         "video": data.get("video"),
-        "gif": gif,
+        "gif": gif_data,  # Using validated gif data
         "reactions": {},
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-    rooms_collection.update_one({"_id": room}, {"$push": {"messages": content}})
+    # Create the message update operation
+    update_operation = {"$push": {"messages": content}}
+    
+    # Add metadata for GIF messages
+    if gif_data:
+        update_operation["$inc"] = {"gif_count": 1}
+        update_operation["$set"] = {
+            "last_gif_sent": datetime.now(timezone.utc).isoformat()
+        }
 
+    # Update the room with the new message
+    rooms_collection.update_one({"_id": room}, update_operation)
+
+    # Send to room
     send(content, to=room)
 
-    # Schedule delayed notifications for all other users in the room
+    # Schedule notifications
     sender_username = current_user.username
     room_users = room_data["users"]
 
     for username in room_users:
         if username != sender_username:
-            # Schedule a delayed notification check
             socketio.start_background_task(
                 check_and_notify,
                 message_id=content["id"],
@@ -2206,7 +2237,6 @@ def message(data):
                 sender_username=sender_username,
                 message_text=content["message"],
             )
-
 
 def check_and_notify(
     message_id, room_id, recipient_username, sender_username, message_text
