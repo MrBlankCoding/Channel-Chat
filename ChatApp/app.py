@@ -125,13 +125,6 @@ def allowed_file(filename):
         and filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_IMAGE_TYPES"]
     )
 
-@app.route('/sounds/<filename>')
-def serve_sound(filename):
-    """
-    Serve sound files from the static/sounds directory.
-    """
-    return send_from_directory('static/sounds', filename)
-
 @app.route("/notification-settings", methods=["GET", "POST"])
 @login_required
 def notification_settings():
@@ -195,6 +188,7 @@ def register_fcm_token():
         return jsonify({"error": str(e)}), 400
 
 
+
 def send_notification(recipient_username, sender_username, message_text):
     recipient = users_collection.find_one({"username": recipient_username})
 
@@ -209,13 +203,25 @@ def send_notification(recipient_username, sender_username, message_text):
         return False
 
     try:
-        # Simple notification content
+        # Build the message
         message = messaging.Message(
             notification=messaging.Notification(
                 title=f"New message from {sender_username}",
                 body=message_text[:100] + ("..." if len(message_text) > 100 else ""),
             ),
             token=fcm_token,
+            android=messaging.AndroidConfig(
+                notification=messaging.AndroidNotification(
+                    sound="default"  # Default sound on Android
+                )
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        sound="default"  # Default sound on iOS
+                    )
+                )
+            )
         )
 
         messaging.send(message)
@@ -224,7 +230,6 @@ def send_notification(recipient_username, sender_username, message_text):
     except Exception as e:
         print(f"Error sending notification to {recipient_username}: {e}")
         return False
-
 
 @app.route("/firebase-messaging-sw.js")
 def serve_sw():

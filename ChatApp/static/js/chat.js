@@ -1713,10 +1713,6 @@ socketio.on("message", (data) => {
         if (isTabActive) {
             markMessagesAsRead();
         } else {
-            // Play notification sound if the tab is not active
-            const audio = new Audio('/sounds/notification.mp3');
-            audio.play();
-
             unreadCount++;
             updatePageTitle();
         }
@@ -1750,7 +1746,6 @@ socketio.on("message", (data) => {
         }
     });
 });
-
 
 socketio.on("chat_history", (data) => {
     const messageContainer = document.createElement('div');
