@@ -854,6 +854,11 @@ const createGifPicker = async () => {
     closeButton.addEventListener("click", () => modal.remove());
     content.appendChild(closeButton);
 
+    const header = document.createElement("h2");
+    header.className = "text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4 text-center";
+    header.textContent = "Pick a GIF";
+    content.appendChild(header);
+
     const searchInput = document.createElement("input");
     searchInput.type = "text";
     searchInput.placeholder = "Search GIFs...";
@@ -863,24 +868,27 @@ const createGifPicker = async () => {
 
     const gifGrid = document.createElement("div");
     gifGrid.style.display = "grid";
-    gifGrid.style.gridTemplateColumns = "repeat(auto-fit, minmax(100px, 1fr))"; // Responsive columns
-    gifGrid.style.gap = "16px"; // Space between items
+    gifGrid.style.gridTemplateColumns = "repeat(4, 1fr)"; // 4x4 grid layout
+    gifGrid.style.gap = "12px"; // Space between items
     gifGrid.style.width = "100%";
     gifGrid.style.boxSizing = "border-box"; // Include padding/borders in size
 
     const spinner = document.createElement("div");
     spinner.className = "w-8 h-8 border-4 border-t-transparent border-gray-400 rounded-full animate-spin mx-auto my-4";
 
+    const footer = document.createElement("div");
+    footer.className = "text-center mt-4 text-sm text-gray-500 dark:text-gray-400";
+    footer.textContent = "Powered by GIF API";
+
     let searchTimeout;
-    let currentPage = 1;
     const itemsPerPage = 16;
 
-    const searchGifs = async (query, page = 1) => {
+    const searchGifs = async (query) => {
         try {
             gifGrid.innerHTML = ""; // Clear existing grid content
             gifGrid.appendChild(spinner); // Show spinner
 
-            const response = await fetch(`/api/search-gifs?q=${encodeURIComponent(query)}&page=${page}&limit=${itemsPerPage}`);
+            const response = await fetch(`/api/search-gifs?q=${encodeURIComponent(query)}&page=1&limit=${itemsPerPage}`);
             const data = await response.json();
 
             gifGrid.innerHTML = ""; // Remove spinner and populate grid
@@ -888,15 +896,16 @@ const createGifPicker = async () => {
             if (data.results.length === 0) {
                 gifGrid.innerHTML = `<div class="text-center text-gray-500 dark:text-gray-400">No GIFs found</div>`;
             } else {
-                data.results.forEach(gif => {
+                data.results.forEach((gif, index) => {
+                    const gifContainer = document.createElement("div");
+                    gifContainer.className = "relative group";
+
                     const gifElement = document.createElement("img");
                     gifElement.src = gif.media_formats.gif.url;
-                    gifElement.className = "object-cover rounded cursor-pointer transition-transform duration-200 hover:scale-105";
-                    gifElement.style.width = "100%"; // Full width within grid cell
-                    gifElement.style.height = "auto"; // Maintain aspect ratio
-                    gifElement.style.aspectRatio = "1 / 1"; // Maintain square aspect ratio
-                    gifElement.setAttribute("alt", gif.content_description || "GIF");
+                    gifElement.className = "object-cover rounded transition-transform duration-200 hover:scale-105 w-full h-full";
+                    gifElement.setAttribute("alt", gif.content_description || `GIF ${index + 1}`);
                     gifElement.setAttribute("tabindex", "0");
+
                     gifElement.addEventListener("click", () => {
                         const messageData = {
                             data: "",
@@ -914,7 +923,13 @@ const createGifPicker = async () => {
                         cancelReply(); // Clear any reply state
                         modal.remove();
                     });
-                    gifGrid.appendChild(gifElement);
+
+                    const gifOverlay = document.createElement("div");
+                    gifOverlay.className = "absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded";
+
+                    gifContainer.appendChild(gifElement);
+                    gifContainer.appendChild(gifOverlay);
+                    gifGrid.appendChild(gifContainer);
                 });
             }
         } catch (error) {
@@ -925,13 +940,13 @@ const createGifPicker = async () => {
     searchInput.addEventListener("input", (e) => {
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
-            currentPage = 1;
             searchGifs(e.target.value);
         }, 300);
     });
 
     content.appendChild(searchInput);
     content.appendChild(gifGrid);
+    content.appendChild(footer);
     modal.appendChild(content);
 
     // Close on background click
@@ -951,6 +966,7 @@ const createGifPicker = async () => {
     // Load trending GIFs initially
     searchGifs("");
 };
+
 
 // Add CSS animation
 const style = document.createElement('style');

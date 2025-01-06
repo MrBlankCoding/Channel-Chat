@@ -2147,7 +2147,7 @@ def validate_gif_data(gif: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]
 @app.route("/api/search-gifs")
 def search_gifs():
     query = request.args.get("q", "")
-    limit = int(request.args.get("limit", 20))
+    limit = int(request.args.get("limit", 16))
     
     try:
         response = requests.get(
