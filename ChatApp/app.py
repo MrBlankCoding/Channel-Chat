@@ -2129,23 +2129,59 @@ def update_timezone():
 TENOR_API_KEY = os.getenv("TENOR_API_KEY")
 TENOR_BASE_URL = "https://tenor.googleapis.com/v2"
 
-def validate_gif_data(gif: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """
-    Validates and sanitizes GIF data before saving to database.
-    Returns None if invalid, sanitized dict if valid.
-    """
-    if not gif or not isinstance(gif, dict):
-        return None
+@app.route("/api/gif-categories")
+def gif_categories():
+    try:
+        response = requests.get(
+            f"{TENOR_BASE_URL}/categories",
+            params={
+                "key": TENOR_API_KEY,
+                "client_key": "web",
+                "type": "featured"  # Get featured categories
+            }
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/search-suggestions")
+def search_suggestions():
+    try:
+        response = requests.get(
+            f"{TENOR_BASE_URL}/trending_terms",
+            params={
+                "key": TENOR_API_KEY,
+                "client_key": "web",
+                "limit": 8  # Limit to top 8 trending terms
+            }
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/autocomplete-gifs")
+def autocomplete_gifs():
+    query = request.args.get("q", "")
+    
+    if not query:
+        return jsonify({"results": []})
         
-    required_fields = {'url', 'title'}
-    if not all(field in gif for field in required_fields):
-        return None
-        
-    return {
-        'url': str(gif['url']),
-        'title': str(gif['title']),
-        'saved_at': datetime.now(timezone.utc).isoformat()
-    }
+    try:
+        response = requests.get(
+            f"{TENOR_BASE_URL}/autocomplete",
+            params={
+                "q": query,
+                "key": TENOR_API_KEY,
+                "client_key": "web",
+                "limit": 5  # Limit to top 5 suggestions
+            }
+        )
+        response.raise_for_status()
+        return jsonify(response.json())
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/search-gifs")
 def search_gifs():
@@ -2167,6 +2203,24 @@ def search_gifs():
         return jsonify(response.json())
     except requests.RequestException as e:
         return jsonify({"error": str(e)}), 500
+
+def validate_gif_data(gif: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Validates and sanitizes GIF data before saving to database.
+    Returns None if invalid, sanitized dict if valid.
+    """
+    if not gif or not isinstance(gif, dict):
+        return None
+        
+    required_fields = {'url', 'title'}
+    if not all(field in gif for field in required_fields):
+        return None
+        
+    return {
+        'url': str(gif['url']),
+        'title': str(gif['title']),
+        'saved_at': datetime.now(timezone.utc).isoformat()
+    }
 
 @socketio.on("message")
 def message(data):

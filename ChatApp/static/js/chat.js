@@ -859,12 +859,38 @@ const createGifPicker = async () => {
     header.textContent = "Pick a GIF";
     content.appendChild(header);
 
+    // Search container with suggestions
+    const searchContainer = document.createElement("div");
+    searchContainer.className = "mb-6";
+
+    // Search input wrapper
+    const searchInputWrapper = document.createElement("div");
+    searchInputWrapper.className = "relative mb-3";
+
     const searchInput = document.createElement("input");
     searchInput.type = "text";
     searchInput.placeholder = "Search GIFs...";
-    searchInput.className = "w-full p-3 mb-4 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring focus:ring-gray-300 dark:focus:ring-gray-600";
+    searchInput.className = "w-full p-3 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring focus:ring-gray-300 dark:focus:ring-gray-600";
     searchInput.setAttribute("aria-label", "Search GIFs");
     searchInput.setAttribute("tabindex", "0");
+    searchInputWrapper.appendChild(searchInput);
+
+    // Autocomplete dropdown
+    const suggestionsDropdown = document.createElement("div");
+    suggestionsDropdown.className = "absolute w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg mt-1 shadow-lg hidden max-h-48 overflow-y-auto z-20";
+    searchInputWrapper.appendChild(suggestionsDropdown);
+
+    // Categories grid
+    const categoriesGrid = document.createElement("div");
+    categoriesGrid.className = "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-6";
+    categoriesGrid.style.display = "grid";
+
+    // Search suggestions container
+    const suggestionsContainer = document.createElement("div");
+    suggestionsContainer.className = "flex flex-wrap gap-2";
+
+    searchContainer.appendChild(searchInputWrapper);
+    searchContainer.appendChild(suggestionsContainer);
 
     const gifGrid = document.createElement("div");
     gifGrid.style.display = "grid";
@@ -881,10 +907,131 @@ const createGifPicker = async () => {
     footer.textContent = "Powered by GIF API";
 
     let searchTimeout;
+    let autocompleteTimeout;
     const itemsPerPage = 16;
+
+    const createCategoryCard = (category) => {
+        const card = document.createElement("div");
+        card.className = "relative group cursor-pointer rounded-lg overflow-hidden aspect-square";
+
+        // Featured GIF background
+        const backgroundImg = document.createElement("img");
+        backgroundImg.src = category.featured_gif?.media_formats?.tinygif?.url || "/api/placeholder/200/200";
+        backgroundImg.className = "w-full h-full object-cover transition-transform duration-200 group-hover:scale-105";
+        backgroundImg.alt = `${category.name} category`;
+
+        // Overlay with category name
+        const overlay = document.createElement("div");
+        overlay.className = "absolute inset-0 bg-black bg-opacity-40 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center";
+
+        const categoryName = document.createElement("span");
+        categoryName.className = "text-white font-semibold text-center px-2";
+        categoryName.textContent = category.name;
+        overlay.appendChild(categoryName);
+
+        card.appendChild(backgroundImg);
+        card.appendChild(overlay);
+
+        card.addEventListener("click", () => {
+            searchInput.value = category.search_term || category.name;
+            searchGifs(category.search_term || category.name);
+        });
+
+        return card;
+    };
+
+    const loadCategories = async () => {
+        try {
+            gifGrid.style.display = "none";
+            categoriesGrid.innerHTML = "";
+            categoriesGrid.appendChild(spinner);
+
+            const response = await fetch("/api/gif-categories");
+            const data = await response.json();
+
+            categoriesGrid.innerHTML = "";
+            
+            if (data.tags && data.tags.length > 0) {
+                data.tags.forEach(category => {
+                    categoriesGrid.appendChild(createCategoryCard(category));
+                });
+            } else {
+                categoriesGrid.innerHTML = `<div class="col-span-full text-center text-gray-500 dark:text-gray-400">No categories available</div>`;
+            }
+        } catch (error) {
+            console.error("Error loading categories:", error);
+            categoriesGrid.innerHTML = `<div class="col-span-full text-center text-red-500">Error loading categories. Please try again.</div>`;
+        }
+    };
+
+    const createSuggestionTag = (text) => {
+        const tag = document.createElement("button");
+        tag.className = "px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-600 dark:hover:bg-gray-500 rounded-full text-sm text-gray-700 dark:text-gray-200 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-500";
+        tag.textContent = text;
+        tag.addEventListener("click", () => {
+            searchInput.value = text;
+            searchGifs(text);
+            suggestionsDropdown.classList.add("hidden");
+        });
+        return tag;
+    };
+
+    const loadSearchSuggestions = async () => {
+        try {
+            suggestionsContainer.innerHTML = "";
+            const response = await fetch("/api/search-suggestions");
+            const data = await response.json();
+            
+            if (data.results && data.results.length > 0) {
+                data.results.forEach(suggestion => {
+                    suggestionsContainer.appendChild(createSuggestionTag(suggestion));
+                });
+            }
+        } catch (error) {
+            console.error("Error loading search suggestions:", error);
+        }
+    };
+
+    const fetchAutocompleteSuggestions = async (query) => {
+        if (!query) {
+            suggestionsDropdown.classList.add("hidden");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/autocomplete-gifs?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+
+            suggestionsDropdown.innerHTML = "";
+            
+            if (data.results && data.results.length > 0) {
+                data.results.forEach(suggestion => {
+                    const suggestionItem = document.createElement("div");
+                    suggestionItem.className = "p-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer";
+                    suggestionItem.textContent = suggestion;
+                    
+                    suggestionItem.addEventListener("click", () => {
+                        searchInput.value = suggestion;
+                        suggestionsDropdown.classList.add("hidden");
+                        searchGifs(suggestion);
+                    });
+                    
+                    suggestionsDropdown.appendChild(suggestionItem);
+                });
+                suggestionsDropdown.classList.remove("hidden");
+            } else {
+                suggestionsDropdown.classList.add("hidden");
+            }
+        } catch (error) {
+            console.error("Error fetching suggestions:", error);
+            suggestionsDropdown.classList.add("hidden");
+        }
+    };
 
     const searchGifs = async (query) => {
         try {
+            categoriesGrid.style.display = "none";
+            gifGrid.style.display = "grid";
             gifGrid.innerHTML = "";
             gifGrid.appendChild(spinner);
 
@@ -937,10 +1084,9 @@ const createGifPicker = async () => {
                     modal.remove();
                 };
 
-                // Add click handlers to both container and image
                 gifContainer.addEventListener("click", handleGifSelect);
                 gifElement.addEventListener("click", (e) => {
-                    e.stopPropagation();  // Prevent double firing
+                    e.stopPropagation();
                     handleGifSelect();
                 });
 
@@ -955,11 +1101,39 @@ const createGifPicker = async () => {
     };
 
     searchInput.addEventListener("input", (e) => {
+        const query = e.target.value.trim();
+        
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => searchGifs(e.target.value), 300);
+        clearTimeout(autocompleteTimeout);
+        
+        if (query) {
+            categoriesGrid.style.display = "none";
+            gifGrid.style.display = "grid";
+            autocompleteTimeout = setTimeout(() => fetchAutocompleteSuggestions(query), 150);
+            searchTimeout = setTimeout(() => searchGifs(query), 300);
+        } else {
+            categoriesGrid.style.display = "grid";
+            gifGrid.style.display = "none";
+            suggestionsDropdown.classList.add("hidden");
+        }
     });
 
-    content.appendChild(searchInput);
+    // Close suggestions on click outside
+    document.addEventListener("click", (e) => {
+        if (!searchInputWrapper.contains(e.target)) {
+            suggestionsDropdown.classList.add("hidden");
+        }
+    });
+
+    // Handle keyboard navigation
+    searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            suggestionsDropdown.classList.add("hidden");
+        }
+    });
+
+    content.appendChild(searchContainer);
+    content.appendChild(categoriesGrid);
     content.appendChild(gifGrid);
     content.appendChild(footer);
     modal.appendChild(content);
@@ -976,8 +1150,9 @@ const createGifPicker = async () => {
 
     document.body.appendChild(modal);
 
-    // Load trending GIFs initially
-    searchGifs("");
+    // Load initial categories and suggestions
+    loadCategories();
+    loadSearchSuggestions();
 };
 
 
