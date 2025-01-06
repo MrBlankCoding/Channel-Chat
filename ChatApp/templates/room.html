@@ -1,362 +1,357 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="fixed inset-0 flex bg-gray-100 dark:bg-gray-900">
-   <!-- Sidebar Overlay -->
-   <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
-   <!-- Sidebar -->
-   <aside id="sidebar" class="bg-white dark:bg-gray-800 shadow-lg flex flex-col">
-      <!-- Sidebar Header -->
-      <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-         <button onclick="openRoomModal()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none transition-colors" aria-label="Room Actions">
-            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-               <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
-            </svg>
-         </button>
-         <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
-         <button onclick="toggleSidebar()" 
-            class="inline-flex items-center justify-center w-10 h-10 md:hidden rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-            </svg>
-         </button>
+<!-- Sidebar Overlay -->
+<div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<!-- Sidebar -->
+<aside id="sidebar" class="bg-white dark:bg-gray-800 shadow-lg flex flex-col">
+   <!-- Sidebar Header -->
+   <div class="px-4 py-5 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+      <button onclick="openRoomModal()" class="text-gray-500 dark:text-gray-300 hover:text-indigo-600 focus:outline-none transition-colors" aria-label="Room Actions">
+         <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m7-7H5" />
+         </svg>
+      </button>
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Your Rooms</h3>
+      <button onclick="toggleSidebar()" 
+         class="inline-flex items-center justify-center w-10 h-10 md:hidden rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+         <svg class="w-6 h-6 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+         </svg>
+      </button>
+   </div>
+   <!-- Room Modal -->
+   <div id="room-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="closeRoomModal()"></div>
+   <div id="room-modal" class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50 hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+         <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Room Actions</h3>
+            <button onclick="closeRoomModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+               </svg>
+            </button>
+         </div>
       </div>
-      <!-- Room Modal -->
-      <div id="room-modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" onclick="closeRoomModal()"></div>
-      <div id="room-modal" class="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50 hidden">
-         <!-- Modal Header -->
-         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between">
-               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Room Actions</h3>
-               <button onclick="closeRoomModal()" class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+      <!-- Modal Content -->
+      <div class="p-6 space-y-6">
+         <!-- Create Room Section -->
+         <div>
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Create a New Room</h4>
+            <form method="POST" class="space-y-3">
+               <div>
+                  <label for="room_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Name</label>
+                  <input type="text" id="room_name" name="room_name" placeholder="Enter room name" 
+                     class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" required>
+               </div>
+               <button type="submit" name="create" value="true" 
+                  class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
+               Create Room
                </button>
+            </form>
+         </div>
+         <!-- Divider -->
+         <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+               <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+               <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">or</span>
             </div>
          </div>
-         <!-- Modal Content -->
-         <div class="p-6 space-y-6">
-            <!-- Create Room Section -->
-            <div>
-               <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Create a New Room</h4>
-               <form method="POST" class="space-y-3">
-                  <div>
-                     <label for="room_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Name</label>
-                     <input type="text" id="room_name" name="room_name" placeholder="Enter room name" 
-                        class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" required>
-                  </div>
-                  <button type="submit" name="create" value="true" 
-                     class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
-                  Create Room
-                  </button>
-               </form>
-            </div>
-            <!-- Divider -->
-            <div class="relative">
-               <div class="absolute inset-0 flex items-center">
-                  <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+         <!-- Join Room Section -->
+         <div>
+            <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Join Existing Room</h4>
+            <form method="POST" class="space-y-3">
+               <div>
+                  <label for="room_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Code</label>
+                  <input type="text" id="room_code" name="code" placeholder="Enter room code" 
+                     class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white">
                </div>
-               <div class="relative flex justify-center text-sm">
-                  <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">or</span>
-               </div>
-            </div>
-            <!-- Join Room Section -->
-            <div>
-               <h4 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Join Existing Room</h4>
-               <form method="POST" class="space-y-3">
-                  <div>
-                     <label for="room_code" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Room Code</label>
-                     <input type="text" id="room_code" name="code" placeholder="Enter room code" 
-                        class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white">
-                  </div>
-                  <button type="submit" name="join" value="true" 
-                     class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
-                  Join Room
-                  </button>
-               </form>
-            </div>
+               <button type="submit" name="join" value="true" 
+                  class="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
+               Join Room
+               </button>
+            </form>
          </div>
       </div>
-      <!-- Search Bar -->
-      <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-         <input type="text" id="room-search" placeholder="Search rooms..." 
-            class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" 
-            onkeyup="filterRooms()">
-      </div>
-      <!-- Rooms List -->
-      <div class="flex-1 overflow-y-auto" id="rooms-list">
-         {% if rooms_with_messages %}
-         <div class="p-4 space-y-3">
-            {% for room in rooms_with_messages %}
-            <a href="{{ url_for('room', code=room.code) }}" 
-               class="block rounded-lg transition-all duration-200 hover:shadow-md 
-               {% if room.code == code %}
-               bg-blue-600 text-white
-               {% else %}
-               bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
-               {% endif %}"
-               data-room-name="{{ room.name }}"
-               data-room-code="{{ room.code }}"
-               id="room-{{ room.code }}">
-               <div class="p-4">
-                  <div class="flex items-center space-x-4">
-                     <!-- Room Avatar -->
-                     <div class="relative flex-shrink-0">
-                        <img src="{{ room.profile_photo if room.profile_photo else url_for('static', filename='images/default_room.png') }}"
-                           alt="Room profile"
-                           class="w-12 h-12 rounded-full object-cover shadow-sm">
-                        <span
-                           class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center unread-badge justify-center {% if room.unread_count == 0 %}hidden{% endif %}">
-                        {{ room.unread_count }}
-                        </span>
-                     </div>
-                     <!-- Room Details -->
-                     <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start mb-1">
-                           <h4 class="text-sm font-semibold truncate pr-2
-                              {% if room.code == code %}
-                              text-white
-                              {% else %}
-                              text-gray-900 dark:text-white
-                              {% endif %}">
-                              {{ room.name }}
-                           </h4>
-                           {% if room.last_message %}
-                           <span class="text-xs whitespace-nowrap
-                              {% if room.code == code %}
-                              text-blue-100
-                              {% else %}
-                              text-gray-500 dark:text-gray-400
-                              {% endif %}"
-                              data-timestamp="{{ room.last_message.timestamp }}"
-                              ></span>
-                           {% endif %}
-                        </div>
-                        <p class="text-sm truncate
+   </div>
+   <!-- Search Bar -->
+   <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+      <input type="text" id="room-search" placeholder="Search rooms..." 
+         class="w-full px-3 py-2 text-sm border rounded-md dark:border-gray-600 dark:bg-gray-700 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 dark:text-white" 
+         onkeyup="filterRooms()">
+   </div>
+   <!-- Rooms List -->
+   <div class="flex-1 overflow-y-auto" id="rooms-list">
+      {% if rooms_with_messages %}
+      <div class="p-4 space-y-3">
+         {% for room in rooms_with_messages %}
+         <a href="{{ url_for('room', code=room.code) }}" 
+            class="block rounded-lg transition-all duration-200 hover:shadow-md 
+            {% if room.code == code %}
+            bg-blue-600 text-white
+            {% else %}
+            bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700
+            {% endif %}"
+            data-room-name="{{ room.name }}"
+            data-room-code="{{ room.code }}"
+            id="room-{{ room.code }}">
+            <div class="p-4">
+               <div class="flex items-center space-x-4">
+                  <!-- Room Avatar -->
+                  <div class="relative flex-shrink-0">
+                     <img src="{{ room.profile_photo if room.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                        alt="Room profile"
+                        class="w-12 h-12 rounded-full object-cover shadow-sm">
+                     <span
+                        class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center unread-badge justify-center {% if room.unread_count == 0 %}hidden{% endif %}">
+                     {{ room.unread_count }}
+                     </span>
+                  </div>
+                  <!-- Room Details -->
+                  <div class="flex-1 min-w-0">
+                     <div class="flex justify-between items-start mb-1">
+                        <h4 class="text-sm font-semibold truncate pr-2
+                           {% if room.code == code %}
+                           text-white
+                           {% else %}
+                           text-gray-900 dark:text-white
+                           {% endif %}">
+                           {{ room.name }}
+                        </h4>
+                        {% if room.last_message %}
+                        <span class="text-xs whitespace-nowrap
                            {% if room.code == code %}
                            text-blue-100
                            {% else %}
-                           text-gray-600 dark:text-gray-400
-                           {% endif %}">
-                           {% if room.last_message %}
-                           <span class="font-medium">{{ room.last_message.sender }}:</span>
-                           {{ room.last_message.content }}
-                           {% else %}
-                           <span class="italic">No messages yet</span>
-                           {% endif %}
-                        </p>
+                           text-gray-500 dark:text-gray-400
+                           {% endif %}"
+                           data-timestamp="{{ room.last_message.timestamp }}"
+                           ></span>
+                        {% endif %}
                      </div>
-                  </div>
-               </div>
-            </a>
-            {% endfor %}
-         </div>
-         {% else %}
-         <div class="h-full flex flex-col items-center justify-center p-6 text-center text-gray-500 dark:text-gray-400">
-            <svg class="w-16 h-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-            </svg>
-            <h3 class="text-lg font-medium mb-2">No rooms yet</h3>
-            <p class="text-sm max-w-xs">Create a new room or join an existing one to start chatting</p>
-         </div>
-         {% endif %}
-      </div>
-      <!-- Footer Actions -->
-      <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-         <a href="{{ url_for('settings') }}" 
-            class="flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Settings
-         </a>
-         <a href="{{ url_for('logout') }}" 
-            class="flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            Logout
-         </a>
-      </div>
-   </aside>
-   <!-- Main Chat Area -->
-   <div class="flex-1 flex flex-col h-[100dvh]">
-      <header class="fixed top-0 right-0 md:right-auto z-10 h-14 bg-white dark:bg-gray-800 shadow-sm w-full md:w-[calc(100%-320px)]">
-         <div class="flex items-center h-14 px-4">
-            <!-- Sidebar Toggle Button -->
-            <button onclick="toggleSidebar()" class=" md:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-               <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M4 6h16M4 12h16M4 18h16" />
-               </svg>
-            </button>
-            <!-- Room info -->
-            <div class="flex-1 min-w-0 flex items-center ml-2">
-               <div class="relative">
-                  <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
-                     <span class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
-                     <img 
-                        id="room-photo"
-                        src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
-                        alt="Room profile"
-                        class="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-full"
-                        />
-                     </span>
-                  </div>
-                  <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
-               </div>
-               <div class="min-w-0 ml-3">
-                  <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">
-                     {{ room_data.name or 'Unnamed Room' }}
-                  </h1>
-                  <div class="flex items-center gap-2">
-                     <div class="group relative flex items-center">
-                        <div class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                           onclick="copyRoomCode()">
-                           <span class="text-gray-600 dark:text-gray-300 font-medium tracking-wide">{{ code[:4] }}<span class="mx-0.5">•</span>{{ code[4:] }}</span>
-                           <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                           </svg>
-                        </div>
-                        <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 -bottom-8 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap">
-                           Click to copy room ID
-                        </div>
-                     </div>
+                     <p class="text-sm truncate
+                        {% if room.code == code %}
+                        text-blue-100
+                        {% else %}
+                        text-gray-600 dark:text-gray-400
+                        {% endif %}">
+                        {% if room.last_message %}
+                        <span class="font-medium">{{ room.last_message.sender }}:</span>
+                        {{ room.last_message.content }}
+                        {% else %}
+                        <span class="italic">No messages yet</span>
+                        {% endif %}
+                     </p>
                   </div>
                </div>
             </div>
-            <button onclick="toggleInviteModal(true)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-               <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <line x1="19" y1="8" x2="19" y2="14"/>
-                  <line x1="22" y1="11" x2="16" y2="11"/>
-               </svg>
-            </button>
-            <button id="toggle-notifications" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-               <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-               </svg>
-            </button>
-            <!-- Action buttons -->
-            <div class="flex items-center gap-1">
-               <a href="{{ url_for('room_settings', room_code=code) }}" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-                  <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                     <circle cx="12" cy="12" r="3"></circle>
-                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                  </svg>
-               </a>
-            </div>
-         </div>
-      </header>
-      <!-- Messages area (scrollable) -->
-      <div id="messages" class="flex-1 overflow-y-auto p-4 mt-14 mb-[60px] md:mb-[68px]">
-         {% for msg in messages %}
-         <!-- Message bubbles will be inserted here -->
+         </a>
          {% endfor %}
       </div>
-<!-- Input area with enhanced responsive design -->
-<div class="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg transition-all duration-200">
-   <!-- Emoji picker with improved responsive layout -->
-   <div id="emojiPicker" class="hidden px-2 sm:px-4 py-2 sm:py-3 border-b border-gray-200 dark:border-gray-700">
-      <div class="flex overflow-x-auto hide-scrollbar gap-1.5 sm:gap-2 pb-1 scrollbar-none">
-         <!-- Emojis will be inserted here via JavaScript -->
+      {% else %}
+      <div class="h-full flex flex-col items-center justify-center p-6 text-center text-gray-500 dark:text-gray-400">
+         <svg class="w-16 h-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+         </svg>
+         <h3 class="text-lg font-medium mb-2">No rooms yet</h3>
+         <p class="text-sm max-w-xs">Create a new room or join an existing one to start chatting</p>
       </div>
+      {% endif %}
    </div>
-
-   <div class="px-2 sm:px-4 py-2 sm:py-3">
-      <div class="flex items-center gap-2 sm:gap-3">
-         <!-- Plus button with dropdown -->
-         <div class="relative">
-            <button id="plusButton" 
-               class="p-2 sm:p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 
-               rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200
-               focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
-               <svg class="w-4 h-4 sm:w-5 sm:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-               </svg>
-            </button>
-            <!-- Enhanced dropdown menu with better spacing -->
-            <div id="plusMenu" 
-               class="hidden absolute bottom-full mb-2 left-0 bg-white dark:bg-gray-800 rounded-xl 
-               shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-44 sm:w-48
-               transform origin-bottom-left transition-transform duration-200">
-               <!-- Image upload button -->
-               <label class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 
-                  dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 group">
-                  <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300 group-hover:text-indigo-500 
-                     dark:group-hover:text-indigo-400 transition-colors duration-200" 
-                     xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                     <circle cx="8.5" cy="8.5" r="1.5"/>
-                     <polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-500 
-                     dark:group-hover:text-indigo-400 transition-colors duration-200">Upload Image</span>
-                  <input type="file" id="image-upload" accept="image/*" class="hidden">
-               </label>
-               
-               <!-- GIF button -->
-               <button id="gifButton" 
-                  class="flex items-center gap-2 sm:gap-3 w-full px-3 sm:px-4 py-2.5 sm:py-3 
-                  hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 group">
-                  <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300 group-hover:text-indigo-500 
-                     dark:group-hover:text-indigo-400 transition-colors duration-200" 
-                     xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                     <path d="M7 7h2v10H7z"/>
-                     <path d="M11 7h2v10h-2z"/>
-                     <path d="M15 7h2v10h-2z"/>
-                  </svg>
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-500 
-                     dark:group-hover:text-indigo-400 transition-colors duration-200">Add GIF</span>
-               </button>
-               
-               <!-- Emoji button -->
-               <button id="emojiButton" 
-                  class="hidden md:flex items-center gap-2 sm:gap-3 w-full px-3 sm:px-4 py-2.5 sm:py-3 
-                  hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 group">
-                  <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300 group-hover:text-indigo-500 
-                     dark:group-hover:text-indigo-400 transition-colors duration-200" 
-                     xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                     <circle cx="12" cy="12" r="10"></circle>
-                     <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                     <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                     <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                  </svg>
-                  <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-500 
-                     dark:group-hover:text-indigo-400 transition-colors duration-200">Add Emoji</span>
-               </button>
-            </div>
-         </div>
-
-         <!-- Enhanced message input field with better spacing -->
-         <div class="flex-1">
-            <input type="text" id="message" 
-               class="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 dark:bg-gray-800 rounded-full 
-               border-0 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 
-               placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white
-               text-sm sm:text-base transition-all duration-200"
-               placeholder="Type your message...">
-         </div>
-
-         <!-- Enhanced send button with better responsive design -->
-         <button id="sendButton" onclick="sendMessage()" 
-            class="p-2 sm:p-2.5 text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
-            rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900
-            flex items-center justify-center shadow-md hover:shadow-lg">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-               <line x1="22" y1="2" x2="11" y2="13"/>
-               <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+   <!-- Footer Actions -->
+   <div class="p-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+      <a href="{{ url_for('settings') }}" 
+         class="flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+         <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+         </svg>
+         Settings
+      </a>
+      <a href="{{ url_for('logout') }}" 
+         class="flex items-center justify-center w-full px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors">
+         <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+         </svg>
+         Logout
+      </a>
+   </div>
+</aside>
+<!-- Main Chat Area -->
+<div class="flex-1 flex flex-col h-[100dvh]">
+   <header class="fixed top-0 right-0 md:right-auto z-10 h-14 bg-white dark:bg-gray-800 shadow-sm w-full md:w-[calc(100%-320px)]">
+      <div class="flex items-center h-14 px-4">
+         <!-- Sidebar Toggle Button -->
+         <button onclick="toggleSidebar()" class=" md:hidden p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
          </button>
+         <!-- Room info -->
+         <div class="flex-1 min-w-0 flex items-center ml-2">
+            <div class="relative">
+               <div class="w-8 h-8 bg-indigo-100 dark:bg-indigo-900 rounded-full flex items-center justify-center">
+                  <span class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+                  <img 
+                     id="room-photo"
+                     src="{{ room_data.profile_photo if room_data.profile_photo else url_for('static', filename='images/default_room.png') }}"
+                     alt="Room profile"
+                     class="w-full h-full object-cover transition-transform group-hover:scale-105 rounded-full"
+                     />
+                  </span>
+               </div>
+               <div class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+            </div>
+            <div class="min-w-0 ml-3">
+               <h1 class="text-base font-semibold text-gray-900 dark:text-white truncate">
+                  {{ room_data.name or 'Unnamed Room' }}
+               </h1>
+               <div class="flex items-center gap-2">
+                  <div class="group relative flex items-center">
+                     <div class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                        onclick="copyRoomCode()">
+                        <span class="text-gray-600 dark:text-gray-300 font-medium tracking-wide">{{ code[:4] }}<span class="mx-0.5">•</span>{{ code[4:] }}</span>
+                        <svg class="w-3 h-3 text-gray-400 dark:text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                     </div>
+                     <div class="opacity-0 group-hover:opacity-100 transition-opacity absolute left-1/2 -translate-x-1/2 -bottom-8 px-2 py-1 bg-gray-900 dark:bg-gray-700 text-white text-xs rounded whitespace-nowrap">
+                        Click to copy room ID
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+         <button onclick="toggleInviteModal(true)" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+               <circle cx="9" cy="7" r="4"/>
+               <line x1="19" y1="8" x2="19" y2="14"/>
+               <line x1="22" y1="11" x2="16" y2="11"/>
+            </svg>
+         </button>
+         <button id="toggle-notifications" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+               <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+         </button>
+         <!-- Action buttons -->
+         <div class="flex items-center gap-1">
+            <a href="{{ url_for('room_settings', room_code=code) }}" class="p-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
+               <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+               </svg>
+            </a>
+         </div>
+      </div>
+   </header>
+   <!-- Messages area (scrollable) -->
+   <div id="messages" class="flex-1 overflow-y-auto p-4 mt-14 mb-[60px] md:mb-[68px]">
+      {% for msg in messages %}
+      <!-- Message bubbles will be inserted here -->
+      {% endfor %}
+   </div>
+   <!-- Input area with enhanced responsive design -->
+   <div class="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg transition-all duration-200">
+      <!-- Emoji picker with improved responsive layout -->
+      <div id="emojiPicker" class="hidden px-2 sm:px-4 py-2 sm:py-3 border-b border-gray-200 dark:border-gray-700">
+         <div class="flex overflow-x-auto hide-scrollbar gap-1.5 sm:gap-2 pb-1 scrollbar-none">
+            <!-- Emojis will be inserted here via JavaScript -->
+         </div>
+      </div>
+      <div class="px-2 sm:px-4 py-2 sm:py-3">
+         <div class="flex items-center gap-2 sm:gap-3">
+            <!-- Plus button with dropdown -->
+            <div class="relative">
+               <button id="plusButton" 
+                  class="p-2 sm:p-2.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 
+                  rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900">
+                  <svg class="w-4 h-4 sm:w-5 sm:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                     <line x1="12" y1="5" x2="12" y2="19"></line>
+                     <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+               </button>
+               <!-- Enhanced dropdown menu with better spacing -->
+               <div id="plusMenu" 
+                  class="hidden absolute bottom-full mb-2 left-0 bg-white dark:bg-gray-800 rounded-xl 
+                  shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden w-44 sm:w-48
+                  transform origin-bottom-left transition-transform duration-200">
+                  <!-- Image upload button -->
+                  <label class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 
+                     dark:hover:bg-gray-700 cursor-pointer transition-colors duration-200 group">
+                     <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300 group-hover:text-indigo-500 
+                        dark:group-hover:text-indigo-400 transition-colors duration-200" 
+                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                     </svg>
+                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-500 
+                        dark:group-hover:text-indigo-400 transition-colors duration-200">Upload Image</span>
+                     <input type="file" id="image-upload" accept="image/*" class="hidden">
+                  </label>
+                  <!-- GIF button -->
+                  <button id="gifButton" 
+                     class="flex items-center gap-2 sm:gap-3 w-full px-3 sm:px-4 py-2.5 sm:py-3 
+                     hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 group">
+                     <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300 group-hover:text-indigo-500 
+                        dark:group-hover:text-indigo-400 transition-colors duration-200" 
+                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <path d="M7 7h2v10H7z"/>
+                        <path d="M11 7h2v10h-2z"/>
+                        <path d="M15 7h2v10h-2z"/>
+                     </svg>
+                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-500 
+                        dark:group-hover:text-indigo-400 transition-colors duration-200">Add GIF</span>
+                  </button>
+                  <!-- Emoji button -->
+                  <button id="emojiButton" 
+                     class="hidden md:flex items-center gap-2 sm:gap-3 w-full px-3 sm:px-4 py-2.5 sm:py-3 
+                     hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 group">
+                     <svg class="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-300 group-hover:text-indigo-500 
+                        dark:group-hover:text-indigo-400 transition-colors duration-200" 
+                        xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
+                        <line x1="9" y1="9" x2="9.01" y2="9"></line>
+                        <line x1="15" y1="9" x2="15.01" y2="9"></line>
+                     </svg>
+                     <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-500 
+                        dark:group-hover:text-indigo-400 transition-colors duration-200">Add Emoji</span>
+                  </button>
+               </div>
+            </div>
+            <!-- Enhanced message input field with better spacing -->
+            <div class="flex-1">
+               <input type="text" id="message" 
+                  class="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-gray-100 dark:bg-gray-800 rounded-full 
+                  border-0 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 
+                  placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white
+                  text-sm sm:text-base transition-all duration-200"
+                  placeholder="Type your message...">
+            </div>
+            <!-- Enhanced send button with better responsive design -->
+            <button id="sendButton" onclick="sendMessage()" 
+               class="p-2 sm:p-2.5 text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800
+               rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95
+               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900
+               flex items-center justify-center shadow-md hover:shadow-lg">
+               <svg class="w-4 h-4 sm:w-5 sm:h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+               </svg>
+            </button>
+         </div>
       </div>
    </div>
-</div>
 </div>
 <div id="imageModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm">
    <div class="relative max-w-6xl w-full mx-auto p-6">
@@ -389,22 +384,21 @@
       </button>
       <!-- Navigation Buttons -->
       <button
-      id="prevImage"
-      style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;"
-      class="bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
-      aria-label="Previous image"
-    >
+         id="prevImage"
+         style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 10;"
+         class="bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
+         aria-label="Previous image"
+         >
       ◀
-    </button>
-    <button
-      id="nextImage"
-      style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;"
-      class="bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
-      aria-label="Next image"
-    >
+      </button>
+      <button
+         id="nextImage"
+         style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); z-index: 10;"
+         class="bg-gray-700 text-white p-3 rounded-full shadow-lg hover:bg-gray-600 focus:outline-none transition duration-150"
+         aria-label="Next image"
+         >
       ▶
-    </button>
-    
+      </button>
       <!-- Image Counter -->
       <div
          id="imageCounter"
@@ -466,336 +460,353 @@
 <script>
    // Get message input element
    const messageInputs = document.getElementById('message');
-   
+
    // Add event listener to document
    document.addEventListener('keydown', function(event) {
-    // Check if Enter key is pressed and input isn't already focused
-    if (event.key === 'Enter' && document.activeElement !== messageInputs) {
-        event.preventDefault();
-        messageInputs.focus();
-    }
+       // Check if Enter key is pressed and input isn't already focused
+       if (event.key === 'Enter' && document.activeElement !== messageInputs) {
+           event.preventDefault();
+           messageInputs.focus();
+       }
    });
    const emojiMap = {
-   // Basic smileys
-   ':thumbsup:': '👍',
-   ':smile:': '😊',
-   ':heart:': '❤️',
-   ':fire:': '🔥',
-   ':laugh:': '😂',
-   ':wave:': '👋',
-   ':ok:': '👌',
-   ':clap:': '👏',
-   
-   // Additional popular smileys
-   ':joy:': '😂',
-   ':heart_eyes:': '😍',
-   ':crying:': '😢',
-   ':sob:': '😭',
-   ':thinking:': '🤔',
-   ':wink:': '😉',
-   ':thumbsdown:': '👎',
-   ':pray:': '🙏',
-   
-   // Hearts and emotions
-   ':broken_heart:': '💔',
-   ':purple_heart:': '💜',
-   ':blue_heart:': '💙',
-   ':green_heart:': '💚',
-   ':yellow_heart:': '💛',
-   
-   // Hands and gestures
-   ':raised_hands:': '🙌',
-   ':muscle:': '💪',
-   ':point_up:': '☝️',
-   ':victory:': '✌️',
-   ':handshake:': '🤝',
-   
-   // Face expressions
-   ':rolling_eyes:': '🙄',
-   ':smirk:': '😏',
-   ':sleeping:': '😴',
-   ':sunglasses:': '😎',
-   ':kissing:': '😘',
-   
-   // Objects and symbols
-   ':star:': '⭐',
-   ':sparkles:': '✨',
-   ':100:': '💯',
-   ':trophy:': '🏆',
-   ':check:': '✅',
-   ':x:': '❌',
-   
-   // Nature and weather
-   ':sun:': '☀️',
-   ':moon:': '🌙',
-   ':rainbow:': '🌈',
-   ':cloud:': '☁️',
-   
-   // Food and drinks
-   ':pizza:': '🍕',
-   ':coffee:': '☕',
-   ':beer:': '🍺',
-   ':cake:': '🎂'
+       // Basic smileys
+       ':thumbsup:': '👍',
+       ':smile:': '😊',
+       ':heart:': '❤️',
+       ':fire:': '🔥',
+       ':laugh:': '😂',
+       ':wave:': '👋',
+       ':ok:': '👌',
+       ':clap:': '👏',
+
+       // Additional popular smileys
+       ':joy:': '😂',
+       ':heart_eyes:': '😍',
+       ':crying:': '😢',
+       ':sob:': '😭',
+       ':thinking:': '🤔',
+       ':wink:': '😉',
+       ':thumbsdown:': '👎',
+       ':pray:': '🙏',
+
+       // Hearts and emotions
+       ':broken_heart:': '💔',
+       ':purple_heart:': '💜',
+       ':blue_heart:': '💙',
+       ':green_heart:': '💚',
+       ':yellow_heart:': '💛',
+
+       // Hands and gestures
+       ':raised_hands:': '🙌',
+       ':muscle:': '💪',
+       ':point_up:': '☝️',
+       ':victory:': '✌️',
+       ':handshake:': '🤝',
+
+       // Face expressions
+       ':rolling_eyes:': '🙄',
+       ':smirk:': '😏',
+       ':sleeping:': '😴',
+       ':sunglasses:': '😎',
+       ':kissing:': '😘',
+
+       // Objects and symbols
+       ':star:': '⭐',
+       ':sparkles:': '✨',
+       ':100:': '💯',
+       ':trophy:': '🏆',
+       ':check:': '✅',
+       ':x:': '❌',
+
+       // Nature and weather
+       ':sun:': '☀️',
+       ':moon:': '🌙',
+       ':rainbow:': '🌈',
+       ':cloud:': '☁️',
+
+       // Food and drinks
+       ':pizza:': '🍕',
+       ':coffee:': '☕',
+       ':beer:': '🍺',
+       ':cake:': '🎂'
    };
-   
+
    let suggestionBox = null;
    let selectedIndex = 0;
-   
+
    function createSuggestionBox() {
-   const box = document.createElement('div');
-   box.className = `absolute bottom-full mb-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto transition-transform duration-300`;
-   box.style.maxHeight = '12rem';
-   box.style.overflowY = 'auto';
-   box.style.scrollBehavior = 'smooth';
-   messageInputs.parentElement.appendChild(box);
-   return box;
+       const box = document.createElement('div');
+       box.className = `absolute bottom-full mb-2 w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-y-auto transition-transform duration-300`;
+       box.style.maxHeight = '12rem';
+       box.style.overflowY = 'auto';
+       box.style.scrollBehavior = 'smooth';
+       messageInputs.parentElement.appendChild(box);
+       return box;
    }
-   
+
    function showSuggestions(suggestions) {
-   if (!suggestionBox) {
-      suggestionBox = createSuggestionBox();
-   }
-   
-   suggestionBox.innerHTML = suggestions.map((suggestion, index) => `
+       if (!suggestionBox) {
+           suggestionBox = createSuggestionBox();
+       }
+
+       suggestionBox.innerHTML = suggestions.map((suggestion, index) => `
       <div class="px-4 py-2 cursor-pointer flex items-center ${index === selectedIndex ? 'bg-gray-100 dark:bg-gray-700' : ''}" 
            data-suggestion="${suggestion}">
         <span class="mr-3 text-xl">${emojiMap[suggestion]}</span>
         <span class="text-sm text-gray-700 dark:text-gray-300">${suggestion}</span>
       </div>
    `).join('');
-   
-   suggestionBox.style.display = 'block';
-   
-   // Ensure the selected item is visible
-   const selectedItem = suggestionBox.children[selectedIndex];
-   if (selectedItem) {
-      selectedItem.scrollIntoView({ block: 'nearest' });
+
+       suggestionBox.style.display = 'block';
+
+       // Ensure the selected item is visible
+       const selectedItem = suggestionBox.children[selectedIndex];
+       if (selectedItem) {
+           selectedItem.scrollIntoView({
+               block: 'nearest'
+           });
+       }
    }
-   }
-   
+
    function hideSuggestions() {
-   if (suggestionBox) {
-      suggestionBox.style.display = 'none';
-      selectedIndex = 0;
+       if (suggestionBox) {
+           suggestionBox.style.display = 'none';
+           selectedIndex = 0;
+       }
    }
-   }
-   
+
    function replaceEmoji(value) {
-   return value.replace(/:[a-z]+:/g, match => emojiMap[match] || match);
+       return value.replace(/:[a-z]+:/g, match => emojiMap[match] || match);
    }
-   
+
    messageInputs.addEventListener('input', (e) => {
-   const value = e.target.value;
-   const lastColon = value.lastIndexOf(':');
-   const secondLastColon = value.slice(0, lastColon).lastIndexOf(':');
-   
-   if (lastColon !== -1 && secondLastColon !== -1) {
-      const potentialEmoji = value.slice(secondLastColon, lastColon + 1);
-      if (emojiMap[potentialEmoji]) {
-         e.target.value = replaceEmoji(value);
-         hideSuggestions();
-         return;
-      }
-   }
-   
-   if (lastColon !== -1 && !value.endsWith('::')) {
-      const partial = value.slice(lastColon);
-      const suggestions = Object.keys(emojiMap).filter(key => 
-         key.toLowerCase().includes(partial.toLowerCase())
-      );
-   
-      if (suggestions.length > 0) {
-         showSuggestions(suggestions);
-         return;
-      }
-   }
-   
-   hideSuggestions();
-   
-   const replaced = replaceEmoji(value);
-   if (replaced !== value) {
-      e.target.value = replaced;
-   }
+       const value = e.target.value;
+       const lastColon = value.lastIndexOf(':');
+       const secondLastColon = value.slice(0, lastColon).lastIndexOf(':');
+
+       if (lastColon !== -1 && secondLastColon !== -1) {
+           const potentialEmoji = value.slice(secondLastColon, lastColon + 1);
+           if (emojiMap[potentialEmoji]) {
+               e.target.value = replaceEmoji(value);
+               hideSuggestions();
+               return;
+           }
+       }
+
+       if (lastColon !== -1 && !value.endsWith('::')) {
+           const partial = value.slice(lastColon);
+           const suggestions = Object.keys(emojiMap).filter(key =>
+               key.toLowerCase().includes(partial.toLowerCase())
+           );
+
+           if (suggestions.length > 0) {
+               showSuggestions(suggestions);
+               return;
+           }
+       }
+
+       hideSuggestions();
+
+       const replaced = replaceEmoji(value);
+       if (replaced !== value) {
+           e.target.value = replaced;
+       }
    });
-   
+
    messageInputs.addEventListener('keydown', (e) => {
-   if (!suggestionBox || suggestionBox.style.display === 'none') return;
-   
-   const suggestions = Array.from(suggestionBox.children);
-   
-   switch (e.key) {
-      case 'ArrowDown':
-         e.preventDefault();
-         selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
-         break;
-      case 'ArrowUp':
-         e.preventDefault();
-         selectedIndex = Math.max(selectedIndex - 1, 0);
-         break;
-      case 'Tab':
-         e.preventDefault();
-         if (suggestions[selectedIndex]) {
-            const suggestion = suggestions[selectedIndex].dataset.suggestion;
-            const value = messageInputs.value;
-            const lastColon = value.lastIndexOf(':');
-            messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion];
-         }
-         hideSuggestions();
-         break;
-      case 'Escape':
-         hideSuggestions();
-         break;
-   }
-   
-   if (suggestionBox.style.display !== 'none') {
-      showSuggestions(suggestions.map(div => div.dataset.suggestion));
-   }
+       if (!suggestionBox || suggestionBox.style.display === 'none') return;
+
+       const suggestions = Array.from(suggestionBox.children);
+
+       switch (e.key) {
+           case 'ArrowDown':
+               e.preventDefault();
+               selectedIndex = Math.min(selectedIndex + 1, suggestions.length - 1);
+               break;
+           case 'ArrowUp':
+               e.preventDefault();
+               selectedIndex = Math.max(selectedIndex - 1, 0);
+               break;
+           case 'Tab':
+               e.preventDefault();
+               if (suggestions[selectedIndex]) {
+                   const suggestion = suggestions[selectedIndex].dataset.suggestion;
+                   const value = messageInputs.value;
+                   const lastColon = value.lastIndexOf(':');
+                   messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion];
+               }
+               hideSuggestions();
+               break;
+           case 'Escape':
+               hideSuggestions();
+               break;
+       }
+
+       if (suggestionBox.style.display !== 'none') {
+           showSuggestions(suggestions.map(div => div.dataset.suggestion));
+       }
    });
-   
+
    document.addEventListener('click', (e) => {
-   const suggestion = e.target.closest('[data-suggestion]');
-   if (suggestion) {
-      const value = messageInputs.value;
-      const lastColon = value.lastIndexOf(':');
-      messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion.dataset.suggestion];
-      hideSuggestions();
-   } else if (!e.target.closest('#message')) {
-      hideSuggestions();
-   }
+       const suggestion = e.target.closest('[data-suggestion]');
+       if (suggestion) {
+           const value = messageInputs.value;
+           const lastColon = value.lastIndexOf(':');
+           messageInputs.value = value.slice(0, lastColon) + emojiMap[suggestion.dataset.suggestion];
+           hideSuggestions();
+       } else if (!e.target.closest('#message')) {
+           hideSuggestions();
+       }
    });
-   
+
    // DOM Elements
    const elements = {
-   imageModal: document.getElementById('imageModal'),
-   modalImage: document.getElementById('modalImage'),
-   modalLoader: document.getElementById('modalLoader'),
-   prevButton: document.getElementById('prevImage'),
-   nextButton: document.getElementById('nextImage'),
-   closeButton: document.getElementById('closeModal'),
-   imageCounter: document.getElementById('imageCounter'),
+       imageModal: document.getElementById('imageModal'),
+       modalImage: document.getElementById('modalImage'),
+       modalLoader: document.getElementById('modalLoader'),
+       prevButton: document.getElementById('prevImage'),
+       nextButton: document.getElementById('nextImage'),
+       closeButton: document.getElementById('closeModal'),
+       imageCounter: document.getElementById('imageCounter'),
    };
-   
+
    let state = {
-   currentImages: [],
-   currentImageIndex: 0,
-   isDragging: false,
-   startPos: { x: 0, y: 0 },
-   currentPos: { x: 0, y: 0 },
-   touchStartX: 0,
-   touchEndX: 0,
+       currentImages: [],
+       currentImageIndex: 0,
+       isDragging: false,
+       startPos: {
+           x: 0,
+           y: 0
+       },
+       currentPos: {
+           x: 0,
+           y: 0
+       },
+       touchStartX: 0,
+       touchEndX: 0,
    };
-   
+
    // Helper Functions
    const toggleVisibility = (element, condition) => element.classList.toggle('hidden', !condition);
    const setTransform = () => {
-   elements.modalImage.style.transform = `translate(${state.currentPos.x}px, ${state.currentPos.y}px)`;
+       elements.modalImage.style.transform = `translate(${state.currentPos.x}px, ${state.currentPos.y}px)`;
    };
-   
+
    const resetPosition = () => {
-   state.currentPos = { x: 0, y: 0 };
-   setTransform();
+       state.currentPos = {
+           x: 0,
+           y: 0
+       };
+       setTransform();
    };
-   
+
    const updateNavigation = () => {
-   toggleVisibility(elements.prevButton, state.currentImages.length > 1 && state.currentImageIndex > 0);
-   toggleVisibility(elements.nextButton, state.currentImages.length > 1 && state.currentImageIndex < state.currentImages.length - 1);
-   elements.imageCounter.textContent = state.currentImages.length > 1 ? `${state.currentImageIndex + 1} / ${state.currentImages.length}` : '';
+       toggleVisibility(elements.prevButton, state.currentImages.length > 1 && state.currentImageIndex > 0);
+       toggleVisibility(elements.nextButton, state.currentImages.length > 1 && state.currentImageIndex < state.currentImages.length - 1);
+       elements.imageCounter.textContent = state.currentImages.length > 1 ? `${state.currentImageIndex + 1} / ${state.currentImages.length}` : '';
    };
-   
+
    const updateImage = (index) => {
-   state.currentImageIndex = index;
-   elements.modalImage.src = state.currentImages[index];
-   resetPosition();
-   updateNavigation();
+       state.currentImageIndex = index;
+       elements.modalImage.src = state.currentImages[index];
+       resetPosition();
+       updateNavigation();
    };
-   
+
    const handleSwipe = () => {
-   const diff = state.touchStartX - state.touchEndX;
-   if (Math.abs(diff) > 50) {
-     if (diff > 0 && state.currentImageIndex < state.currentImages.length - 1) updateImage(state.currentImageIndex + 1);
-     if (diff < 0 && state.currentImageIndex > 0) updateImage(state.currentImageIndex - 1);
-   }
+       const diff = state.touchStartX - state.touchEndX;
+       if (Math.abs(diff) > 50) {
+           if (diff > 0 && state.currentImageIndex < state.currentImages.length - 1) updateImage(state.currentImageIndex + 1);
+           if (diff < 0 && state.currentImageIndex > 0) updateImage(state.currentImageIndex - 1);
+       }
    };
-   
+
    // Event Handlers
    const openImageModal = (imageSrc) => {
-   state.currentImages = Array.from(document.querySelectorAll('.message img.sent-img')).map((img) => img.src);
-   state.currentImageIndex = state.currentImages.indexOf(imageSrc);
-   
-   elements.imageModal.classList.remove('hidden');
-   elements.imageModal.classList.add('flex');
-   document.body.style.overflow = 'hidden';
-   
-   updateImage(state.currentImageIndex);
+       state.currentImages = Array.from(document.querySelectorAll('.message img.sent-img')).map((img) => img.src);
+       state.currentImageIndex = state.currentImages.indexOf(imageSrc);
+
+       elements.imageModal.classList.remove('hidden');
+       elements.imageModal.classList.add('flex');
+       document.body.style.overflow = 'hidden';
+
+       updateImage(state.currentImageIndex);
    };
-   
+
    const closeImageModal = () => {
-   elements.imageModal.classList.add('hidden');
-   elements.imageModal.classList.remove('flex');
-   document.body.style.overflow = '';
-   resetPosition();
+       elements.imageModal.classList.add('hidden');
+       elements.imageModal.classList.remove('flex');
+       document.body.style.overflow = '';
+       resetPosition();
    };
-   
+
    // Initialize
    const initialize = () => {
-   elements.closeButton.addEventListener('click', closeImageModal);
-   elements.modalImage.addEventListener('load', () => elements.modalLoader.classList.add('hidden'));
-   
-   elements.prevButton.addEventListener('click', () => {
-     if (state.currentImageIndex > 0) updateImage(state.currentImageIndex - 1);
-   });
-   
-   elements.nextButton.addEventListener('click', () => {
-     if (state.currentImageIndex < state.currentImages.length - 1) updateImage(state.currentImageIndex + 1);
-   });
-   
-   elements.modalImage.addEventListener('mousedown', (e) => {
-     state.isDragging = true;
-     state.startPos = { x: e.clientX - state.currentPos.x, y: e.clientY - state.currentPos.y };
-     elements.modalImage.classList.add('cursor-grabbing');
-   });
-   
-   window.addEventListener('mousemove', (e) => {
-     if (state.isDragging) {
-       state.currentPos = { x: e.clientX - state.startPos.x, y: e.clientY - state.startPos.y };
-       setTransform();
-     }
-   });
-   
-   window.addEventListener('mouseup', () => {
-     state.isDragging = false;
-     elements.modalImage.classList.remove('cursor-grabbing');
-   });
-   
-   elements.imageModal.addEventListener('touchstart', (e) => {
-     state.touchStartX = e.changedTouches[0].screenX;
-   });
-   
-   elements.imageModal.addEventListener('touchend', (e) => {
-     state.touchEndX = e.changedTouches[0].screenX;
-     handleSwipe();
-   });
-   
-   document.addEventListener('keydown', (e) => {
-     if (elements.imageModal.classList.contains('hidden')) return;
-   
-     const actions = {
-       ArrowLeft: () => state.currentImageIndex > 0 && updateImage(state.currentImageIndex - 1),
-       ArrowRight: () => state.currentImageIndex < state.currentImages.length - 1 && updateImage(state.currentImageIndex + 1),
-       Escape: closeImageModal,
-     };
-   
-     if (actions[e.key]) actions[e.key]();
-   });
-   
-   elements.imageModal.addEventListener('click', (e) => {
-     if (e.target === elements.imageModal) closeImageModal();
-   });
+       elements.closeButton.addEventListener('click', closeImageModal);
+       elements.modalImage.addEventListener('load', () => elements.modalLoader.classList.add('hidden'));
+
+       elements.prevButton.addEventListener('click', () => {
+           if (state.currentImageIndex > 0) updateImage(state.currentImageIndex - 1);
+       });
+
+       elements.nextButton.addEventListener('click', () => {
+           if (state.currentImageIndex < state.currentImages.length - 1) updateImage(state.currentImageIndex + 1);
+       });
+
+       elements.modalImage.addEventListener('mousedown', (e) => {
+           state.isDragging = true;
+           state.startPos = {
+               x: e.clientX - state.currentPos.x,
+               y: e.clientY - state.currentPos.y
+           };
+           elements.modalImage.classList.add('cursor-grabbing');
+       });
+
+       window.addEventListener('mousemove', (e) => {
+           if (state.isDragging) {
+               state.currentPos = {
+                   x: e.clientX - state.startPos.x,
+                   y: e.clientY - state.startPos.y
+               };
+               setTransform();
+           }
+       });
+
+       window.addEventListener('mouseup', () => {
+           state.isDragging = false;
+           elements.modalImage.classList.remove('cursor-grabbing');
+       });
+
+       elements.imageModal.addEventListener('touchstart', (e) => {
+           state.touchStartX = e.changedTouches[0].screenX;
+       });
+
+       elements.imageModal.addEventListener('touchend', (e) => {
+           state.touchEndX = e.changedTouches[0].screenX;
+           handleSwipe();
+       });
+
+       document.addEventListener('keydown', (e) => {
+           if (elements.imageModal.classList.contains('hidden')) return;
+
+           const actions = {
+               ArrowLeft: () => state.currentImageIndex > 0 && updateImage(state.currentImageIndex - 1),
+               ArrowRight: () => state.currentImageIndex < state.currentImages.length - 1 && updateImage(state.currentImageIndex + 1),
+               Escape: closeImageModal,
+           };
+
+           if (actions[e.key]) actions[e.key]();
+       });
+
+       elements.imageModal.addEventListener('click', (e) => {
+           if (e.target === elements.imageModal) closeImageModal();
+       });
    };
-   
+
    document.addEventListener('DOMContentLoaded', initialize);
-   
-   
+
+
    // Element selectors for reuse
    const messageContainer = document.getElementById('messages');
    const messageInput = document.getElementById('message');
@@ -804,306 +815,336 @@
    const plusButton = document.getElementById('plusButton');
    const plusMenu = document.getElementById('plusMenu');
    const emojiButton = document.getElementById('emojiButton');
-   
+
    // Auto-scroll on focus
    messageInput.addEventListener('focus', () => {
-   requestAnimationFrame(() => {
-     messageContainer.scrollTop = messageContainer.scrollHeight;
+       requestAnimationFrame(() => {
+           messageContainer.scrollTop = messageContainer.scrollHeight;
+       });
    });
-   });
-   
+
    // Toggle invite modal visibility
    function toggleInviteModal(show) {
-   const inviteModal = document.getElementById('invite-modal');
-   inviteModal.classList.toggle('hidden', !show);
-   inviteModal.classList.toggle('flex', show);
+       const inviteModal = document.getElementById('invite-modal');
+       inviteModal.classList.toggle('hidden', !show);
+       inviteModal.classList.toggle('flex', show);
    }
-   
+
    function toggleRoomMenu() {
-      const menu = document.getElementById('room-actions-menu');
-      menu.classList.toggle('hidden');
+       const menu = document.getElementById('room-actions-menu');
+       menu.classList.toggle('hidden');
    }
-   
+
    // Filter rooms
    function filterRooms() {
-      const searchInput = document.getElementById('room-search');
-      const filter = searchInput.value.toLowerCase();
-      const rooms = document.querySelectorAll('.room-item');
-   
-      rooms.forEach(room => {
-          const roomName = room.getAttribute('data-room-name').toLowerCase();
-          if (roomName.includes(filter)) {
-              room.classList.remove('hidden');
-          } else {
-              room.classList.add('hidden');
-          }
-      });
+       const searchInput = document.getElementById('room-search');
+       const filter = searchInput.value.toLowerCase();
+       const rooms = document.querySelectorAll('.room-item');
+
+       rooms.forEach(room => {
+           const roomName = room.getAttribute('data-room-name').toLowerCase();
+           if (roomName.includes(filter)) {
+               room.classList.remove('hidden');
+           } else {
+               room.classList.add('hidden');
+           }
+       });
    }
-   
+
    const UPDATE_INTERVAL = 30000; // Update interval in milliseconds
-   
-   // Utility function to fetch JSON data
+
    async function fetchJSON(url) {
        try {
+           console.log(`Fetching data from URL: ${url}`);
            const response = await fetch(url);
            if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-           return await response.json();
+           const data = await response.json();
+           console.log(`Data fetched successfully from ${url}:`, data);
+           return data;
        } catch (error) {
            console.error(`Error fetching data from ${url}:`, error);
            throw error;
        }
    }
-   
-   // Update unread message counts for all rooms
-   async function updateUnreadCounts() {
-      try {
-         const unreadData = await fetchJSON('/get_unread_messages');
-   
-         Object.entries(unreadData).forEach(([roomCode, { unread_count }]) => {
-            const roomElement = document.getElementById(`room-${roomCode}`);
-            if (!roomElement) return;
-   
-            const unreadBadge = roomElement.querySelector('.unread-badge');
-            if (unread_count > 0) {
-                  unreadBadge.textContent = unread_count; // Correct variable used
-                  unreadBadge.classList.remove('hidden');
-            } else {
-                  unreadBadge.classList.add('hidden');
-            }
-         });
-      } catch (error) {
-         console.error('Error updating unread counts:', error);
-      }
-   }
-   
-   
+
+   // Update last message details for all rooms
    // Update last message details for all rooms
    async function updateLastMessages() {
+       console.log("Starting updateLastMessages...");
        try {
-           const rooms = document.querySelectorAll('.room-item');
-           const updatePromises = Array.from(rooms).map(async (room) => {
-               const roomCode = room.getAttribute('data-room-code');
+           const roomElements = document.querySelectorAll('a[data-room-code]');
+           const updatePromises = Array.from(roomElements).map(async (roomElement) => {
+               const roomCode = roomElement.getAttribute('data-room-code');
+               if (!roomCode) {
+                   console.warn("Room element is missing data-room-code attribute.");
+                   return;
+               }
+
                try {
-                   const { last_message } = await fetchJSON(`/get_last_message/${roomCode}`);
+                   const {
+                       last_message
+                   } = await fetchJSON(`/get_last_message/${roomCode}`);
                    if (last_message) {
-                       const lastMessageTime = room.querySelector('.last-message-time');
-                       const lastMessageSender = room.querySelector('.last-message-sender');
-                       const lastMessageText = room.querySelector('.last-message-text');
-   
-                       if (lastMessageTime) lastMessageTime.textContent = last_message.timestamp;
-                       if (lastMessageSender) lastMessageSender.textContent = `${last_message.sender}:`;
-                       if (lastMessageText) {
-                           lastMessageText.textContent = last_message.content;
-                           lastMessageText.setAttribute('data-message-type', last_message.type);
+                       // Find the message container (p tag with truncate class)
+                       const messageContainer = roomElement.querySelector('p.text-sm.truncate');
+
+                       if (messageContainer) {
+                           // Update the last message content
+                           messageContainer.innerHTML = `
+                           <span class="font-medium">${last_message.sender}:</span>
+                           ${last_message.content}
+                       `;
+
+                           // Update the timestamp separately
+                           const timestampElement = roomElement.querySelector('[data-timestamp]');
+                           if (timestampElement) {
+                               const formattedTime = new Date(last_message.timestamp).toLocaleString();
+                               timestampElement.textContent = formattedTime;
+                               timestampElement.setAttribute('data-timestamp', last_message.timestamp);
+                           }
+                       } else {
+                           console.warn(`Message container not found for room "${roomCode}".`);
                        }
+                   } else {
+                       console.warn(`No last message data for room "${roomCode}".`);
                    }
                } catch (error) {
-                   console.error(`Error updating last message for room ${roomCode}:`, error);
+                   console.error(`Error updating last message for room "${roomCode}":`, error);
                }
            });
-   
+
            await Promise.all(updatePromises);
        } catch (error) {
            console.error('Error updating last messages:', error);
        }
+       console.log("Finished updateLastMessages.");
    }
-   
+
+   // Update unread message counts for all rooms
+   async function updateUnreadCounts() {
+       console.log("Starting updateUnreadCounts...");
+       try {
+           const unreadData = await fetchJSON('/get_unread_messages');
+           Object.entries(unreadData).forEach(([roomCode, {
+               unread_count
+           }]) => {
+               const roomElement = document.querySelector(`[data-room-code="${roomCode}"]`);
+               if (!roomElement) {
+                   console.warn(`Room with code "${roomCode}" not found.`);
+                   return;
+               }
+
+               const unreadBadge = roomElement.querySelector('.unread-badge');
+               if (unreadBadge) {
+                   unreadBadge.textContent = unread_count > 0 ? unread_count : '';
+                   unreadBadge.classList.toggle('hidden', unread_count === 0);
+               }
+           });
+       } catch (error) {
+           console.error('Error updating unread counts:', error);
+       }
+       console.log("Finished updateUnreadCounts.");
+   }
+
    // Main function to update all room data
    async function updateRoomData() {
+       console.log("Starting updateRoomData...");
        await Promise.all([updateUnreadCounts(), updateLastMessages()]);
+       console.log("Finished updateRoomData.");
    }
-   
+
    // Initialize updates on page load
-   (async function initRoomDataUpdater() {
-       document.addEventListener('DOMContentLoaded', updateRoomData);
+   document.addEventListener('DOMContentLoaded', () => {
+       console.log("Page loaded, initializing room data updater...");
+       updateRoomData();
        setInterval(updateRoomData, UPDATE_INTERVAL);
-   })();
-   
-   
+   });
+
+
    // Copy room code to clipboard with toast
    function copyRoomCode() {
-   const roomCode = "{{ code }}";
-   navigator.clipboard.writeText(roomCode).then(() => {
-     const toast = document.createElement('div');
-     toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm z-50 transition-opacity duration-300';
-     toast.textContent = 'Room ID copied to clipboard';
-     document.body.appendChild(toast);
-     
-     setTimeout(() => toast.classList.add('opacity-0'), 1500);
-     setTimeout(() => toast.remove(), 1800);
-   });
+       const roomCode = "{{ code }}";
+       navigator.clipboard.writeText(roomCode).then(() => {
+           const toast = document.createElement('div');
+           toast.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm z-50 transition-opacity duration-300';
+           toast.textContent = 'Room ID copied to clipboard';
+           document.body.appendChild(toast);
+
+           setTimeout(() => toast.classList.add('opacity-0'), 1500);
+           setTimeout(() => toast.remove(), 1800);
+       });
    }
-   
+
    // Initialize emoji picker
    const commonEmojis = [
-   // Faces
-   '😀', '😂', '🥹', '😊', '😇', '😉', '😍', '🥰', '😎', '🤔', '😅', '😄', '😃', '😌',
-   '🤗', '😋', '🤤', '🤩', '😏', '😢', '😭', '😤', '😠', '😡', '🤯', '😳', '🥵', '🥶', '😱', '😴',
-   '🤒', '🤕', '🤧', '🥴', '🤢', '🤮', '😵', '😇', '🥳', '🙃', '😜', '😝', '😛', '🤪',
-   
-   // Gestures
-   '👍', '👎', '👋', '🙌', '👏', '🤝', '🙏', '✌️', '🤞', '🤙', '💪', '🖖', '👌', '✋', '👊', '✊', 
-   '🤘', '🤟', '🖐️', '👆', '👇', '👉', '👈',
-   
-   // Hearts and Stars
-   '❤️', '💔', '💖', '💞', '💕', '💓', '💗', '💘', '💝', '💟', '🧡', '💜', '💙', '💚', '🤎',
-   '⭐', '✨', '🌟', '💫', '🔥', '💥', '🌈', '☄️',
-   
-   // Objects & Symbols
-   '💡', '💭', '📢', '🎉', '🎊', '🎈', '🎁', '🎂', '🎀', '🍀', '🌹', '🌺', '🌻', '🌼', 
-   '💐', '🌞', '🌙', '💦', '💨', '👑', '🕶️', '🎩', '💍', '🔑', '💼', '📱', '💻', '⌚', 
-   
-   // Animals and Nature
-   '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐸', '🐵', '🐤', '🦋', '🐞', '🐝', '🐙',
-   '🐟', '🐬', '🐢', '🦈', '🐍', '🦅', '🌳', '🌴', '🌵', '🍄', '🌷', '🌹', '🌺',
-   
-   // Food & Drinks
-   '🍎', '🍌', '🍉', '🍇', '🍓', '🍒', '🥝', '🍍', '🍑', '🍅', '🥥', '🥦', '🍕', '🍔', 
-   '🍟', '🌭', '🍿', '🥤', '🍺', '🍹', '🍻', '☕', '🍫',
-   
-   // Transportation
-   '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚜', '🚲', '🚁', '✈️', '🚀', '🛸',
-   
-   // Other symbols
-   '🔵', '🔴', '⚫', '⚪', '🟢', '🟡', '🟠', '🟣', '🔺', '🔻', '💠', '💢', '⭕', '✅', '❌', 
-   '⚠️', '🔔', '🔕', '💤', '🎵', '🎶', '📝', '✏️', '✒️', '📖', '📚'
+       // Faces
+       '😀', '😂', '🥹', '😊', '😇', '😉', '😍', '🥰', '😎', '🤔', '😅', '😄', '😃', '😌',
+       '🤗', '😋', '🤤', '🤩', '😏', '😢', '😭', '😤', '😠', '😡', '🤯', '😳', '🥵', '🥶', '😱', '😴',
+       '🤒', '🤕', '🤧', '🥴', '🤢', '🤮', '😵', '😇', '🥳', '🙃', '😜', '😝', '😛', '🤪',
+
+       // Gestures
+       '👍', '👎', '👋', '🙌', '👏', '🤝', '🙏', '✌️', '🤞', '🤙', '💪', '🖖', '👌', '✋', '👊', '✊',
+       '🤘', '🤟', '🖐️', '👆', '👇', '👉', '👈',
+
+       // Hearts and Stars
+       '❤️', '💔', '💖', '💞', '💕', '💓', '💗', '💘', '💝', '💟', '🧡', '💜', '💙', '💚', '🤎',
+       '⭐', '✨', '🌟', '💫', '🔥', '💥', '🌈', '☄️',
+
+       // Objects & Symbols
+       '💡', '💭', '📢', '🎉', '🎊', '🎈', '🎁', '🎂', '🎀', '🍀', '🌹', '🌺', '🌻', '🌼',
+       '💐', '🌞', '🌙', '💦', '💨', '👑', '🕶️', '🎩', '💍', '🔑', '💼', '📱', '💻', '⌚',
+
+       // Animals and Nature
+       '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐸', '🐵', '🐤', '🦋', '🐞', '🐝', '🐙',
+       '🐟', '🐬', '🐢', '🦈', '🐍', '🦅', '🌳', '🌴', '🌵', '🍄', '🌷', '🌹', '🌺',
+
+       // Food & Drinks
+       '🍎', '🍌', '🍉', '🍇', '🍓', '🍒', '🥝', '🍍', '🍑', '🍅', '🥥', '🥦', '🍕', '🍔',
+       '🍟', '🌭', '🍿', '🥤', '🍺', '🍹', '🍻', '☕', '🍫',
+
+       // Transportation
+       '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚜', '🚲', '🚁', '✈️', '🚀', '🛸',
+
+       // Other symbols
+       '🔵', '🔴', '⚫', '⚪', '🟢', '🟡', '🟠', '🟣', '🔺', '🔻', '💠', '💢', '⭕', '✅', '❌',
+       '⚠️', '🔔', '🔕', '💤', '🎵', '🎶', '📝', '✏️', '✒️', '📖', '📚'
    ];
-   
-   
+
+
    commonEmojis.forEach(emoji => {
-   const button = document.createElement('button');
-   button.className = 'w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-xl transition-colors';
-   button.textContent = emoji;
-   button.onclick = () => {
-     messageInput.value += emoji;
-     messageInput.focus();
-   };
-   emojiContainer.appendChild(button);
+       const button = document.createElement('button');
+       button.className = 'w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-xl transition-colors';
+       button.textContent = emoji;
+       button.onclick = () => {
+           messageInput.value += emoji;
+           messageInput.focus();
+       };
+       emojiContainer.appendChild(button);
    });
-   
+
    // Plus button dropdown functionality
    plusButton.onclick = (e) => {
-   e.stopPropagation();
-   plusMenu.classList.toggle('hidden');
-   emojiPicker.classList.add('hidden');
-   emojiPicker.classList.remove('active');
+       e.stopPropagation();
+       plusMenu.classList.toggle('hidden');
+       emojiPicker.classList.add('hidden');
+       emojiPicker.classList.remove('active');
    };
-   
+
    emojiButton.onclick = (e) => {
-   e.stopPropagation();
-   emojiPicker.classList.remove('hidden');
-   setTimeout(() => emojiPicker.classList.add('active'), 0);
-   plusMenu.classList.add('hidden');
+       e.stopPropagation();
+       emojiPicker.classList.remove('hidden');
+       setTimeout(() => emojiPicker.classList.add('active'), 0);
+       plusMenu.classList.add('hidden');
    };
-   
+
    // Close dropdowns when clicking outside
    document.addEventListener('click', (e) => {
-   if (!plusButton.contains(e.target) && !plusMenu.contains(e.target) && !emojiPicker.contains(e.target)) {
-     plusMenu.classList.add('hidden');
-     emojiPicker.classList.remove('active');
-     setTimeout(() => {
-       if (!emojiPicker.classList.contains('active')) {
-         emojiPicker.classList.add('hidden');
+       if (!plusButton.contains(e.target) && !plusMenu.contains(e.target) && !emojiPicker.contains(e.target)) {
+           plusMenu.classList.add('hidden');
+           emojiPicker.classList.remove('active');
+           setTimeout(() => {
+               if (!emojiPicker.classList.contains('active')) {
+                   emojiPicker.classList.add('hidden');
+               }
+           }, 200);
        }
-     }, 200);
-   }
    });
-   
-    // Mobile sidebar toggle
-    function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      
-      sidebar.classList.toggle('active');
-      overlay.classList.toggle('active');
-      
-      // Prevent body scrolling when sidebar is open
-      document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
-    }
-   
+
+   // Mobile sidebar toggle
+   function toggleSidebar() {
+       const sidebar = document.getElementById('sidebar');
+       const overlay = document.getElementById('sidebar-overlay');
+
+       sidebar.classList.toggle('active');
+       overlay.classList.toggle('active');
+
+       // Prevent body scrolling when sidebar is open
+       document.body.style.overflow = sidebar.classList.contains('active') ? 'hidden' : '';
+   }
+
    // Room Actions menu toggle
    function toggleRoomMenu() {
-      const menu = document.getElementById('room-actions-menu');
-      menu.classList.toggle('hidden');
+       const menu = document.getElementById('room-actions-menu');
+       menu.classList.toggle('hidden');
    }
-   
+
    // Close dropdowns when scrolling messages
    messageContainer.addEventListener('scroll', () => {
-   plusMenu.classList.add('hidden');
-   emojiPicker.classList.remove('active');
-   setTimeout(() => {
-     if (!emojiPicker.classList.contains('active')) {
-       emojiPicker.classList.add('hidden');
-     }
-   }, 200);
+       plusMenu.classList.add('hidden');
+       emojiPicker.classList.remove('active');
+       setTimeout(() => {
+           if (!emojiPicker.classList.contains('active')) {
+               emojiPicker.classList.add('hidden');
+           }
+       }, 200);
    });
    // Format timestamp adaptively based on how long ago it was
    function formatTimestamp(timestamp) {
-      // Remove microseconds and ensure proper timezone handling
-      const cleanTimestamp = timestamp.split('.')[0] + 'Z';
-      const date = new Date(cleanTimestamp);
-      const now = new Date();
-      const diffInSeconds = Math.floor((now - date) / 1000);
-      const diffInMinutes = Math.floor(diffInSeconds / 60);
-      const diffInHours = Math.floor(diffInMinutes / 60);
-      const diffInDays = Math.floor(diffInHours / 24);
-      
-      // If invalid date, return empty string
-      if (isNaN(date.getTime())) {
-          console.log('Invalid date for timestamp:', timestamp);
-          return '';
-      }
-      
-      // Just now - less than a minute ago
-      if (diffInSeconds < 60) {
-          return 'Just now';
-      }
-      
-      // Minutes ago - less than an hour ago
-      if (diffInMinutes < 60) {
-          return `${diffInMinutes}m ago`;
-      }
-      
-      // Hours ago - less than 24 hours ago
-      if (diffInHours < 24) {
-          return `${diffInHours}h ago`;
-      }
-      
-      // Days ago - less than 7 days ago
-      if (diffInDays < 7) {
-          return `${diffInDays}d ago`;
-      }
-      
-      // This year - show month and day
-      if (date.getFullYear() === now.getFullYear()) {
-          return date.toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric'
-          });
-      }
-      
-      // Different year - show month, day and year
-      return date.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-      });
-      }
-      
-      // Helper function to update all timestamps on the page
-      function updateAllTimestamps() {
-      const timestamps = document.querySelectorAll('[data-timestamp]');
-      timestamps.forEach(element => {
-          const timestamp = element.getAttribute('data-timestamp');
-          element.textContent = formatTimestamp(timestamp);
-      });
-      }
-      
-      // Update timestamps initially and every minute
-      document.addEventListener('DOMContentLoaded', () => {
-      updateAllTimestamps();
-      setInterval(updateAllTimestamps, 60000); // Update every minute
-      });
+       // Remove microseconds and ensure proper timezone handling
+       const cleanTimestamp = timestamp.split('.')[0] + 'Z';
+       const date = new Date(cleanTimestamp);
+       const now = new Date();
+       const diffInSeconds = Math.floor((now - date) / 1000);
+       const diffInMinutes = Math.floor(diffInSeconds / 60);
+       const diffInHours = Math.floor(diffInMinutes / 60);
+       const diffInDays = Math.floor(diffInHours / 24);
+
+       // If invalid date, return empty string
+       if (isNaN(date.getTime())) {
+           console.log('Invalid date for timestamp:', timestamp);
+           return '';
+       }
+
+       // Just now - less than a minute ago
+       if (diffInSeconds < 60) {
+           return 'Just now';
+       }
+
+       // Minutes ago - less than an hour ago
+       if (diffInMinutes < 60) {
+           return `${diffInMinutes}m ago`;
+       }
+
+       // Hours ago - less than 24 hours ago
+       if (diffInHours < 24) {
+           return `${diffInHours}h ago`;
+       }
+
+       // Days ago - less than 7 days ago
+       if (diffInDays < 7) {
+           return `${diffInDays}d ago`;
+       }
+
+       // This year - show month and day
+       if (date.getFullYear() === now.getFullYear()) {
+           return date.toLocaleDateString('en-US', {
+               month: 'short',
+               day: 'numeric'
+           });
+       }
+
+       // Different year - show month, day and year
+       return date.toLocaleDateString('en-US', {
+           month: 'short',
+           day: 'numeric',
+           year: 'numeric'
+       });
+   }
+
+   // Helper function to update all timestamps on the page
+   function updateAllTimestamps() {
+       const timestamps = document.querySelectorAll('[data-timestamp]');
+       timestamps.forEach(element => {
+           const timestamp = element.getAttribute('data-timestamp');
+           element.textContent = formatTimestamp(timestamp);
+       });
+   }
+
+   // Update timestamps initially and every minute
+   document.addEventListener('DOMContentLoaded', () => {
+       updateAllTimestamps();
+       setInterval(updateAllTimestamps, 60000); // Update every minute
+   });
 </script>
 <style>
    html, body {
