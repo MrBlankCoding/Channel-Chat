@@ -2326,6 +2326,8 @@ def get_unread_messages(username):
                     content = "📷 Image"
                 elif "file" in message:
                     content = "📎 File"
+                elif "gif" in message and message["gif"].get("url"):
+                    content = "🔄 GIF"
                 elif "message" in message:
                     content = message["message"]
                 else:
@@ -2346,7 +2348,6 @@ def get_unread_messages(username):
             }
 
     return unread_messages
-
 
 @app.route("/get_unread_messages")
 @login_required
