@@ -1500,25 +1500,28 @@ def get_room_data(room_code):
 
 def get_message_type(message):
     """Helper function to determine message type"""
-    if "video" in message and message["video"]:
+    if message.get("video"):
         return "video"
-    elif "image" in message and message["image"]:
+    elif message.get("image"):
         return "image"
-    elif "file" in message and message["file"]:
+    elif message.get("gif"):
+        return "gif"
+    elif message.get("file"):
         return "file"
-    elif "message" in message and message["message"]:
+    elif message.get("message"):
         return "text"
     return "unknown"
-
 
 def get_message_content(message):
     """Helper function to get appropriate message content based on type"""
     message_type = get_message_type(message)
 
     if message_type == "video":
-        return "📹 Video"
+        return "📽 Video"
     elif message_type == "image":
         return "📷 Image"
+    elif message_type == "gif":
+        return "🎥 GIF"
     elif message_type == "file":
         return "📎 File"
     elif message_type == "text":
@@ -2296,7 +2299,6 @@ def mark_messages_read(data):
         room=room,
     )
 
-
 def get_unread_messages(username):
     # Get the user's data
     user = users_collection.find_one({"username": username})
@@ -2326,8 +2328,8 @@ def get_unread_messages(username):
                     content = "📷 Image"
                 elif "file" in message:
                     content = "📎 File"
-                elif "gif" in message and message["gif"].get("url"):
-                    content = "🔄 GIF"
+                elif "gif" in message:
+                    content = "🎥 GIF"
                 elif "message" in message:
                     content = message["message"]
                 else:
@@ -2348,6 +2350,7 @@ def get_unread_messages(username):
             }
 
     return unread_messages
+
 
 @app.route("/get_unread_messages")
 @login_required
