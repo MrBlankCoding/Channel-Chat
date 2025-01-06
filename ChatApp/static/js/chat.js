@@ -868,10 +868,10 @@ const createGifPicker = async () => {
 
     const gifGrid = document.createElement("div");
     gifGrid.style.display = "grid";
-    gifGrid.style.gridTemplateColumns = "repeat(4, 1fr)"; // 4x4 grid layout
-    gifGrid.style.gap = "12px"; // Space between items
+    gifGrid.style.gridTemplateColumns = "repeat(4, 1fr)";
+    gifGrid.style.gap = "12px";
     gifGrid.style.width = "100%";
-    gifGrid.style.boxSizing = "border-box"; // Include padding/borders in size
+    gifGrid.style.boxSizing = "border-box";
 
     const spinner = document.createElement("div");
     spinner.className = "w-8 h-8 border-4 border-t-transparent border-gray-400 rounded-full animate-spin mx-auto my-4";
@@ -885,63 +885,78 @@ const createGifPicker = async () => {
 
     const searchGifs = async (query) => {
         try {
-            gifGrid.innerHTML = ""; // Clear existing grid content
-            gifGrid.appendChild(spinner); // Show spinner
+            gifGrid.innerHTML = "";
+            gifGrid.appendChild(spinner);
 
             const response = await fetch(`/api/search-gifs?q=${encodeURIComponent(query)}&page=1&limit=${itemsPerPage}`);
             const data = await response.json();
 
-            gifGrid.innerHTML = ""; // Remove spinner and populate grid
+            gifGrid.innerHTML = "";
 
-            if (data.results.length === 0) {
-                gifGrid.innerHTML = `<div class="text-center text-gray-500 dark:text-gray-400">No GIFs found</div>`;
-            } else {
-                data.results.forEach((gif, index) => {
-                    const gifContainer = document.createElement("div");
-                    gifContainer.className = "relative group";
-
-                    const gifElement = document.createElement("img");
-                    gifElement.src = gif.media_formats.gif.url;
-                    gifElement.className = "object-cover rounded transition-transform duration-200 hover:scale-105 w-full h-full";
-                    gifElement.setAttribute("alt", gif.content_description || `GIF ${index + 1}`);
-                    gifElement.setAttribute("tabindex", "0");
-
-                    gifElement.addEventListener("click", () => {
-                        const messageData = {
-                            data: "",
-                            gif: {
-                                url: gif.media_formats.gif.url,
-                                title: gif.content_description
-                            },
-                            replyTo: replyingTo ? {
-                                id: replyingTo.id,
-                                message: replyingTo.message
-                            } : null
-                        };
-
-                        socketio.emit("message", messageData);
-                        cancelReply(); // Clear any reply state
-                        modal.remove();
-                    });
-
-                    const gifOverlay = document.createElement("div");
-                    gifOverlay.className = "absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded";
-
-                    gifContainer.appendChild(gifElement);
-                    gifContainer.appendChild(gifOverlay);
-                    gifGrid.appendChild(gifContainer);
-                });
+            if (!data.results || data.results.length === 0) {
+                gifGrid.innerHTML = `<div class="text-center text-gray-500 dark:text-gray-400 col-span-4">No GIFs found</div>`;
+                return;
             }
+
+            data.results.forEach((gif, index) => {
+                const gifContainer = document.createElement("div");
+                gifContainer.className = "relative group cursor-pointer";
+
+                const gifElement = document.createElement("img");
+                gifElement.src = gif.media_formats.tinygif.url;
+                gifElement.className = "w-full h-full object-cover rounded transition-transform duration-200 group-hover:scale-105";
+                gifElement.alt = gif.content_description || `GIF ${index + 1}`;
+                
+                const gifOverlay = document.createElement("div");
+                gifOverlay.className = "absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded";
+
+                const handleGifSelect = () => {
+                    console.log("GIF selected:", gif);
+                    
+                    const messageData = {
+                        data: "",
+                        gif: {
+                            url: gif.media_formats.gif.url,
+                            title: gif.content_description || "GIF"
+                        }
+                    };
+
+                    if (replyingTo) {
+                        messageData.replyTo = {
+                            id: replyingTo.id,
+                            message: replyingTo.message
+                        };
+                    }
+
+                    console.log("Sending message data:", messageData);
+                    socketio.emit("message", messageData);
+                    
+                    if (typeof cancelReply === 'function') {
+                        cancelReply();
+                    }
+                    modal.remove();
+                };
+
+                // Add click handlers to both container and image
+                gifContainer.addEventListener("click", handleGifSelect);
+                gifElement.addEventListener("click", (e) => {
+                    e.stopPropagation();  // Prevent double firing
+                    handleGifSelect();
+                });
+
+                gifContainer.appendChild(gifElement);
+                gifContainer.appendChild(gifOverlay);
+                gifGrid.appendChild(gifContainer);
+            });
         } catch (error) {
             console.error("Error searching GIFs:", error);
+            gifGrid.innerHTML = `<div class="text-center text-red-500 col-span-4">Error loading GIFs. Please try again.</div>`;
         }
     };
 
     searchInput.addEventListener("input", (e) => {
         clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            searchGifs(e.target.value);
-        }, 300);
+        searchTimeout = setTimeout(() => searchGifs(e.target.value), 300);
     });
 
     content.appendChild(searchInput);
@@ -956,9 +971,7 @@ const createGifPicker = async () => {
 
     // Add keyboard event listener for closing the modal
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-            modal.remove();
-        }
+        if (e.key === "Escape") modal.remove();
     });
 
     document.body.appendChild(modal);
