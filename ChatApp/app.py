@@ -141,17 +141,25 @@ class PendingInvite(BaseModel):
     room_name: str
     profile_photo: Optional[str]
     
-class RoomMessage(BaseModel):
-    message: str
-    name: str
-    time: datetime
-    image: Optional[str] = None
-    video: Optional[str] = None
-
 class RoomUser(BaseModel):
     username: str
     online: bool
     current_room: Optional[str]
+
+class Message(BaseModel):
+    id: str
+    name: str
+    message: str
+    type: str
+    read_by: List[str]
+    edited: Optional[bool] = False
+    timestamp: datetime
+
+class MessageRead(BaseModel):
+    message_ids: List[str]
+
+class LoadMoreMessages(BaseModel):
+    last_message_id: str
 
 class RoomData(BaseModel):
     id: str
@@ -191,6 +199,12 @@ class FriendInfo(BaseModel):
     online: bool
     current_room: Optional[str]
     room_name: str
+    
+class DeleteMessage(BaseModel):
+    message_id: str
+
+class TypingStatus(BaseModel):
+    is_typing: bool
 
 # Helper functions
 def create_access_token(data: dict):
@@ -1223,44 +1237,397 @@ async def search_messages(
 
     return {"messages": matching_messages[-50:]}  # Return last 50 matches
 
+from fastapi import WebSocket, Depends
+from typing import Dict, Optional
+from datetime import datetime, timezone
+from bson import ObjectId
+from typing import List, Dict
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, Dict[str, WebSocket]] = {}
-        self.user_rooms: Dict[str, Set[str]] = {}
 
-    async def connect(self, websocket: WebSocket, room_id: str, user_id: str):
+    async def connect(self, websocket: WebSocket, room_id: str, username: str):
         await websocket.accept()
         if room_id not in self.active_connections:
             self.active_connections[room_id] = {}
-        self.active_connections[room_id][user_id] = websocket
-        
-        if user_id not in self.user_rooms:
-            self.user_rooms[user_id] = set()
-        self.user_rooms[user_id].add(room_id)
+        self.active_connections[room_id][username] = websocket
 
-    def disconnect(self, room_id: str, user_id: str):
+    def disconnect(self, room_id: str, username: str):
         if room_id in self.active_connections:
-            self.active_connections[room_id].pop(user_id, None)
+            self.active_connections[room_id].pop(username, None)
             if not self.active_connections[room_id]:
-                self.active_connections.pop(room_id)
-        
-        if user_id in self.user_rooms:
-            self.user_rooms[user_id].remove(room_id)
-            if not self.user_rooms[user_id]:
-                self.user_rooms.pop(user_id)
+                self.active_connections.pop(room_id, None)
 
-    async def broadcast_to_room(self, room_id: str, message: dict, exclude_user: Optional[str] = None):
+    async def broadcast_to_room(self, room_id: str, message: dict, exclude_user: str = None):
         if room_id in self.active_connections:
-            for user_id, connection in self.active_connections[room_id].items():
-                if user_id != exclude_user:
+            for username, connection in self.active_connections[room_id].items():
+                if username != exclude_user:
                     await connection.send_json(message)
 
-    async def send_personal_message(self, user_id: str, message: dict):
-        for room_id in self.user_rooms.get(user_id, set()):
-            if room_id in self.active_connections and user_id in self.active_connections[room_id]:
-                await self.active_connections[room_id][user_id].send_json(message)
-
 manager = ConnectionManager()
+
+@app.websocket("/ws/{room_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    room_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
+    
+    # Initial connection
+    await manager.connect(websocket, room_id, username)
+    try:
+        # Get user and room data
+        room_data = rooms_collection.find_one({"_id": room_id})
+        user_data = users_collection.find_one({"username": username})
+
+        if not room_data or not user_data:
+            await websocket.close()
+            return
+
+        # Check if this is the user's first time joining the room
+        user_rooms = user_data.get("rooms", [])
+        is_first_join = room_id not in user_rooms
+
+        # Update user's current room and rooms list
+        users_collection.update_one(
+            {"username": username},
+            {
+                "$set": {"current_room": room_id},
+                "$addToSet": {"rooms": room_id}
+            }
+        )
+
+        # Add user to the room's user list if not already present
+        rooms_collection.update_one(
+            {"_id": room_id},
+            {"$addToSet": {"users": username}}
+        )
+
+        # If this is the user's first time joining, add a system message
+        if is_first_join:
+            system_message = {
+                "id": str(ObjectId()),
+                "name": "system",
+                "message": f"{username} has joined the room for the first time",
+                "type": "system",
+                "read_by": room_data.get("users", []),
+                "timestamp": datetime.now(timezone.utc)
+            }
+
+            # Add the system message to the room
+            rooms_collection.update_one(
+                {"_id": room_id},
+                {"$push": {"messages": system_message}}
+            )
+
+            # Broadcast the system message
+            await manager.broadcast_to_room(
+                room_id,
+                {"type": "message", "data": system_message}
+            )
+
+        # Send updated user list
+        user_list = []
+        for user in room_data.get("users", []):
+            user_profile = users_collection.find_one({"username": user})
+            if user_profile:
+                is_online = (
+                    room_id in manager.active_connections 
+                    and user in manager.active_connections[room_id]
+                )
+                user_list.append({
+                    "username": user,
+                    "online": is_online,
+                    "isFriend": user in user_data.get("friends", [])
+                })
+
+        await websocket.send_json({
+            "type": "update_users",
+            "data": {
+                "users": user_list,
+                "room_name": room_data.get("name", "Unnamed Room")
+            }
+        })
+
+        # Send recent chat history
+        messages = room_data.get("messages", [])[-20:]
+        messages_with_read_status = []
+        for msg in messages:
+            msg_copy = msg.copy()
+            msg_copy["read_by"] = msg_copy.get("read_by", [])
+            for key, value in msg_copy.items():
+                if isinstance(value, datetime):
+                    msg_copy[key] = value.isoformat()
+            messages_with_read_status.append(msg_copy)
+
+        await websocket.send_json({
+            "type": "chat_history",
+            "data": {
+                "messages": messages_with_read_status,
+                "has_more": len(messages) < len(room_data.get("messages", [])),
+                "room_name": room_data.get("name", "Unnamed Room")
+            }
+        })
+
+        # Main event loop
+        while True:
+            data = await websocket.receive_json()
+            
+            if data["type"] == "message":
+                await handle_message(websocket, room_id, data, current_user, manager)
+                
+            elif data["type"] == "user_typing":
+                typing_notification = {
+                    "type": "user_typing",
+                    "username": username
+                }
+                await manager.broadcast_to_room(
+                    room_id,
+                    typing_notification,
+                    exclude_user=username
+                )
+                
+            elif data["type"] == "find_message":
+                await handle_find_message(websocket, room_id, data)
+                
+            elif data["type"] == "toggle_reaction":
+                await handle_toggle_reaction(websocket, room_id, data, username)
+
+    except WebSocketDisconnect:
+        manager.disconnect(room_id, username)
+        # Update user profile
+        users_collection.update_one(
+            {"username": username},
+            {"$set": {"current_room": None}}
+        )
+
+        # Get updated room data and notify remaining users
+        room_data = rooms_collection.find_one({"_id": room_id})
+        if room_data:
+            user_list = []
+            for user in room_data["users"]:
+                user_profile = users_collection.find_one({"username": user})
+                is_online = (
+                    room_id in manager.active_connections 
+                    and user in manager.active_connections[room_id]
+                )
+                user_list.append({
+                    "username": user,
+                    "online": is_online,
+                    "isFriend": False
+                })
+            
+            await manager.broadcast_to_room(
+                room_id,
+                {
+                    "type": "update_users",
+                    "data": {"users": user_list}
+                }
+            )
+            
+            await manager.broadcast_to_room(
+                room_id,
+                {
+                    "type": "user_disconnected",
+                    "username": username
+                }
+            )
+
+    except Exception as e:
+        print(f"Error in websocket connection: {str(e)}")
+        manager.disconnect(room_id, username)
+
+async def handle_find_message(websocket: WebSocket, room_id: str, data: dict):
+    message_id = data.get("message_id")
+    if not message_id:
+        await websocket.send_json({"type": "message_found", "found": False})
+        return
+
+    message_data = rooms_collection.find_one(
+        {"_id": room_id, "messages.id": message_id},
+        {"messages.$": 1}
+    )
+
+    if not message_data:
+        await websocket.send_json({"type": "message_found", "found": False})
+        return
+
+    room_data = rooms_collection.find_one({"_id": room_id})
+    message_index = next(
+        (i for i, msg in enumerate(room_data["messages"]) if msg["id"] == message_id),
+        None
+    )
+
+    if message_index is None:
+        await websocket.send_json({"type": "message_found", "found": False})
+        return
+
+    start_index = max(0, message_index - 10)
+    end_index = min(len(room_data["messages"]), message_index + 11)
+    context_messages = room_data["messages"][start_index:end_index]
+
+    messages_with_read_status = []
+    for msg in context_messages:
+        msg_copy = msg.copy()
+        msg_copy["read_by"] = msg_copy.get("read_by", [])
+        for key, value in msg_copy.items():
+            if isinstance(value, datetime):
+                msg_copy[key] = value.isoformat()
+        messages_with_read_status.append(msg_copy)
+
+    await websocket.send_json({
+        "type": "message_found",
+        "found": True,
+        "messages": messages_with_read_status,
+        "has_more": start_index > 0 or end_index < len(room_data["messages"])
+    })
+
+async def handle_toggle_reaction(websocket: WebSocket, room_id: str, data: dict, username: str):
+    message_id = data["messageId"]
+    emoji = data["emoji"]
+    
+    message = rooms_collection.find_one(
+        {"_id": room_id, "messages.id": message_id},
+        {"messages.$": 1}
+    )
+    
+    if not message or not message.get("messages"):
+        return
+        
+    current_message = message["messages"][0]
+    current_reactions = current_message.get("reactions", {})
+    current_emoji_data = current_reactions.get(emoji, {"count": 0, "users": []})
+    
+    if username in current_emoji_data.get("users", []):
+        # Remove reaction
+        update_result = rooms_collection.update_one(
+            {"_id": room_id, "messages.id": message_id},
+            {
+                "$pull": {f"messages.$[msg].reactions.{emoji}.users": username},
+                "$inc": {f"messages.$[msg].reactions.{emoji}.count": -1},
+            },
+            array_filters=[{"msg.id": message_id}]
+        )
+        
+        if current_emoji_data["count"] == 1:
+            rooms_collection.update_one(
+                {"_id": room_id, "messages.id": message_id},
+                {"$unset": {f"messages.$[msg].reactions.{emoji}": ""}},
+                array_filters=[{"msg.id": message_id}]
+            )
+    else:
+        # Add reaction
+        rooms_collection.update_one(
+            {"_id": room_id, "messages.id": message_id},
+            {
+                "$set": {
+                    f"messages.$[msg].reactions.{emoji}": {
+                        "count": current_emoji_data.get("count", 0) + 1,
+                        "users": current_emoji_data.get("users", []) + [username],
+                    }
+                }
+            },
+            array_filters=[{"msg.id": message_id}]
+        )
+    
+    # Broadcast updated reactions
+    updated_message = rooms_collection.find_one(
+        {"_id": room_id, "messages.id": message_id},
+        {"messages.$": 1}
+    )
+    
+    if updated_message and updated_message.get("messages"):
+        await manager.broadcast_to_room(
+            room_id,
+            {
+                "type": "update_reactions",
+                "messageId": message_id,
+                "reactions": updated_message["messages"][0].get("reactions", {})
+            }
+        )
+
+async def handle_message(websocket: WebSocket, room_id: str, data: dict, current_user: dict, manager: ConnectionManager):
+    """
+    Handle incoming messages including GIFs, replies, images, and videos.
+    """
+    room_data = rooms_collection.find_one({"_id": room_id})
+    if not room_data:
+        return
+    
+    # Handle GIF data with validation
+    gif_data = validate_gif_data(data.get("gif"))
+
+    # Handle reply_to data structure
+    reply_to = None
+    if data.get("replyTo"):
+        if isinstance(data["replyTo"], dict):
+            reply_to = {
+                "id": data["replyTo"]["id"],
+                "message": data["replyTo"]["message"],
+            }
+        else:
+            original_message = rooms_collection.find_one(
+                {"_id": room_id, "messages.id": data["replyTo"]}, 
+                {"messages.$": 1}
+            )
+            if original_message and original_message.get("messages"):
+                reply_to = {
+                    "id": data["replyTo"],
+                    "message": original_message["messages"][0]["message"],
+                }
+
+    # Create message content
+    content = {
+        "id": str(ObjectId()),
+        "name": current_user["username"],
+        "message": data["data"],
+        "reply_to": reply_to,
+        "read_by": [current_user["username"]],
+        "image": data.get("image"),
+        "video": data.get("video"),
+        "gif": gif_data,  # Using validated gif data
+        "reactions": {},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Create the message update operation
+    update_operation = {"$push": {"messages": content}}
+    
+    # Add metadata for GIF messages
+    if gif_data:
+        update_operation["$inc"] = {"gif_count": 1}
+        update_operation["$set"] = {
+            "last_gif_sent": datetime.now(timezone.utc).isoformat()
+        }
+
+    # Update the room with the new message
+    rooms_collection.update_one({"_id": room_id}, update_operation)
+
+    # Broadcast message to all users in the room
+    await manager.broadcast_to_room(
+        room_id,
+        {
+            "type": "message",
+            "data": content
+        }
+    )
+
+    # Schedule notifications for other users
+    sender_username = current_user["username"]
+    room_users = room_data["users"]
+
+    # Create notification tasks for all other users
+    for username in room_users:
+        if username != sender_username:
+            await check_and_notify_async(
+                message_id=content["id"],
+                room_id=room_id,
+                recipient_username=username,
+                sender_username=sender_username,
+                message_text=content["message"],
+            )
 
 # Helper functions
 def get_message_type(message: dict) -> str:
@@ -1317,48 +1684,87 @@ def prepare_room_message_data(room_info: dict) -> dict:
         "type": message_type,
     }
 
-# WebSocket endpoints
-@app.websocket("/ws/{room_id}")
-async def websocket_endpoint(websocket: WebSocket, room_id: str, current_user: User = Depends(get_current_user)):
-    await manager.connect(websocket, room_id, current_user["username"])
-    try:
-        while True:
-            data = await websocket.receive_json()
-            
-            # Handle different message types
-            if data["type"] == "message":
-                message = {
-                    "type": "message",
-                    "content": data["content"],
-                    "sender": current_user["username"],
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-                
-                # Save message to database
-                rooms_collection.update_one(
-                    {"_id": room_id},
-                    {"$push": {"messages": message}}
-                )
-                
-                # Broadcast to all users in room
-                await manager.broadcast_to_room(room_id, message)
-                
-            elif data["type"] == "user_typing":
-                typing_notification = {
-                    "type": "user_typing",
-                    "username": current_user["username"]
-                }
-                await manager.broadcast_to_room(room_id, typing_notification, exclude_user=current_user["username"])
+@app.post("/upload_video")
+async def upload_video(
+    video: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    if not is_valid_video(video):
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid video file or size exceeds 50MB"}
+        )
 
-    except WebSocketDisconnect:
-        manager.disconnect(room_id, current_user["username"])
-        await manager.broadcast_to_room(
-            room_id,
-            {
-                "type": "user_disconnected",
-                "username": current_user["username"]
+    try:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_input:
+            content = await video.read()
+            temp_input.write(content)
+
+        output_path = compress_convert_video(temp_input.name)
+
+        filename = secure_filename(f"{str(ObjectId())}.webm")
+        bucket = storage.bucket()
+        blob = bucket.blob(f"room_videos/{filename}")
+
+        blob.upload_from_filename(output_path)
+
+        os.unlink(temp_input.name)
+        os.unlink(output_path)
+
+        video_url = blob.generate_signed_url(timedelta(days=7))
+
+        return {"url": video_url}
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+def compress_convert_video(input_file: str) -> str:
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_output:
+        output_path = temp_output.name
+
+    try:
+        stream = ffmpeg.input(input_file)
+        stream = ffmpeg.output(
+            stream,
+            output_path,
+            **{
+                "c:v": "libvpx-vp9",
+                "crf": VIDEO_COMPRESS_CRF,
+                "b:v": "1M",
+                "maxrate": "1.5M",
+                "bufsize": "2M",
+                "c:a": "libopus",
+                "b:a": "128k",
             }
         )
+        ffmpeg.run(
+            stream,
+            overwrite_output=True,
+            capture_stdout=True,
+            capture_stderr=True,
+        )
+
+        return output_path
+    except ffmpeg.Error as e:
+        print(f"FFmpeg error: {e.stderr.decode()}")
+        if os.path.exists(output_path):
+            os.unlink(output_path)
+        raise
+
+def is_valid_video(file: UploadFile) -> bool:
+    if not file:
+        return False
+
+    file_size_mb = len(file.file.read()) / (1024 * 1024)
+    file.file.seek(0)
+    
+    if file_size_mb > MAX_VIDEO_SIZE_MB:
+        return False
+
+    file_type, _ = mimetypes.guess_type(file.filename)
+    return file_type in ALLOWED_VIDEO_TYPES
 
 # HTTP endpoints
 @app.get("/get_last_message/{room_code}", response_model=Optional[MessageContent])
@@ -1685,308 +2091,126 @@ async def update_room_photo(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error uploading photo: {str(e)}")
-
-@socketio.on("toggle_reaction")
-def handle_reaction(data):
-    room = session.get("room")
-    username = current_user.username
-    if not room or not username:
-        return
-
-    message_id = data["messageId"]
-    emoji = data["emoji"]
-
-    # Check if the user has already reacted with this emoji
-    message = rooms_collection.find_one(
-        {"_id": room, "messages.id": message_id}, {"messages.$": 1}
-    )
-
-    if not message or not message.get("messages"):
-        return
-
-    current_message = message["messages"][0]
-    current_reactions = current_message.get("reactions", {})
-    current_emoji_data = current_reactions.get(emoji, {"count": 0, "users": []})
-
-    if username in current_emoji_data.get("users", []):
-        # Remove user's reaction
-        update_result = rooms_collection.update_one(
-            {"_id": room, "messages.id": message_id},
-            {
-                "$pull": {f"messages.$[msg].reactions.{emoji}.users": username},
-                "$inc": {f"messages.$[msg].reactions.{emoji}.count": -1},
-            },
-            array_filters=[{"msg.id": message_id}],
-        )
-
-        # If the reaction count is now 0, remove the empty reaction in a separate operation
-        if current_emoji_data["count"] == 1:  # This was the last reaction
-            rooms_collection.update_one(
-                {"_id": room, "messages.id": message_id},
-                {"$unset": {f"messages.$[msg].reactions.{emoji}": ""}},
-                array_filters=[{"msg.id": message_id}],
-            )
-    else:
-        # Add user's reaction
-        rooms_collection.update_one(
-            {"_id": room, "messages.id": message_id},
-            {
-                "$set": {
-                    f"messages.$[msg].reactions.{emoji}": {
-                        "count": current_emoji_data.get("count", 0) + 1,
-                        "users": current_emoji_data.get("users", []) + [username],
-                    }
+    
+@app.post("/mark_messages_read/{room_id}")
+async def mark_messages_read(
+    room_id: str,
+    data: MessageRead,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
+    
+    # Update the read status of messages in the room
+    result = rooms_collection.update_many(
+        {
+            "_id": room_id,
+            "messages": {
+                "$elemMatch": {
+                    "id": {"$in": data.message_ids},
+                    "read_by": {"$ne": username},
                 }
             },
-            array_filters=[{"msg.id": message_id}],
-        )
-
-    try:
-        # Emit updated reactions to all users in the room
-        updated_message = rooms_collection.find_one(
-            {"_id": room, "messages.id": message_id}, {"messages.$": 1}
-        )
-
-        if updated_message and updated_message.get("messages"):
-            emit(
-                "update_reactions",
-                {
-                    "messageId": message_id,
-                    "reactions": updated_message["messages"][0].get("reactions", {}),
-                },
-                room=room,
-            )
-    except Exception as e:
-        print(f"Error emitting reaction update: {str(e)}")
-
-
-@app.route("/upload_video", methods=["POST"])
-@login_required
-def upload_video():
-    if "video" not in request.files:
-        return jsonify({"error": "No video file provided"}), 400
-
-    video = request.files["video"]
-    if not is_valid_video(video):
-        return (
-            jsonify({"error": "Invalid video file or size exceeds 50MB"}),
-            400,
-        )
-
-    try:
-        # Save original video temporarily
-        with tempfile.NamedTemporaryFile(delete=False) as temp_input:
-            video.save(temp_input.name)
-
-        # Compress and convert to WEBM
-        output_path = compress_convert_video(temp_input.name)
-
-        # Upload to Firebase Storage
-        filename = secure_filename(f"{str(ObjectId())}.webm")
-        bucket = storage.bucket()
-        blob = bucket.blob(f"room_videos/{filename}")
-
-        # Upload the processed video
-        blob.upload_from_filename(output_path)
-
-        # Clean up temporary files
-        os.unlink(temp_input.name)
-        os.unlink(output_path)
-
-        # Generate public URL
-        video_url = blob.generate_signed_url(timedelta(days=7))
-
-        return jsonify({"url": video_url})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-def compress_convert_video(input_file):
-    """Compress video and convert to WEBM format"""
-    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as temp_output:
-        output_path = temp_output.name
-
-    try:
-        # Convert and compress video using ffmpeg
-        stream = ffmpeg.input(input_file)
-        stream = ffmpeg.output(
-            stream,
-            output_path,
-            **{
-                "c:v": "libvpx-vp9",  # VP9 codec for WEBM
-                "crf": VIDEO_COMPRESS_CRF,  # Compression quality
-                "b:v": "1M",  # Target bitrate
-                "maxrate": "1.5M",  # Maximum bitrate
-                "bufsize": "2M",  # Buffer size
-                "c:a": "libopus",  # Audio codec
-                "b:a": "128k",  # Audio bitrate
-            },
-        )
-        ffmpeg.run(
-            stream,
-            overwrite_output=True,
-            capture_stdout=True,
-            capture_stderr=True,
-        )
-
-        return output_path
-    except ffmpeg.Error as e:
-        print(f"FFmpeg error: {e.stderr.decode()}")
-        if os.path.exists(output_path):
-            os.unlink(output_path)
-        raise
-
-
-def is_valid_video(file):
-    """Check if file is a valid video and within size limits"""
-    if not file:
-        return False
-
-    # Check file size (50MB limit)
-    file_size_mb = len(file.read()) / (1024 * 1024)
-    file.seek(0)  # Reset file pointer
-    if file_size_mb > MAX_VIDEO_SIZE_MB:
-        return False
-
-    # Check MIME type using file extension
-    file_type, _ = mimetypes.guess_type(file.name)
-    return file_type in ALLOWED_VIDEO_TYPES
-
-
-@socketio.on("find_message")
-def find_message(data):
-    room = session.get("room")
-    message_id = data.get("message_id")
-
-    if not room or not message_id:
-        socketio.emit("message_found", {"found": False}, room=request.sid)
-        return
-
-    # Find message in room
-    message_data = rooms_collection.find_one(
-        {"_id": room, "messages.id": message_id}, {"messages.$": 1}
-    )
-
-    if not message_data:
-        socketio.emit("message_found", {"found": False}, room=request.sid)
-        return
-
-    # Get message index
-    room_data = rooms_collection.find_one({"_id": room})
-    message_index = next(
-        (i for i, msg in enumerate(room_data["messages"]) if msg["id"] == message_id),
-        None,
-    )
-
-    if message_index is None:
-        socketio.emit("message_found", {"found": False}, room=request.sid)
-        return
-
-    # Get messages around target (10 before, 10 after)
-    start_index = max(0, message_index - 10)
-    end_index = min(len(room_data["messages"]), message_index + 11)
-    context_messages = room_data["messages"][start_index:end_index]
-
-    # Format messages
-    messages_with_read_status = []
-    for msg in context_messages:
-        msg_copy = msg.copy()
-        msg_copy["read_by"] = msg_copy.get("read_by", [])
-        for key, value in msg_copy.items():
-            if isinstance(value, datetime):
-                msg_copy[key] = datetime_to_iso(value)
-        messages_with_read_status.append(msg_copy)
-
-    socketio.emit(
-        "message_found",
-        {
-            "found": True,
-            "messages": messages_with_read_status,
-            "has_more": start_index > 0 or end_index < len(room_data["messages"]),
         },
-        room=request.sid,
+        {
+            "$addToSet": {"messages.$[elem].read_by": username},
+        },
+        array_filters=[{"elem.id": {"$in": data.message_ids}}],
     )
 
+    # Broadcast to room that messages have been read
+    await manager.broadcast_to_room(
+        room_id,
+        {
+            "type": "messages_read",
+            "reader": username,
+            "message_ids": data.message_ids,
+        }
+    )
 
-@app.route("/update_timezone", methods=["POST"])
-@login_required
-def update_timezone():
-    timezone = request.json.get("timezone")
-    if timezone in pytz.all_timezones:
+    return {"success": True, "modified_count": result.modified_count}
+
+
+@app.post("/update_timezone")
+async def update_timezone(
+    timezone_data: Dict[str, str],
+    current_user: User = Depends(get_current_user)
+):
+    timezone_str = timezone_data.get("timezone")
+    if timezone_str in pytz.all_timezones:
         users_collection.update_one(
-            {"username": current_user.username}, {"$set": {"timezone": timezone}}
+            {"username": current_user["username"]},
+            {"$set": {"timezone": timezone_str}}
         )
-        session["timezone"] = timezone
-        return jsonify({"status": "success"})
-    return jsonify({"status": "error", "message": "Invalid timezone"}), 400
+        return {"status": "success"}
+    raise HTTPException(status_code=400, detail="Invalid timezone")
 
+# Tenor API routes
 TENOR_API_KEY = os.getenv("TENOR_API_KEY")
 TENOR_BASE_URL = "https://tenor.googleapis.com/v2"
 
-@app.route("/api/gif-categories")
-def gif_categories():
+@app.get("/api/gif-categories")
+async def gif_categories():
     try:
         response = requests.get(
             f"{TENOR_BASE_URL}/categories",
             params={
                 "key": TENOR_API_KEY,
                 "client_key": "web",
-                "type": "featured"  # Get featured categories
+                "type": "featured"
             }
         )
         response.raise_for_status()
-        return jsonify(response.json())
+        return response.json()
     except requests.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/search-suggestions")
-def search_suggestions():
+@app.get("/api/search-suggestions")
+async def search_suggestions():
     try:
         response = requests.get(
             f"{TENOR_BASE_URL}/trending_terms",
             params={
                 "key": TENOR_API_KEY,
                 "client_key": "web",
-                "limit": 8  # Limit to top 8 trending terms
+                "limit": 8
             }
         )
         response.raise_for_status()
-        return jsonify(response.json())
+        return response.json()
     except requests.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route("/api/autocomplete-gifs")
-def autocomplete_gifs():
-    query = request.args.get("q", "")
-    
-    if not query:
-        return jsonify({"results": []})
+@app.get("/api/autocomplete-gifs")
+async def autocomplete_gifs(q: str = Query("", min_length=0)):
+    if not q:
+        return {"results": []}
         
     try:
         response = requests.get(
             f"{TENOR_BASE_URL}/autocomplete",
             params={
-                "q": query,
+                "q": q,
                 "key": TENOR_API_KEY,
                 "client_key": "web",
-                "limit": 5  # Limit to top 5 suggestions
+                "limit": 5
             }
         )
         response.raise_for_status()
-        return jsonify(response.json())
+        return response.json()
     except requests.RequestException as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/api/search-gifs")
-def search_gifs():
-    query = request.args.get("q", "")
-    limit = int(request.args.get("limit", 16))
+        raise HTTPException(status_code=500, detail=str(e))
     
+
+@app.get("/api/search-gifs")
+async def search_gifs(
+    q: str = Query(""),
+    limit: int = Query(16, ge=1, le=50)
+):
     try:
         response = requests.get(
             f"{TENOR_BASE_URL}/search",
             params={
-                "q": query or "trending",
+                "q": q or "trending",
                 "key": TENOR_API_KEY,
                 "client_key": "web",
                 "limit": limit,
@@ -1994,9 +2218,9 @@ def search_gifs():
             }
         )
         response.raise_for_status()
-        return jsonify(response.json())
+        return response.json()
     except requests.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
 def validate_gif_data(gif: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
     """
@@ -2016,146 +2240,14 @@ def validate_gif_data(gif: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]
         'saved_at': datetime.now(timezone.utc).isoformat()
     }
 
-@socketio.on("message")
-def message(data):
-    room = session.get("room")
-    room_data = rooms_collection.find_one({"_id": room})
-    if not room or not room_data:
-        return
-    
-    # Handle GIF data with validation
-    gif_data = validate_gif_data(data.get("gif"))
-
-    # Handle reply_to data structure
-    reply_to = None
-    if data.get("replyTo"):
-        if isinstance(data["replyTo"], dict):
-            reply_to = {
-                "id": data["replyTo"]["id"],
-                "message": data["replyTo"]["message"],
-            }
-        else:
-            original_message = rooms_collection.find_one(
-                {"_id": room, "messages.id": data["replyTo"]}, 
-                {"messages.$": 1}
-            )
-            if original_message and original_message.get("messages"):
-                reply_to = {
-                    "id": data["replyTo"],
-                    "message": original_message["messages"][0]["message"],
-                }
-
-    content = {
-        "id": str(ObjectId()),
-        "name": current_user.username,
-        "message": data["data"],
-        "reply_to": reply_to,
-        "read_by": [session.get("username")],
-        "image": data.get("image"),
-        "video": data.get("video"),
-        "gif": gif_data,  # Using validated gif data
-        "reactions": {},
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-
-    # Create the message update operation
-    update_operation = {"$push": {"messages": content}}
-    
-    # Add metadata for GIF messages
-    if gif_data:
-        update_operation["$inc"] = {"gif_count": 1}
-        update_operation["$set"] = {
-            "last_gif_sent": datetime.now(timezone.utc).isoformat()
-        }
-
-    # Update the room with the new message
-    rooms_collection.update_one({"_id": room}, update_operation)
-
-    # Send to room
-    send(content, to=room)
-
-    # Schedule notifications
-    sender_username = current_user.username
-    room_users = room_data["users"]
-
-    for username in room_users:
-        if username != sender_username:
-            socketio.start_background_task(
-                check_and_notify,
-                message_id=content["id"],
-                room_id=room,
-                recipient_username=username,
-                sender_username=sender_username,
-                message_text=content["message"],
-            )
-
-def check_and_notify(
-    message_id, room_id, recipient_username, sender_username, message_text
-):
-    # Wait for 5 seconds
-    socketio.sleep(5)
-
-    # Check if the message is still unread
-    room = rooms_collection.find_one({"_id": room_id})
-    if not room:
-        return
-
-    message = next((msg for msg in room["messages"] if msg["id"] == message_id), None)
-    if not message:
-        return
-
-    # If the recipient hasn't read the message after 5 seconds, send a notification
-    if recipient_username not in message.get("read_by", []):
-        send_notification(
-            recipient_username=recipient_username,
-            sender_username=sender_username,
-            message_text=message_text,
-        )
-
-
-@socketio.on("mark_messages_read")
-def mark_messages_read(data):
-    room = session.get("room")
-    username = current_user.username
-    if not room or not username:
-        return
-
-    # Update the read status of messages in the room
-    rooms_collection.update_many(
-        {
-            "_id": room,
-            "messages": {
-                "$elemMatch": {
-                    "id": {"$in": data["message_ids"]},
-                    "read_by": {"$ne": username},
-                }
-            },
-        },
-        {
-            "$addToSet": {"messages.$[elem].read_by": username},
-        },
-        array_filters=[{"elem.id": {"$in": data["message_ids"]}}],
-    )
-
-    # Emit an event to notify other users that messages have been read
-    socketio.emit(
-        "messages_read",
-        {
-            "reader": username,
-            "message_ids": data["message_ids"],
-        },
-        room=room,
-    )
-
-def get_unread_messages(username):
-    # Get the user's data
+@app.get("/unread_messages")
+async def get_unread_messages(current_user: User = Depends(get_current_user)):
+    username = current_user["username"]
     user = users_collection.find_one({"username": username})
     if not user:
-        return {"error": "User not found"}
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # Get all rooms the user is in
     user_rooms = rooms_collection.find({"users": username})
-
     unread_messages = {}
 
     for room in user_rooms:
@@ -2164,7 +2256,6 @@ def get_unread_messages(username):
         unread_msg_details = []
 
         for message in room["messages"]:
-            # Check if the message is not read by the user and not sent by the user
             if (
                 username not in message.get("read_by", [])
                 and message["name"] != username
@@ -2172,24 +2263,19 @@ def get_unread_messages(username):
                 unread_count += 1
 
                 # Determine message content based on type
+                content = message.get("message", "")
                 if "image" in message:
                     content = "📷 Image"
                 elif "file" in message:
                     content = "📎 File"
                 elif "gif" in message:
                     content = "🎥 GIF"
-                elif "message" in message:
-                    content = message["message"]
-                else:
-                    content = "Unknown message type"
 
-                unread_msg_details.append(
-                    {
-                        "id": message["id"],
-                        "sender": message["name"],
-                        "content": content,
-                    }
-                )
+                unread_msg_details.append({
+                    "id": message["id"],
+                    "sender": message["name"],
+                    "content": content,
+                })
 
         if unread_count > 0:
             unread_messages[room_id] = {
@@ -2199,39 +2285,24 @@ def get_unread_messages(username):
 
     return unread_messages
 
-
-@app.route("/get_unread_messages")
-@login_required
-def fetch_unread_messages():
-    username = current_user.username
-    if not username:
-        return jsonify({"error": "User not logged in"}), 401
-
-    unread_messages = get_unread_messages(username)
-    return jsonify(unread_messages)
-
-
-@socketio.on("load_more_messages")
-def load_more_messages(data):
-    room = session.get("room")
-    last_message_id = data.get("last_message_id")
-
-    room_data = rooms_collection.find_one({"_id": room})
+@app.post("/load_more_messages/{room_id}")
+async def load_more_messages(
+    room_id: str,
+    data: LoadMoreMessages,
+    current_user: User = Depends(get_current_user)
+):
+    room_data = rooms_collection.find_one({"_id": room_id})
     if not room_data:
-        return
+        raise HTTPException(status_code=404, detail="Room not found")
 
     all_messages = room_data.get("messages", [])
-
-    if not last_message_id:
-        return
-
     last_message_index = next(
-        (i for i, msg in enumerate(all_messages) if msg["id"] == last_message_id),
-        None,
+        (i for i, msg in enumerate(all_messages) if msg["id"] == data.last_message_id),
+        None
     )
 
     if last_message_index is None:
-        return
+        raise HTTPException(status_code=404, detail="Message not found")
 
     # Load 20 more messages before the last loaded message
     start_index = max(0, last_message_index - 20)
@@ -2243,234 +2314,137 @@ def load_more_messages(data):
         msg_copy["read_by"] = msg_copy.get("read_by", [])
         for key, value in msg_copy.items():
             if isinstance(value, datetime):
-                msg_copy[key] = datetime_to_iso(value)
+                msg_copy[key] = value.isoformat()
         messages_with_read_status.append(msg_copy)
 
-    socketio.emit(
-        "more_messages",
-        {"messages": messages_with_read_status, "has_more": start_index > 0},
-        room=request.sid,
-    )
-
-
-@socketio.on("connect")
-def connect():
-    room = session.get("room")
-    username = current_user.username
-    if not room or not username:
-        return
-
-    join_room(room)
-
-    # Get user and room data
-    room_data = rooms_collection.find_one({"_id": room})
-    user_data = users_collection.find_one({"username": username})
-
-    if not room_data or not user_data:
-        return
-
-    # Check if this is the user's first time joining the room
-    # Make sure to check both the rooms array and handle the case where it doesn't exist
-    user_rooms = user_data.get("rooms", [])
-    is_first_join = room not in user_rooms
-
-    # Update user's current room and rooms list
-    users_collection.update_one(
-        {"username": username},
-        {"$set": {"current_room": room}, "$addToSet": {"rooms": room}},
-    )
-
-    # Add user to the room's user list if not already present
-    rooms_collection.update_one({"_id": room}, {"$addToSet": {"users": username}})
-
-    # If this is the user's first time joining, add a system message
-    if is_first_join:
-        current_time = datetime.utcnow()
-        system_message = {
-            "id": str(ObjectId()),
-            "name": "system",
-            "message": f"{username} has joined the room for the first time",
-            "type": "system",
-            "read_by": room_data.get("users", []),  # Mark as read by all current users
-        }
-
-        # Add the system message to the room
-        rooms_collection.update_one(
-            {"_id": room}, {"$push": {"messages": system_message}}
-        )
-
-        # Emit the system message to all users in the room
-        socketio.emit(
-            "message",
-            {
-                **system_message,
-            },
-            to=room,
-        )
-
-    # Get updated room data for user list
-    room_data = rooms_collection.find_one({"_id": room})
-    user_data = users_collection.find_one({"username": username})
-
-    # Send updated user list with online status and friend information
-    user_list = []
-    for user in room_data.get("users", []):
-        user_profile = users_collection.find_one({"username": user})
-        if user_profile:
-            user_list.append(
-                {
-                    "username": user,
-                    "online": user_profile.get("online", False),
-                    "isFriend": user in user_data.get("friends", []),
-                }
-            )
-
-    socketio.emit(
-        "update_users",
-        {
-            "users": user_list,
-            "room_name": room_data.get("name", "Unnamed Room"),
-        },
-        room=room,
-    )
-
-    # Load only the most recent 20 messages
-    messages = room_data.get("messages", [])[-20:]
-    messages_with_read_status = []
-    for msg in messages:
-        msg_copy = msg.copy()
-        msg_copy["read_by"] = msg_copy.get("read_by", [])
-        for key, value in msg_copy.items():
-            if isinstance(value, datetime):
-                msg_copy[key] = datetime_to_iso(value)
-        messages_with_read_status.append(msg_copy)
-
-    socketio.emit(
-        "chat_history",
-        {
-            "messages": messages_with_read_status,
-            "has_more": len(messages) < len(room_data.get("messages", [])),
-            "room_name": room_data.get("name", "Unnamed Room"),
-        },
-        room=request.sid,
-    )
-
-
-@socketio.on("disconnect")
-def disconnect():
-    username = current_user.username
-    room = session.get("room")
-
-    if not username or not room:
-        return
-
-    leave_room(room)
-
-    # Update user profile
-    users_collection.update_one(
-        {"username": username}, {"$set": {"current_room": None}}
-    )
-
-    # Note: We no longer remove the user from the room's user list here
-
-    # Get updated room data and notify remaining users
-    room_data = rooms_collection.find_one({"_id": room})
-    user_list = []
-    for user in room_data["users"]:
-        user_profile = users_collection.find_one({"username": user})
-        user_list.append(
-            {
-                "username": user,
-                "online": user_profile.get("online", False),
-                "isFriend": False,
-            }
-        )
-    socketio.emit("update_users", {"users": user_list}, room=room)
-
-
-@socketio.on("edit_message")
-def edit_message(data):
-    room = session.get("room")
-    name = session.get("name")
-    if not room:
-        return
-
-    # Update message in MongoDB - fixed array element matching
+    return {
+        "messages": messages_with_read_status,
+        "has_more": start_index > 0
+    }
+    
+@app.put("/edit_message/{room_id}/{message_id}")
+async def edit_message(
+    room_id: str,
+    message_id: str,
+    new_text: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
+    
     result = rooms_collection.update_one(
         {
-            "_id": room,
+            "_id": room_id,
             "messages": {
                 "$elemMatch": {
-                    "id": data["messageId"],
-                    "name": name,  # Ensure only message owner can edit
+                    "id": message_id,
+                    "name": username,  # Ensure only message owner can edit
                 }
             },
         },
         {
             "$set": {
-                "messages.$[elem].message": data["newText"],
+                "messages.$[elem].message": new_text,
                 "messages.$[elem].edited": True,
             }
         },
-        array_filters=[{"elem.id": data["messageId"]}],
+        array_filters=[{"elem.id": message_id}]
     )
 
-    if result.modified_count:
-        socketio.emit(
-            "edit_message",
-            {"messageId": data["messageId"], "newText": data["newText"]},
-            room=room,
-        )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Message not found or unauthorized")
 
+    # Broadcast the edit to all users in the room
+    await manager.broadcast_to_room(
+        room_id,
+        {
+            "type": "edit_message",
+            "messageId": message_id,
+            "newText": new_text
+        }
+    )
 
-@socketio.on("delete_message")
-def delete_message(data):
-    room = session.get("room")
-    name = session.get("name")
-    if not room:
-        return
+    return {"success": True}
 
-    # Remove message from MongoDB
+@app.delete("/delete_message/{room_id}/{message_id}")
+async def delete_message(
+    room_id: str,
+    message_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
+    
     result = rooms_collection.update_one(
-        {"_id": room},
-        {"$pull": {"messages": {"id": data["messageId"], "name": name}}},
+        {"_id": room_id},
+        {"$pull": {"messages": {"id": message_id, "name": username}}}
     )
 
-    if result.modified_count:
-        socketio.emit("delete_message", {"messageId": data["messageId"]}, room=room)
-
-
-@socketio.on("typing")
-def handle_typing(data):
-    room = session.get("room")
-    if room:
-        name = session.get("name")
-        socketio.emit(
-            "typing",
-            {"name": name, "isTyping": data.get("isTyping", False)},
-            room=room,
-            include_self=False,
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Message not found or you don't have permission to delete it"
         )
 
+    # Broadcast deletion to room
+    await manager.broadcast_to_room(
+        room_id,
+        {
+            "type": "delete_message",
+            "messageId": message_id
+        }
+    )
 
-@app.teardown_appcontext
-def shutdown_scheduler(exception=None):
-    if scheduler.running:
-        scheduler.shutdown()
+    return {"success": True}
 
+async def handle_typing_notification(
+    websocket: WebSocket,
+    room_id: str,
+    username: str,
+    is_typing: bool
+):
+    await manager.broadcast_to_room(
+        room_id,
+        {
+            "type": "typing",
+            "name": username,
+            "isTyping": is_typing
+        },
+        exclude_user=username
+    )
 
+# Database initialization function
+async def init_db():
+    # Create indexes if they don't exist
+    await users_collection.create_index([("username", 1)], unique=True)
+    await rooms_collection.create_index([("users", 1)])
+    await rooms_collection.create_index([("messages.id", 1)])
+
+# Startup and shutdown events
+@app.on_event("startup")
+async def startup_event():
+    # Initialize database indexes
+    await init_db()
+    
+    # Add CORS middleware
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # Configure this appropriately for production
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    # Cleanup code here if needed
+    pass
+
+# Main entry point
 if __name__ == "__main__":
-    # Create indexes only if they don't exist
-    existing_indexes = users_collection.index_information()
-
-    if "username_1" not in existing_indexes:
-        users_collection.create_index([("username", 1)], unique=True)
-
-    if "users_1" not in rooms_collection.index_information():
-        rooms_collection.create_index([("users", 1)])
-
-    if "messages.id_1" not in rooms_collection.index_information():
-        rooms_collection.create_index([("messages.id", 1)])
-
     port = int(os.environ.get("PORT", 5002))
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True, host="0.0.0.0", port=port)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=True,  # Enable auto-reload during development
+        workers=1  # Adjust based on your needs
+    )
