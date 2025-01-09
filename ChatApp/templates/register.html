@@ -3,37 +3,39 @@
 <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative">
    <style>
       #background {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      z-index: -1;
-      overflow: hidden;
-      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+         position: fixed;
+         top: 0;
+         left: 0;
+         width: 100%;
+         height: 100%;
+         z-index: -1;
+         overflow: hidden;
+         background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
       }
       .dark #background {
-      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+         background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
       }
       .form-container {
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+         backdrop-filter: blur(8px);
+         -webkit-backdrop-filter: blur(8px);
       }
       @media (max-width: 640px) {
-      .form-container {
-      width: 90%;
-      padding: 1.5rem;
-      }
+         .form-container {
+            width: 90%;
+            padding: 1.5rem;
+         }
       }
       .hover-scale {
-      transition: transform 0.2s ease;
+         transition: transform 0.2s ease;
       }
       .hover-scale:hover {
-      transform: scale(1.02);
+         transform: scale(1.02);
       }
    </style>
+
    <!-- Background Particles Container -->
    <div id="background"></div>
+
    <!-- Form Container -->
    <div class="form-container max-w-md w-full space-y-6 bg-white/80 dark:bg-gray-800/90 p-8 rounded-2xl shadow-2xl hover-scale">
       <div>
@@ -44,46 +46,26 @@
             Create an account
          </p>
       </div>
-      {% with messages = get_flashed_messages(with_categories=True) %}
-      {% if messages %}
-      <div class="fixed top-4 right-4 z-50 space-y-3">
-         {% for category, message in messages %}
-         {% if category == 'success' %}
-         {% set bg_color = 'bg-green-50 dark:bg-green-900/50' %}
-         {% set text_color = 'text-green-700 dark:text-green-300' %}
-         {% set border_color = 'border-green-200 dark:border-green-800' %}
-         {% set icon = 'check-circle' %}
-         {% elif category == 'error' %}
-         {% set bg_color = 'bg-red-50 dark:bg-red-900/50' %}
-         {% set text_color = 'text-red-700 dark:text-red-300' %}
-         {% set border_color = 'border-red-200 dark:border-red-800' %}
-         {% set icon = 'x-circle' %}
-         {% else %}
-         {% set bg_color = 'bg-blue-50 dark:bg-blue-900/50' %}
-         {% set text_color = 'text-blue-700 dark:text-blue-300' %}
-         {% set border_color = 'border-blue-200 dark:border-blue-800' %}
-         {% set icon = 'information-circle' %}
-         {% endif %}
-         <div class="{{ bg_color }} {{ border_color }} {{ text_color }} border shadow-lg rounded-lg p-4 flex items-start space-x-2">
-            <!-- Icon -->
-            <svg class="h-6 w-6 {{ text_color }}" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-               {% if icon == 'check-circle' %}
+
+      <!-- Validation Message -->
+      <div class="{{ bg_color }} {{ border_color }} {{ text_color }} border shadow-lg rounded-lg p-4 flex items-start space-x-2">
+         <!-- Icon -->
+         <svg class="h-6 w-6 {{ text_color }}" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+            {% if icon == 'check-circle' %}
                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-               {% elif icon == 'x-circle' %}
+            {% elif icon == 'x-circle' %}
                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1.414-8l-2-2a1 1 0 011.414-1.414L10 8.586l2.293-2.293a1 1 0 011.414 1.414l-2 2 2.293 2.293a1 1 0 01-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 01-1.414-1.414l2-2z" clip-rule="evenodd" />
-               {% else %}
+            {% else %}
                <path fill-rule="evenodd" d="M18 10c0 4.418-3.582 8-8 8S2 14.418 2 10 5.582 2 10 2s8 3.582 8 8zm-8 1a1 1 0 110 2 1 1 0 010-2zm0-4a1 1 0 011 1v2a1 1 0 01-2 0V8a1 1 0 011-1z" clip-rule="evenodd" />
-               {% endif %}
-            </svg>
-            <!-- Message -->
-            <div>
-               <p class="font-medium">{{ message }}</p>
-            </div>
+            {% endif %}
+         </svg>
+         <!-- Message -->
+         <div>
+            <p class="font-medium">{{ message }}</p>
          </div>
-         {% endfor %}
       </div>
-      {% endif %}
-      {% endwith %}
+
+      <!-- Form -->
       <form class="mt-8 space-y-6" action="{{ url_for('register') }}" method="POST">
          <!-- Username Field -->
          <div>
@@ -97,12 +79,13 @@
             <div class="mt-4 space-y-2">
                <div class="flex items-center text-sm" id="username-chars">
                   <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                  <span class="requirement-icon w-5 h-5 mr-2"></span>
-                  Only letters, numbers, dots, underscores, and hyphens
+                     <span class="requirement-icon w-5 h-5 mr-2"></span>
+                     Only letters, numbers, dots, underscores, and hyphens
                   </span>
                </div>
             </div>
          </div>
+
          <!-- Password Field -->
          <div class="mt-6">
             <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -115,29 +98,31 @@
             <div class="mt-4 space-y-2">
                <div class="flex items-center text-sm" id="pass-length">
                   <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                  <span class="requirement-icon w-5 h-5 mr-2"></span>
-                  At least 8 characters long
+                     <span class="requirement-icon w-5 h-5 mr-2"></span>
+                     At least 8 characters long
                   </span>
                </div>
                <div class="flex items-center text-sm" id="pass-letter">
                   <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                  <span class="requirement-icon w-5 h-5 mr-2"></span>
-                  Contains at least one letter
+                     <span class="requirement-icon w-5 h-5 mr-2"></span>
+                     Contains at least one letter
                   </span>
                </div>
                <div class="flex items-center text-sm" id="pass-number">
                   <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                  <span class="requirement-icon w-5 h-5 mr-2"></span>
-                  Contains at least one number
+                     <span class="requirement-icon w-5 h-5 mr-2"></span>
+                     Contains at least one number
                   </span>
                </div>
             </div>
          </div>
+
          <button type="submit"
             class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
          Create Account
          </button>
       </form>
+
       <div class="text-center">
          <p class="text-sm text-gray-600 dark:text-gray-400">Have an account?
             <a href="{{ url_for('login') }}" 
@@ -149,10 +134,10 @@
          </p>
       </div>
    </div>
+
    <!-- Particles.js Script -->
    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
    <script>
-      // Function to update particles configuration based on screen size
       function getParticlesConfig() {
           const isMobile = window.innerWidth <= 768;
           return {
@@ -250,8 +235,8 @@
       
       // Initialize particles
       particlesJS("background", getParticlesConfig());
-      
-      // Update particles configuration on window resize
+
+      // Update particles on window resize or theme change
       let resizeTimeout;
       window.addEventListener('resize', function() {
           clearTimeout(resizeTimeout);
@@ -260,8 +245,7 @@
               particlesJS("background", getParticlesConfig());
           }, 250);
       });
-      
-      // Update particles on theme change
+
       const observer = new MutationObserver(function(mutations) {
           mutations.forEach(function(mutation) {
               if (mutation.attributeName === 'class') {
@@ -270,36 +254,38 @@
               }
           });
       });
-      
+
       observer.observe(document.documentElement, {
           attributes: true,
           attributeFilter: ['class']
       });
    </script>
+
    <style>
       .requirement-icon::before {
-      content: '●';
-      color: #9CA3AF;
+         content: '●';
+         color: #9CA3AF;
       }
       .requirement-valid .requirement-icon::before {
-      content: '✓';
-      color: #10B981;
+         content: '✓';
+         color: #10B981;
       }
       .requirement-invalid .requirement-icon::before {
-      content: '✗';
-      color: #EF4444;
+         content: '✗';
+         color: #EF4444;
       }
    </style>
+
    <script>
       document.addEventListener('DOMContentLoaded', function() {
           const username = document.getElementById('username');
           const password = document.getElementById('password');
-          
+
           // Username validation
           username.addEventListener('input', function() {
               const isValid = /^[a-zA-Z0-9_.-]+$/.test(this.value);
               const requirement = document.getElementById('username-chars');
-              
+
               if (this.value === '') {
                   requirement.classList.remove('requirement-valid', 'requirement-invalid');
               } else {
@@ -307,21 +293,21 @@
                   requirement.classList.toggle('requirement-invalid', !isValid);
               }
           });
-      
+
           // Password validation
           password.addEventListener('input', function() {
               const value = this.value;
-              
+
               // Length check
               const lengthValid = value.length >= 8;
               document.getElementById('pass-length').classList.toggle('requirement-valid', lengthValid);
               document.getElementById('pass-length').classList.toggle('requirement-invalid', value !== '' && !lengthValid);
-              
+
               // Letter check
               const letterValid = /[a-zA-Z]/.test(value);
               document.getElementById('pass-letter').classList.toggle('requirement-valid', letterValid);
               document.getElementById('pass-letter').classList.toggle('requirement-invalid', value !== '' && !letterValid);
-              
+
               // Number check
               const numberValid = /\d/.test(value);
               document.getElementById('pass-number').classList.toggle('requirement-valid', numberValid);

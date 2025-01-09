@@ -7,28 +7,28 @@
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name="description" content="Channel - a simple, modern chatroom-based messaging app for real-time conversations. Join and connect instantly." />
       <meta name="keywords" content="Chat app, messaging app, real-time chat, chatroom, social app" />
-      <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" />
+      <link rel="shortcut icon" href="/static/favicon.ico" />
       <!-- Open Graph (OG) Tags for Social Sharing -->
       <meta property="og:title" content="Channel - Modern Chat App" />
       <meta property="og:description" content="Connect instantly with Channel, a modern chatroom-based messaging app for real-time conversations." />
-      <meta property="og:image" content="{{ url_for('static', filename='images/preview.png') }}" />
+      <meta property="og:image" content="/static/images/preview.png" />
       <meta property="og:url" content="{{ request.url }}" />
       <meta property="og:type" content="website" />
       <!-- Twitter Card Tags -->
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="Channel - Modern Chat App" />
       <meta name="twitter:description" content="A simple, real-time chatroom app for seamless communication." />
-      <meta name="twitter:image" content="{{ url_for('static', filename='images/preview.png') }}" />
-          <!-- PWA and Theme Configuration -->
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="apple-mobile-web-app-status-bar" content="#4E46DC">
-    <meta name="theme-color" content="#4E46DC">
-    <link rel="icon" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
-    <link rel="icon" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
-    <link rel="apple-touch-icon" href="/static/icons/icon-96x96.png" sizes="96x96">
-    <link rel="apple-touch-icon" href="/static/icons/icon-152x152.png" sizes="152x152">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png" sizes="192x192">
-    <link rel="apple-touch-icon" href="/static/icons/icon-512x512.png" sizes="512x512">
+      <meta name="twitter:image" content="/static/images/preview.png" />
+      <!-- PWA and Theme Configuration -->
+      <link rel="manifest" href="/static/manifest.json">
+      <meta name="apple-mobile-web-app-status-bar" content="#4E46DC">
+      <meta name="theme-color" content="#4E46DC">
+      <link rel="icon" sizes="192x192" href="/static/icons/icon-192x192.png">
+      <link rel="icon" sizes="512x512" href="/static/icons/icon-512x512.png">
+      <link rel="apple-touch-icon" href="/static/icons/icon-96x96.png" sizes="96x96">
+      <link rel="apple-touch-icon" href="/static/icons/icon-152x152.png" sizes="152x152">
+      <link rel="apple-touch-icon" href="/static/icons/icon-192x192.png" sizes="192x192">
+      <link rel="apple-touch-icon" href="/static/icons/icon-512x512.png" sizes="512x512">
       <!-- Canonical Tag -->
       <link rel="canonical" href="{{ request.url }}" />
       <!-- Robots Meta Tag -->
@@ -43,7 +43,7 @@
              "applicationCategory": "CommunicationApplication",
              "description": "A modern chatroom-based messaging app for real-time conversations.",
              "url": "{{ request.url }}",
-             "image": "{{ url_for('static', filename='images/preview.png') }}",
+             "image": "/static/images/preview.png",
              "softwareVersion": "1.0.0",
              "inLanguage": "en",
              "offers": {
