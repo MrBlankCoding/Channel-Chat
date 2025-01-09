@@ -4,3 +4,7 @@
 20. Sidebar refresh
 21. Update js to work with sidebar striucutere
 22. Load message by scrolling :-)
+
+rewrite backend in fast api. 
+
+https://github.com/beeware/briefcase

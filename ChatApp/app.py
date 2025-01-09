@@ -4,36 +4,15 @@ import random
 import re
 import io
 from datetime import datetime, timezone, timedelta
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import urllib.parse
 import string
 import tempfile
 import mimetypes
 
 # Third-party library imports
-from asgiref.wsgi import WsgiToAsgi
 import requests
 import pytz
-from flask import (
-    Flask,
-    render_template,
-    request,
-    session,
-    redirect,
-    url_for,
-    send_from_directory,
-    flash,
-    jsonify,
-)
-from flask_socketio import join_room, leave_room, send, emit, SocketIO
-from flask_login import (
-    LoginManager,
-    UserMixin,
-    login_user,
-    login_required,
-    logout_user,
-    current_user,
-)
 from firebase_admin import credentials, messaging, storage
 import firebase_admin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -45,26 +24,38 @@ from fuzzywuzzy import fuzz
 from bson import ObjectId
 import ffmpeg
 from PIL import Image
+from fastapi import FastAPI, Request, Response, Depends, HTTPException, File, UploadFile, Form
+from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
+import jwt
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.status import HTTP_401_UNAUTHORIZED
+import uvicorn
 
+# Load environment variables
 load_dotenv()
 
+# Initialize Firebase
 cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred, {"storageBucket": "channelchat-7d679.appspot.com"})
 
-app = Flask(__name__)
-asgi_app = WsgiToAsgi(app)
+# Initialize FastAPI
+app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY"))
+
+# Initialize templates
+templates = Jinja2Templates(directory="templates")
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Initialize scheduler
 scheduler = BackgroundScheduler()
 
-
-@app.context_processor
-def utility_processor():
-    return dict(get_room_data=get_room_data)
-
-
-app.secret_key = os.getenv("SECRET_KEY")
-app.config["ALLOWED_IMAGE_TYPES"] = {"png", "jpeg", "jpg", "gif"}
-
-# Initialize MongoDB client using the URI from .env
+# MongoDB setup
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client["chat_app_db"]
 
@@ -72,6 +63,8 @@ db = client["chat_app_db"]
 users_collection = db["users"]
 rooms_collection = db["rooms"]
 heartbeats_collection = db["heartbeats"]
+
+# Create indexes
 users_collection.create_index([("username", 1)], unique=True)
 users_collection.create_index([("friends", 1)])
 users_collection.create_index([("current_room", 1)])
@@ -79,11 +72,8 @@ rooms_collection.create_index([("users", 1)])
 rooms_collection.create_index([("messages.id", 1)])
 users_collection.create_index([("fcm_token", 1)])
 
-# Initialize Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
-
+# Constants
+ALLOWED_IMAGE_TYPES = {"png", "jpeg", "jpg", "gif"}
 MAX_VIDEO_SIZE_MB = 50
 ALLOWED_VIDEO_TYPES = {
     "video/mp4",
@@ -91,328 +81,148 @@ ALLOWED_VIDEO_TYPES = {
     "video/x-msvideo",
     "video/webm",
 }
-VIDEO_COMPRESS_CRF = 28  # Compression quality (0-51, lower is better quality)
+VIDEO_COMPRESS_CRF = 28
 
+# JWT settings
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
-# User class for Flask-Login
-class User(UserMixin):
-    def __init__(self, username):
-        self.username = username
-        self.id = username
+# OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-    @staticmethod
-    def get(username):
-        user_data = users_collection.find_one({"username": username})
-        if not user_data:
-            return None
-        return User(username)
+# Pydantic models
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
+class TokenData(BaseModel):
+    username: Optional[str] = None
 
-@login_manager.user_loader
-def load_user(username):
-    return User.get(username)
+class UserBase(BaseModel):
+    username: str
 
+class UserCreate(UserBase):
+    password: str
 
-# SOCKET initialization
-socketio = SocketIO(app, cors_allowed_origins="*")
+class User(UserBase):
+    friends: List[str] = []
+    friend_requests: List[str] = []
+    current_room: Optional[str] = None
+    online: bool = False
+    rooms: List[str] = []
+    profile_photo: Optional[str] = None
 
+class NotificationSettings(BaseModel):
+    enabled: bool = False
+    
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
+    confirm_new_password: str
 
-def datetime_to_iso(dt):
-    return dt.isoformat() if dt else None
+class FriendRequest(BaseModel):
+    friend_username: str
 
+class UserSuggestion(BaseModel):
+    username: str
+    profile_photo_url: str
+    similarity: int
 
-def allowed_file(filename):
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in app.config["ALLOWED_IMAGE_TYPES"]
+class UserInvite(BaseModel):
+    room: str
+    room_name: str
+    from_user: str
+    profile_photo: Optional[str]
+
+class PendingInvite(BaseModel):
+    username: str
+    room: str
+    room_name: str
+    profile_photo: Optional[str]
+    
+class RoomMessage(BaseModel):
+    message: str
+    name: str
+    time: datetime
+    image: Optional[str] = None
+    video: Optional[str] = None
+
+class RoomUser(BaseModel):
+    username: str
+    online: bool
+    current_room: Optional[str]
+
+class RoomData(BaseModel):
+    id: str
+    name: str
+    users: List[str]
+    messages: List[RoomMessage]
+    created_by: str
+    profile_photo: Optional[str] = None
+    
+class MessageContent(BaseModel):
+    content: str
+    sender: str
+    timestamp: str
+    type: str
+
+class LastMessage(BaseModel):
+    content: str
+    sender: str
+    timestamp: datetime
+    type: str
+
+class RoomInfo(BaseModel):
+    code: str
+    name: str
+    profile_photo: Optional[str]
+    users: List[str]
+    last_message: LastMessage
+    unread_count: int
+
+class UserInfo(BaseModel):
+    username: str
+    online: bool
+    isFriend: bool
+
+class FriendInfo(BaseModel):
+    username: str
+    online: bool
+    current_room: Optional[str]
+    room_name: str
+
+# Helper functions
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
     )
-
-@app.route("/notification-settings", methods=["GET", "POST"])
-@login_required
-def notification_settings():
-    if request.method == "GET":
-        user = users_collection.find_one(
-            {"username": current_user.username}, {"notification_settings": 1}
-        )
-        settings = user.get("notification_settings", {"enabled": False})
-        return jsonify(settings)
-
-    elif request.method == "POST":
-        try:
-            settings = request.json
-            users_collection.update_one(
-                {"username": current_user.username},
-                {"$set": {"notification_settings": settings}},
-            )
-            return jsonify({"message": "Settings updated successfully"}), 200
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400
-
-
-@app.route("/register-fcm-token", methods=["POST"])
-@login_required
-def register_fcm_token():
     try:
-        data = request.json
-        fcm_token = data.get("token")
-        clear_all = data.get("clearAll", False)
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except jwt.JWTError:
+        raise credentials_exception
+    user = get_user_data(token_data.username)
+    if user is None:
+        raise credentials_exception
+    return user
 
-        if clear_all:
-            # Clear the FCM token
-            users_collection.update_one(
-                {"username": current_user.username},
-                {
-                    "$unset": {
-                        "fcm_token": "",
-                        "notification_settings.enabled": "",
-                    }
-                },
-            )
-            return jsonify({"message": "Notification settings cleared"}), 200
-
-        if not fcm_token:
-            return jsonify({"error": "Token is required"}), 400
-
-        # Update the user's FCM token and enable notifications
-        users_collection.update_one(
-            {"username": current_user.username},
-            {
-                "$set": {
-                    "fcm_token": fcm_token,
-                    "notification_settings.enabled": True,
-                }
-            },
-        )
-
-        return jsonify({"message": "FCM token registered successfully"}), 200
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-
-
-def send_notification(recipient_username, sender_username, message_text):
-    recipient = users_collection.find_one({"username": recipient_username})
-
-    if not recipient:
-        return False
-
-    settings = recipient.get("notification_settings", {})
-    fcm_token = recipient.get("fcm_token")
-
-    # Only send notification if enabled
-    if not settings.get("enabled") or not fcm_token:
-        return False
-
-    try:
-        # Build the message
-        message = messaging.Message(
-            notification=messaging.Notification(
-                title=f"New message from {sender_username}",
-                body=message_text[:100] + ("..." if len(message_text) > 100 else ""),
-            ),
-            token=fcm_token,
-            android=messaging.AndroidConfig(
-                notification=messaging.AndroidNotification(
-                    sound="default"  # Default sound on Android
-                )
-            ),
-            apns=messaging.APNSConfig(
-                payload=messaging.APNSPayload(
-                    aps=messaging.Aps(
-                        sound="default"  # Default sound on iOS
-                    )
-                )
-            )
-        )
-
-        messaging.send(message)
-        return True
-
-    except Exception as e:
-        print(f"Error sending notification to {recipient_username}: {e}")
-        return False
-
-@app.route("/firebase-messaging-sw.js")
-def serve_sw():
-    root_dir = os.path.abspath(
-        os.getcwd()
-    )  # Gets the current working directory (project root)
-    return send_from_directory(
-        root_dir, "firebase-messaging-sw.js", mimetype="application/javascript"
-    )
-
-
-@app.route("/update_profile_photo/<username>", methods=["POST"])
-@login_required
-def update_profile_photo(username):
-    # Check if photo is included in the request
-    if "photo" not in request.files:
-        return jsonify({"error": "No photo provided"}), 400
-
-    photo = request.files["photo"]
-    if photo.filename == "":
-        return jsonify({"error": "No photo selected"}), 400
-
-    # Verify allowed file extensions by checking the filename
-    if not allowed_file(photo.filename):
-        return jsonify({"error": "Invalid file type"}), 400
-
-    try:
-        # Open the image with Pillow to ensure it is a valid image
-        image = Image.open(photo)
-
-        # Verify file format (JPEG, PNG, GIF)
-        allowed_types = app.config["ALLOWED_IMAGE_TYPES"]
-        if image.format.lower() not in allowed_types:
-            return (
-                jsonify(
-                    {
-                        "error": f"Invalid image type. Allowed types: {', '.join(allowed_types).upper()}"
-                    }
-                ),
-                400,
-            )
-
-        # Check file size (max 5MB)
-        photo.seek(0, io.SEEK_END)
-        file_size = photo.tell()
-        if file_size > 5 * 1024 * 1024:
-            return (
-                jsonify({"error": "File too large. Maximum size is 5MB"}),
-                400,
-            )
-        photo.seek(0)  # Reset file pointer for reading
-
-        # Get existing photo URL from user document if it exists
-        user_data = users_collection.find_one({"username": username})
-        if not user_data:
-            return jsonify({"error": "User not found"}), 404
-
-        existing_photo_url = user_data.get("profile_photo")
-        if existing_photo_url:
-            try:
-                delete_firebase_image(existing_photo_url)
-            except Exception as e:
-                print(f"Error deleting existing profile photo: {e}")
-
-        # Resize the image to 200x200 pixels maximum
-        image.thumbnail((200, 200))
-
-        # Save the resized image to a BytesIO object in the appropriate format
-        img_io = io.BytesIO()
-        image.save(img_io, format=image.format)
-        img_io.seek(0)
-
-        # Generate filename using username
-        filename = f"profile_photos/{username}.{image.format.lower()}"
-
-        # Upload to Firebase Storage
-        bucket = storage.bucket()
-        blob = bucket.blob(filename)
-        blob.content_type = f"image/{image.format.lower()}"
-        blob.upload_from_file(img_io, content_type=blob.content_type)
-
-        # Make the image publicly accessible
-        blob.make_public()
-
-        # Get the public URL
-        photo_url = blob.public_url
-
-        # Update user document with the new photo URL
-        users_collection.update_one(
-            {"username": username}, {"$set": {"profile_photo": photo_url}}
-        )
-
-        return jsonify({"photo_url": photo_url}), 200
-
-    except Exception as e:
-        print(f"Error uploading profile photo: {e}")
-        return jsonify({"error": "Failed to upload photo"}), 500
-
-
-@app.route("/profile_photos/<username>")
-def profile_photo(username):
-    """Serve the user's profile photo from Firebase Cloud Storage"""
-    for ext in app.config["ALLOWED_IMAGE_TYPES"]:
-        filename = f"profile_photos/{username}.{ext}"
-        blob = storage.bucket().blob(filename)
-
-        try:
-            exists = blob.exists()
-            if exists:
-                return redirect(blob.public_url)
-        except Exception as e:
-            print(f"Error checking blob existence: {e}")
-
-    # If no profile photo is found, return the default profile image
-    return redirect(url_for("default_profile"))
-
-
-@app.route("/default-profile")
-def default_profile():
-    # Serve the default profile image if no custom image exists
-    return send_from_directory("static/images", "default-profile.png")
-
-
-# Set up the background scheduler
-def check_inactive_users():
-    threshold = datetime.utcnow() - timedelta(minutes=5)
-    inactive_users = heartbeats_collection.find({"last_heartbeat": {"$lt": threshold}})
-
-    for user in inactive_users:
-        users_collection.update_one(
-            {"username": user["username"]}, {"$set": {"online": False}}
-        )
-        heartbeats_collection.delete_one({"_id": user["_id"]})
-
-
-def start_scheduler():
-    if not scheduler.running:
-        scheduler.add_job(func=check_inactive_users, trigger="interval", minutes=1)
-        scheduler.start()
-
-
-with app.app_context():
-    start_scheduler()
-
-
-@app.route("/heartbeat", methods=["POST"])
-@login_required
-def heartbeat():
-    username = current_user.username
-    heartbeats_collection.update_one(
-        {"username": username},
-        {"$set": {"last_heartbeat": datetime.utcnow()}},
-        upsert=True,
-    )
-    users_collection.update_one({"username": username}, {"$set": {"online": True}})
-    return "", 204
-
-
-@app.route("/stop_heartbeat", methods=["POST"])
-@login_required
-def stop_heartbeat():
-    username = current_user.username
-    heartbeats_collection.delete_one({"username": username})
-    users_collection.update_one({"username": username}, {"$set": {"online": False}})
-    return "", 204
-
-
-def generate_unique_code():
-    while True:
-        code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
-        if not rooms_collection.find_one({"_id": code}):
-            return code
-
-
-def get_user_data(username):
-    """Get user data from MongoDB"""
+def get_user_data(username: str):
     user_data = users_collection.find_one({"username": username})
     if user_data:
-        # Convert ObjectId to string for JSON serialization
         user_data["_id"] = str(user_data["_id"])
-        # Ensure room_invites exists
         if "room_invites" not in user_data:
             user_data["room_invites"] = []
             users_collection.update_one(
@@ -420,176 +230,124 @@ def get_user_data(username):
             )
     return user_data
 
-
-# Helper function to update user data
 def update_user_data(username, data):
     """Update user data in MongoDB"""
     if "_id" in data:
         del data["_id"]  # Remove _id if present to avoid update errors
     users_collection.update_one({"username": username}, {"$set": data})
+    
+def generate_unique_code():
+    while True:
+        code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+        if not rooms_collection.find_one({"_id": code}):
+            return code
 
+def allowed_file(filename: str):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_TYPES
 
-# Flask route
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for("home"))
-
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        # Input validation
-        if not username or not password:
-            flash("Username and password are required!")
-            return redirect(url_for("register"))
-
-        # Validate username format
-        if not re.match(r"^[a-zA-Z0-9_.-]+$", username):
-            flash(
-                "Username can only contain letters, numbers, dots, underscores, and hyphens!"
-            )
-            return redirect(url_for("register"))
-
-        # Validate password requirements
-        if len(password) < 8:
-            flash("Password must be at least 8 characters long!")
-            return redirect(url_for("register"))
-        if not re.search(r"[a-zA-Z]", password):
-            flash("Password must contain at least one letter!")
-            return redirect(url_for("register"))
-        if not re.search(r"\d", password):
-            flash("Password must contain at least one number!")
-            return redirect(url_for("register"))
-
-        if users_collection.find_one({"username": username}):
-            flash("Username already exists!")
-            return redirect(url_for("register"))
-
-        # Store user in MongoDB
-        user_data = {
-            "username": username,
-            "password": generate_password_hash(password),
-            "friends": [],
-            "friend_requests": [],
-            "current_room": None,
-            "online": False,
-            "rooms": [],
-        }
-
-        try:
-            users_collection.insert_one(user_data)
-            flash("Registration successful! Please login.")
-            return redirect(url_for("login"))
-        except Exception as e:
-            app.logger.error(f"Registration error: {str(e)}")
-            flash("An error occurred during registration. Please try again.")
-            return redirect(url_for("register"))
-
-    return render_template("register.html")
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("home"))
-
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        if not username or not password:
-            flash("Username and password are required!")
-            return redirect(url_for("login"))
-
-        user_data = users_collection.find_one({"username": username})
-        if not user_data:
-            flash("Invalid username or password!")
-            return redirect(url_for("login"))
-
-        if not check_password_hash(user_data["password"], password):
-            flash("Invalid username or password!")
-            return redirect(url_for("login"))
-
-        user = User(username)
-        login_user(user, remember=True)
-
-        # Initialize heartbeat for the user
-        heartbeats_collection.update_one(
-            {"username": username},
-            {"$set": {"last_heartbeat": datetime.utcnow()}},
-            upsert=True,
+# Routes
+@app.post("/token")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    user_data = users_collection.find_one({"username": form_data.username})
+    if not user_data or not check_password_hash(user_data["password"], form_data.password):
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+    access_token = create_access_token(data={"sub": form_data.username})
+    return {"access_token": access_token, "token_type": "bearer"}
 
-        return redirect(url_for("home"))
+@app.post("/register")
+async def register(user: UserCreate):
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", user.username):
+        raise HTTPException(status_code=400, detail="Invalid username format")
+    
+    if len(user.password) < 8:
+        raise HTTPException(status_code=400, detail="Password too short")
+    
+    if not re.search(r"[a-zA-Z]", user.password) or not re.search(r"\d", user.password):
+        raise HTTPException(status_code=400, detail="Password must contain letters and numbers")
 
-    return render_template("login.html")
+    if users_collection.find_one({"username": user.username}):
+        raise HTTPException(status_code=400, detail="Username already exists")
 
+    user_data = {
+        "username": user.username,
+        "password": generate_password_hash(user.password),
+        "friends": [],
+        "friend_requests": [],
+        "current_room": None,
+        "online": False,
+        "rooms": [],
+    }
 
-@app.route("/logout")
-@login_required
-def logout():
-    username = current_user.username
-
+    try:
+        users_collection.insert_one(user_data)
+        return {"message": "Registration successful"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Registration failed")
+    
+    # Additional routes and dependencies
+@app.post("/logout")
+async def logout(current_user: User = Depends(get_current_user)):
+    username = current_user["username"]
+    
     # Remove heartbeat entry
     heartbeats_collection.delete_one({"username": username})
-
+    
     # Update user's online status
-    users_collection.update_one({"username": username}, {"$set": {"online": False}})
+    users_collection.update_one(
+        {"username": username},
+        {"$set": {"online": False}}
+    )
+    
+    return {"message": "Logged out successfully"}
 
-    logout_user()
-    flash("You have been logged out.")
-    return redirect(url_for("login"))
-
-
-@app.route("/delete_account", methods=["POST"])
-@login_required
-def delete_account():
-    username = current_user.username
-
+@app.post("/delete_account")
+async def delete_account(current_user: User = Depends(get_current_user)):
+    username = current_user["username"]
+    deleted_images = 0
+    failed_deletions = 0
+    
     # Get user data to check for profile photo
     user_data = users_collection.find_one({"username": username})
     if user_data and user_data.get("profile_photo"):
         try:
-            # Delete user's profile photo from Firebase Storage
             profile_photo_url = user_data["profile_photo"]
-            # Extract the file extension from the URL
             ext = profile_photo_url.split(".")[-1].lower()
             profile_photo_path = f"profile_photos/{username}.{ext}"
-
+            
             bucket = storage.bucket()
             blob = bucket.blob(profile_photo_path)
-
+            
             if blob.exists():
                 blob.delete()
         except Exception as e:
             print(f"Failed to delete user profile photo: {str(e)}")
-
+    
     # Delete all rooms created by the user
     rooms_to_delete = rooms_collection.find({"created_by": username})
-
-    deleted_images = 0
-    failed_deletions = 0
-
+    
     for room in rooms_to_delete:
         room_code = room["_id"]
-
-        # Delete room profile photo if it exists
+        
+        # Delete room profile photo
         if room.get("profile_photo"):
             try:
                 ext = room["profile_photo"].split(".")[-1]
                 profile_photo_path = f"room_profile_photos/{room_code}.{ext}"
-
+                
                 bucket = storage.bucket()
                 blob = bucket.blob(profile_photo_path)
-
+                
                 if blob.exists():
                     blob.delete()
                     deleted_images += 1
             except Exception as e:
                 failed_deletions += 1
                 print(f"Failed to delete room profile photo: {str(e)}")
-
+        
         # Delete message images
         if "messages" in room:
             for message in room["messages"]:
@@ -597,399 +355,262 @@ def delete_account():
                     try:
                         image_path = message["image"].split("/o/")[1].split("?")[0]
                         image_path = urllib.parse.unquote(image_path)
-
+                        
                         blob = storage.bucket().blob(image_path)
                         if blob.exists():
                             blob.delete()
                             deleted_images += 1
                     except Exception as e:
                         failed_deletions += 1
-                        print(
-                            f"Failed to delete image for message: {message.get('id', 'unknown')}"
-                        )
+                        print(f"Failed to delete image for message: {message.get('id', 'unknown')}")
                         print(f"Error: {str(e)}")
-
-        # Remove room from all users who are in it
+        
+        # Remove room from all users
         users_collection.update_many(
             {"rooms": room_code},
-            {"$pull": {"rooms": room_code}, "$set": {"current_room": None}},
+            {"$pull": {"rooms": room_code}, "$set": {"current_room": None}}
         )
-
+    
     # Delete all rooms created by the user
     rooms_collection.delete_many({"created_by": username})
-
-    # Remove user from all rooms they are part of
+    
+    # Remove user from all rooms
     rooms_collection.update_many(
-        {"members": username}, {"$pull": {"members": username}}
+        {"members": username},
+        {"$pull": {"members": username}}
     )
-
+    
     # Remove friend relationships
     users_collection.update_many(
-        {"friends": username}, {"$pull": {"friends": username}}
+        {"friends": username},
+        {"$pull": {"friends": username}}
     )
-
-    # Remove any pending friend requests sent by the user
+    
+    # Remove pending friend requests
     users_collection.update_many(
-        {"friend_requests": username}, {"$pull": {"friend_requests": username}}
+        {"friend_requests": username},
+        {"$pull": {"friend_requests": username}}
     )
-
-    # Remove any pending friend requests received by the user
-    users_collection.update_one(
-        {"username": username}, {"$set": {"friend_requests": []}}
-    )
-
-    # Delete user's heartbeat entry if present
+    
+    # Delete heartbeat entry
     heartbeats_collection.delete_one({"username": username})
-
-    # Delete user from the users collection
+    
+    # Delete user
     users_collection.delete_one({"username": username})
+    
+    return {
+        "message": "Account deleted successfully",
+        "deleted_images": deleted_images,
+        "failed_deletions": failed_deletions
+    }
 
-    # Log out the user after account deletion
-    logout_user()
-
-    if deleted_images > 0 or failed_deletions > 0:
-        flash(
-            f"Account deleted. Successfully removed {deleted_images} images. {failed_deletions} images failed to delete."
+@app.post("/settings/password")
+async def update_password(
+    password_update: PasswordUpdate,
+    current_user: User = Depends(get_current_user)
+):
+    user_data = users_collection.find_one({"username": current_user["username"]})
+    
+    if not check_password_hash(user_data["password"], password_update.current_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    if len(password_update.new_password) < 8 or not any(
+        char.isdigit() for char in password_update.new_password
+    ) or not any(char.isalpha() for char in password_update.new_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters long and include letters and numbers"
         )
-    else:
-        flash("Your account has been deleted.")
-
-    return redirect(url_for("register"))
-
-
-@app.route("/settings", methods=["GET", "POST"])
-@login_required
-def settings():
-    if request.method == "POST":
-        current_password = request.form.get("current_password")
-        new_password = request.form.get("new_password")
-        confirm_new_password = request.form.get("confirm_new_password")
-        profile_photo = request.files.get("profile_photo")
-
-        username = current_user.username
-        user_data = users_collection.find_one({"username": username})
-
-        # Call update_profile_photo and unpack the response and status code
-        if profile_photo:
-            with app.test_request_context(
-                f"/update_profile_photo/{username}",
-                method="POST",
-                data={"photo": profile_photo},
-            ):
-                response, status_code = update_profile_photo(username)
-                if status_code == 200:
-                    flash("Profile photo updated successfully!")
-                else:
-                    flash(
-                        response.json.get(
-                            "error",
-                            "Failed to upload profile photo. Please try again.",
-                        )
-                    )
-
-        # Validate current password
-        if current_password and not check_password_hash(
-            user_data["password"], current_password
-        ):
-            flash("Current password is incorrect!")
-            return redirect(url_for("settings"))
-
-        # Update password
-        if new_password:
-            # Inline password strength check
-            if (
-                len(new_password) < 8
-                or not any(char.isdigit() for char in new_password)
-                or not any(char.isalpha() for char in new_password)
-            ):
-                flash(
-                    "Password must be at least 8 characters long and include letters and numbers."
-                )
-                return redirect(url_for("settings"))
-
-            if new_password != confirm_new_password:
-                flash("New passwords do not match!")
-                return redirect(url_for("settings"))
-
-            users_collection.update_one(
-                {"username": username},
-                {"$set": {"password": generate_password_hash(new_password)}},
-            )
-            flash("Password updated successfully!")
-
-        return redirect(url_for("settings"))
-
-    user_data = users_collection.find_one({"username": current_user.username})
-    return render_template("settings.html", user_data=user_data)
-
-
-def handle_friend_request(username, friend_username):
-    friend_data = users_collection.find_one({"username": friend_username})
-    if not friend_data:
-        flash("User not found!")
-        return redirect(url_for("home"))
-
-    if friend_username == username:
-        flash("You cannot add yourself as a friend!")
-        return redirect(url_for("home"))
-
-    if username in friend_data.get("friends", []):
-        flash("Already friends!")
-        return redirect(url_for("home"))
-
-    # Add friend request
+    
+    if password_update.new_password != password_update.confirm_new_password:
+        raise HTTPException(status_code=400, detail="New passwords do not match")
+    
     users_collection.update_one(
-        {"username": friend_username},
-        {"$addToSet": {"friend_requests": username}},
+        {"username": current_user["username"]},
+        {"$set": {"password": generate_password_hash(password_update.new_password)}}
     )
+    
+    return {"message": "Password updated successfully"}
 
-    flash(f"Friend request sent to {friend_username}!")
-    return redirect(url_for("home"))
-
-
-@app.route("/add_friend", methods=["POST"])
-@login_required
-def add_friend():
-    friend_username = request.form.get("friend_username")
+@app.post("/add_friend")
+async def add_friend(
+    friend_request: FriendRequest,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
+    friend_username = friend_request.friend_username
+    
     if not friend_username:
-        flash("Please enter a username.")
-        return redirect(url_for("home"))
-
-    username = current_user.username
+        raise HTTPException(status_code=400, detail="Please enter a username")
+    
     if friend_username == username:
-        flash("You cannot add yourself as a friend!")
-        return redirect(url_for("home"))
-
+        raise HTTPException(status_code=400, detail="You cannot add yourself as a friend")
+    
     friend_data = users_collection.find_one({"username": friend_username})
     if not friend_data:
-        flash("User not found!")
-        return redirect(url_for("home"))
-
+        raise HTTPException(status_code=404, detail="User not found")
+    
     user_data = users_collection.find_one({"username": username})
-
-    # Check if they're already friends
+    
     if friend_username in user_data.get("friends", []):
-        flash("Already friends!")
-        return redirect(url_for("home"))
-
-    # Check if there's a pending request
+        raise HTTPException(status_code=400, detail="Already friends")
+    
     if friend_username in user_data.get("friend_requests", []):
-        flash(
-            "This user has already sent you a friend request! Check your friend requests to accept it."
+        raise HTTPException(
+            status_code=400,
+            detail="This user has already sent you a friend request"
         )
-        return redirect(url_for("home"))
-
-    # Add friend request
+    
     users_collection.update_one(
         {"username": friend_username},
-        {"$addToSet": {"friend_requests": username}},
+        {"$addToSet": {"friend_requests": username}}
     )
+    
+    return {"message": f"Friend request sent to {friend_username}"}
 
-    flash(f"Friend request sent to {friend_username}!")
-    return redirect(url_for("home"))
-
-
-@app.route("/accept_friend/<username>")
-@login_required
-def accept_friend(username):
-    # Extract the username string from current_user
-    current_username = current_user.username
-
-    # Update both users' friend lists atomically
+@app.post("/accept_friend/{username}")
+async def accept_friend(
+    username: str,
+    current_user: User = Depends(get_current_user)
+):
+    current_username = current_user["username"]
+    
     result = users_collection.update_one(
         {"username": current_username, "friend_requests": username},
         {
             "$pull": {"friend_requests": username},
-            "$addToSet": {"friends": username},
-        },
+            "$addToSet": {"friends": username}
+        }
     )
-
-    if result.modified_count:
-        users_collection.update_one(
-            {"username": username}, {"$addToSet": {"friends": current_username}}
-        )
-        flash(f"You are now friends with {username}!")
-    else:
-        flash("No friend request found!")
-
-    return redirect(url_for("home"))
-
-
-@app.route("/decline_friend/<username>")
-@login_required
-def decline_friend(username):
-    # Assuming current_user has a 'username' attribute
-    current_username = current_user.username
-
-    result = users_collection.update_one(
-        {
-            "username": current_username
-        },  # Use the actual username, not the LocalProxy object
-        {"$pull": {"friend_requests": username}},
-    )
-
-    if result.modified_count:
-        flash(f"Friend request from {username} declined.")
-    else:
-        flash("No friend request found!")
-
-    return redirect(url_for("home"))
-
-
-@app.route("/remove_friend/<username>", methods=["POST"])
-@login_required
-def remove_friend(username):
-    current_username = (
-        current_user.username
-    )  # Access the username of the current_user object
-
-    # Remove from both users' friend lists atomically
-    result = users_collection.update_one(
-        {
-            "username": current_username,  # Use the extracted username
-            "friends": username,
-        },
-        {"$pull": {"friends": username}},
-    )
-
+    
     if result.modified_count:
         users_collection.update_one(
             {"username": username},
-            {
-                "$pull": {"friends": current_username}
-            },  # Use the extracted username here as well
+            {"$addToSet": {"friends": current_username}}
         )
-        return jsonify({"success": True})
+        return {"message": f"You are now friends with {username}"}
+    
+    raise HTTPException(status_code=404, detail="No friend request found")
 
-    return jsonify({"error": "Not friends"}), 400
+@app.post("/decline_friend/{username}")
+async def decline_friend(
+    username: str,
+    current_user: User = Depends(get_current_user)
+):
+    result = users_collection.update_one(
+        {"username": current_user["username"]},
+        {"$pull": {"friend_requests": username}}
+    )
+    
+    if result.modified_count:
+        return {"message": f"Friend request from {username} declined"}
+    
+    raise HTTPException(status_code=404, detail="No friend request found")
 
+@app.post("/remove_friend/{username}")
+async def remove_friend(
+    username: str,
+    current_user: User = Depends(get_current_user)
+):
+    current_username = current_user["username"]
+    
+    result = users_collection.update_one(
+        {"username": current_username, "friends": username},
+        {"$pull": {"friends": username}}
+    )
+    
+    if result.modified_count:
+        users_collection.update_one(
+            {"username": username},
+            {"$pull": {"friends": current_username}}
+        )
+        return {"message": "Friend removed successfully"}
+    
+    raise HTTPException(status_code=400, detail="Not friends")
 
-@app.route("/", methods=["POST", "GET"])
-@login_required
-def home():
-    username = current_user.username
-
-    # Get or create user data
+@app.get("/")
+async def home(current_user: User = Depends(get_current_user)):
+    username = current_user["username"]
+    
     user_data = users_collection.find_one({"username": username})
     if not user_data:
-        # Initialize new user data if it doesn't exist
         user_data = {
             "username": username,
             "rooms": [],
             "friends": [],
             "friend_requests": [],
             "online": True,
-            "current_room": None,
+            "current_room": None
         }
         users_collection.insert_one(user_data)
-
-    if request.method == "POST":
-        code = request.form.get("code")
-        join = request.form.get("join", False)
-        create = request.form.get("create", False)
-        friend_username = request.form.get("friend_username")
-
-        # Handle friend request
-        if friend_username:
-            return handle_friend_request(username, friend_username)
-
-        # Handle room operations
-        if join != False and not code:
-            flash("Please enter a room code.")
-            return redirect(url_for("home"))
-
-        return handle_room_operation(username, code, create, join)
-
+    
     # Get friends data with online status and current rooms
     friends_data = []
     for friend in user_data.get("friends", []):
         friend_data = users_collection.find_one({"username": friend})
         if friend_data:
-            friends_data.append(
+            friends_data.append({
+                "username": friend,
+                "online": friend_data.get("online", False),
+                "current_room": friend_data.get("current_room")
+            })
+    
+    return {
+        "username": username,
+        "user_data": user_data,
+        "friends": friends_data,
+        "friend_requests": user_data.get("friend_requests", [])
+    }
+
+@app.post("/notification-settings")
+async def update_notification_settings(
+    settings: NotificationSettings,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        users_collection.update_one(
+            {"username": current_user["username"]},
+            {"$set": {"notification_settings": settings.dict()}}
+        )
+        return {"message": "Settings updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/register-fcm-token")
+async def register_fcm_token(
+    token: str,
+    clear_all: bool = False,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        if clear_all:
+            users_collection.update_one(
+                {"username": current_user["username"]},
                 {
-                    "username": friend,
-                    "online": friend_data.get("online", False),
-                    "current_room": friend_data.get("current_room"),
-                }
+                    "$unset": {
+                        "fcm_token": "",
+                        "notification_settings.enabled": "",
+                    }
+                },
             )
+            return {"message": "Notification settings cleared"}
 
-    return render_template(
-        "homepage.html",
-        username=username,
-        user_data=user_data,
-        friends=friends_data,
-        friend_requests=user_data.get("friend_requests", []),
-    )
+        if not token:
+            raise HTTPException(status_code=400, detail="Token is required")
 
-
-@app.route("/search_users", methods=["GET"])
-@login_required
-def search_users():
-    query = request.args.get("q", "").lower().strip()
-    if not query:
-        return jsonify([])
-
-    # Get current user's data for exclusion list
-    current_user_data = users_collection.find_one({"username": current_user.username})
-    friends_list = current_user_data.get("friends", [])
-
-    # First, get all eligible users (excluding current user and friends)
-    all_users = list(
-        users_collection.find(
+        users_collection.update_one(
+            {"username": current_user["username"]},
             {
-                "username": {"$ne": current_user.username},
-                "username": {"$nin": friends_list},
+                "$set": {
+                    "fcm_token": token,
+                    "notification_settings.enabled": True,
+                }
             },
-            {
-                "username": 1
-            },  # We don't need to fetch profile_photo field since we're using the route
         )
-    )
-
-    # If it's just one character, only match first letter
-    if len(query) == 1:
-        matching_users = [
-            user for user in all_users if user["username"].lower().startswith(query)
-        ]
-    else:
-        # For longer queries, use fuzzy matching
-        username_matches = [
-            (user, fuzz.ratio(query, user["username"].lower())) for user in all_users
-        ]
-
-        # Filter based on different criteria depending on query length
-        if len(query) <= 3:
-            matching_users = [
-                user
-                for user, score in username_matches
-                if score > 50 or user["username"].lower().startswith(query)
-            ]
-        else:
-            matching_users = [user for user, score in username_matches if score > 70]
-
-        # Sort by similarity score
-        matching_users.sort(
-            key=lambda x: fuzz.ratio(query, x["username"].lower()), reverse=True
-        )
-
-    # Limit results
-    matching_users = matching_users[:5]
-
-    # Format response using the profile_photo route
-    suggestions = [
-        {
-            "username": user["username"],
-            "profile_photo_url": url_for(
-                "profile_photo", username=user["username"], _external=True
-            ),
-            "similarity": fuzz.ratio(query, user["username"].lower()),
-        }
-        for user in matching_users
-    ]
-
-    return jsonify(suggestions)
-
-
+        return {"message": "FCM token registered successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    
 def delete_firebase_image(image_url):
     """Helper function to delete an image from Firebase Storage"""
     if not image_url:
@@ -1013,85 +634,257 @@ def delete_firebase_image(image_url):
         print(f"Attempted to delete path: {path}")
 
 
-@app.route("/pending_room_invites")
-def pending_room_invites():
-    if not current_user:
-        flash("Please login to view pending invites.")
-        return redirect(url_for("login"))
+@app.post("/update_profile_photo/{username}")
+async def update_profile_photo(
+    username: str,
+    photo: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user["username"] != username:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
+    if not allowed_file(photo.filename):
+        raise HTTPException(status_code=400, detail="Invalid file type")
+
+    try:
+        # Process and upload image similar to Flask version
+        image = Image.open(io.BytesIO(await photo.read()))
+        
+        # Verify file format
+        if image.format.lower() not in ALLOWED_IMAGE_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid image type. Allowed types: {', '.join(ALLOWED_IMAGE_TYPES).upper()}"
+            )
+
+        # Check file size
+        await photo.seek(0)
+        content = await photo.read()
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 5MB")
+
+        # Get existing photo URL
+        user_data = users_collection.find_one({"username": username})
+        if not user_data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        existing_photo_url = user_data.get("profile_photo")
+        if existing_photo_url:
+            try:
+                delete_firebase_image(existing_photo_url)
+            except Exception as e:
+                print(f"Error deleting existing profile photo: {e}")
+
+        # Process and upload image
+        image.thumbnail((200, 200))
+        img_io = io.BytesIO()
+        image.save(img_io, format=image.format)
+        img_io.seek(0)
+
+        filename = f"profile_photos/{username}.{image.format.lower()}"
+        bucket = storage.bucket()
+        blob = bucket.blob(filename)
+        blob.content_type = f"image/{image.format.lower()}"
+        blob.upload_from_file(img_io, content_type=blob.content_type)
+        blob.make_public()
+        photo_url = blob.public_url
+
+        users_collection.update_one(
+            {"username": username},
+            {"$set": {"profile_photo": photo_url}}
+        )
+
+        return {"photo_url": photo_url}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload photo: {str(e)}")
+
+# Scheduler functions
+def check_inactive_users():
+    threshold = datetime.utcnow() - timedelta(minutes=5)
+    inactive_users = heartbeats_collection.find({"last_heartbeat": {"$lt": threshold}})
+
+    for user in inactive_users:
+        users_collection.update_one(
+            {"username": user["username"]},
+            {"$set": {"online": False}}
+        )
+        heartbeats_collection.delete_one({"_id": user["_id"]})
+
+# Start scheduler
+@app.on_event("startup")
+async def startup_event():
+    if not scheduler.running:
+        scheduler.add_job(func=check_inactive_users, trigger="interval", minutes=1)
+        scheduler.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    if scheduler.running:
+        scheduler.shutdown()
+
+# Heartbeat routes
+@app.post("/heartbeat")
+async def heartbeat(current_user: User = Depends(get_current_user)):
+    heartbeats_collection.update_one(
+        {"username": current_user["username"]},
+        {"$set": {"last_heartbeat": datetime.utcnow()}},
+        upsert=True
+    )
+    users_collection.update_one(
+        {"username": current_user["username"]},
+        {"$set": {"online": True}}
+    )
+    return Response(status_code=204)
+
+@app.post("/stop_heartbeat")
+async def stop_heartbeat(current_user: User = Depends(get_current_user)):
+    heartbeats_collection.delete_one({"username": current_user["username"]})
+    users_collection.update_one(
+        {"username": current_user["username"]},
+        {"$set": {"online": False}}
+    )
+    return Response(status_code=204)
+
+@app.get("/search_users", response_model=List[UserSuggestion])
+async def search_users(
+    q: str,
+    current_user: User = Depends(get_current_user)
+):
+    query = q.lower().strip()
+    if not query:
+        return []
+
+    # Get current user's data for exclusion list
+    current_user_data = users_collection.find_one({"username": current_user["username"]})
+    friends_list = current_user_data.get("friends", [])
+
+    # First, get all eligible users
+    all_users = list(
+        users_collection.find(
+            {
+                "username": {
+                    "$ne": current_user["username"],
+                    "$nin": friends_list
+                }
+            },
+            {"username": 1}
+        )
+    )
+
+    # If it's just one character, only match first letter
+    if len(query) == 1:
+        matching_users = [
+            user for user in all_users 
+            if user["username"].lower().startswith(query)
+        ]
+    else:
+        # For longer queries, use fuzzy matching
+        username_matches = [
+            (user, fuzz.ratio(query, user["username"].lower()))
+            for user in all_users
+        ]
+
+        # Filter based on different criteria depending on query length
+        if len(query) <= 3:
+            matching_users = [
+                user for user, score in username_matches
+                if score > 50 or user["username"].lower().startswith(query)
+            ]
+        else:
+            matching_users = [
+                user for user, score in username_matches
+                if score > 70
+            ]
+
+        # Sort by similarity score
+        matching_users.sort(
+            key=lambda x: fuzz.ratio(query, x["username"].lower()),
+            reverse=True
+        )
+
+    # Limit results
+    matching_users = matching_users[:5]
+
+    # Format response
+    return [
+        UserSuggestion(
+            username=user["username"],
+            profile_photo_url=f"/profile_photo/{user['username']}",
+            similarity=fuzz.ratio(query, user["username"].lower())
+        )
+        for user in matching_users
+    ]
+
+@app.get("/pending_room_invites")
+async def pending_room_invites(
+    current_user: User = Depends(get_current_user)
+):
     # Get current user's data
-    current_username = current_user.username
-    user_data = get_user_data(current_username)
+    user_data = get_user_data(current_user["username"])
+    if not user_data:
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Initialize pending_invites if it doesn't exist
     if "pending_invites" not in user_data:
         user_data["pending_invites"] = []
 
-    return render_template("room_invites.html", user_data=user_data)
+    return {"user_data": user_data}
 
-
-@app.route("/cancel_room_invite/<username>/<room_code>")
-def cancel_room_invite(username, room_code):
-    if not current_user:
-        flash("Please login to cancel invites.")
-        return redirect(url_for("login"))
-
+@app.get("/cancel_room_invite/{username}/{room_code}")
+async def cancel_room_invite(
+    username: str,
+    room_code: str,
+    current_user: User = Depends(get_current_user)
+):
     # Get the invited user's data
     friend_data = get_user_data(username)
     if not friend_data:
-        flash("User not found.")
-        return redirect(url_for("room"))
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Remove the invite from their room_invites
     if "room_invites" in friend_data:
         friend_data["room_invites"] = [
-            inv for inv in friend_data["room_invites"] if inv.get("room") != room_code
+            inv for inv in friend_data["room_invites"]
+            if inv.get("room") != room_code
         ]
         update_user_data(username, friend_data)
 
     # Remove from current user's pending_invites
-    current_username = current_user.username
-    user_data = get_user_data(current_username)
+    user_data = get_user_data(current_user["username"])
     if "pending_invites" in user_data:
         user_data["pending_invites"] = [
-            inv
-            for inv in user_data["pending_invites"]
+            inv for inv in user_data["pending_invites"]
             if inv.get("username") != username or inv.get("room") != room_code
         ]
-        update_user_data(current_username, user_data)
+        update_user_data(current_user["username"], user_data)
 
-    flash(f"Cancelled room invitation to {username}.")
-    return redirect(url_for("room"))
+    return {"message": f"Cancelled room invitation to {username}"}
 
-
-# Modified invite_to_room route to include pending_invites
-@app.route("/invite_to_room/<username>")
-def invite_to_room(username):
-    current_room = session.get("room")
-
+@app.get("/invite_to_room/{username}")
+async def invite_to_room(
+    username: str,
+    current_user: User = Depends(get_current_user),
+    current_room: Optional[str] = None
+):
     if not current_room:
-        flash("You're not in a room.")
-        return redirect(url_for("home"))
+        raise HTTPException(status_code=400, detail="You're not in a room")
 
     # Get the room data
     room_data = rooms_collection.find_one({"_id": current_room})
     if not room_data:
-        flash("Room not found.")
-        return redirect(url_for("home"))
+        raise HTTPException(status_code=404, detail="Room not found")
 
     # Get the friend's data
     friend_data = get_user_data(username)
     if not friend_data:
-        flash("User not found.")
-        return redirect(url_for("room"))
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Get current user's data
-    current_username = current_user.username
-    user_data = get_user_data(current_username)
+    user_data = get_user_data(current_user["username"])
 
     if username not in user_data.get("friends", []):
-        flash("You can only invite friends to rooms.")
-        return redirect(url_for("room"))
+        raise HTTPException(status_code=403, detail="You can only invite friends to rooms")
 
     # Initialize room_invites for friend
     if "room_invites" not in friend_data:
@@ -1104,59 +897,56 @@ def invite_to_room(username):
     # Check if invite already exists
     existing_invite = next(
         (inv for inv in friend_data["room_invites"] if inv.get("room") == current_room),
-        None,
+        None
     )
 
     if not existing_invite:
         # Create new invite
-        new_invite = {
-            "room": current_room,
-            "room_name": room_data.get("name", "Unnamed Room"),
-            "from": current_username,
-            "profile_photo": room_data.get("profile_photo"),
-        }
-        friend_data["room_invites"].append(new_invite)
+        new_invite = UserInvite(
+            room=current_room,
+            room_name=room_data.get("name", "Unnamed Room"),
+            from_user=current_user["username"],
+            profile_photo=room_data.get("profile_photo")
+        )
+        friend_data["room_invites"].append(new_invite.dict())
 
         # Add to pending_invites for current user
-        pending_invite = {
-            "username": username,
-            "room": current_room,
-            "room_name": room_data.get("name", "Unnamed Room"),
-            "profile_photo": room_data.get("profile_photo"),
-        }
-        user_data["pending_invites"].append(pending_invite)
+        pending_invite = PendingInvite(
+            username=username,
+            room=current_room,
+            room_name=room_data.get("name", "Unnamed Room"),
+            profile_photo=room_data.get("profile_photo")
+        )
+        user_data["pending_invites"].append(pending_invite.dict())
 
         # Save both updated data
         update_user_data(username, friend_data)
-        update_user_data(current_username, user_data)
-        flash(f"Room invitation sent to {username}!")
-    else:
-        flash(f"{username} already has a pending invite to this room.")
+        update_user_data(current_user["username"], user_data)
+        return {"message": f"Room invitation sent to {username}!"}
+    
+    return {"message": f"{username} already has a pending invite to this room"}
 
-    return redirect(url_for("room"))
-
-
-@app.route("/accept_room_invite/<room_code>")
-@login_required
-def accept_room_invite(room_code):
-    username = current_user.username
+@app.post("/accept_room_invite/{room_code}")
+async def accept_room_invite(
+    room_code: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
     user_data = get_user_data(username)
 
-    # Find and remove the invite
-    invite_found = False
+    # Find the invite
     room_invites = user_data.get("room_invites", [])
-
-    # Find the invite to get the sender's username before removing it
     invite = next((inv for inv in room_invites if inv["room"] == room_code), None)
 
     if not invite:
-        flash("Room invite not found or already accepted.")
-        return redirect(url_for("home"))
+        raise HTTPException(
+            status_code=404,
+            detail="Room invite not found or already accepted"
+        )
 
-    # Get the sender's username from the invite
     sender_username = invite["from"]
 
-    # Filter out the accepted invite from recipient
+    # Filter out the accepted invite
     user_data["room_invites"] = [
         inv for inv in room_invites if inv["room"] != room_code
     ]
@@ -1174,31 +964,30 @@ def accept_room_invite(room_code):
     sender_data = get_user_data(sender_username)
     if sender_data and "pending_invites" in sender_data:
         sender_data["pending_invites"] = [
-            inv
-            for inv in sender_data["pending_invites"]
+            inv for inv in sender_data["pending_invites"]
             if not (inv["username"] == username and inv["room"] == room_code)
         ]
         update_user_data(sender_username, sender_data)
 
-    flash("Room invite accepted!")
-    return redirect(url_for("room", code=room_code))
+    return {"message": "Room invite accepted", "room_code": room_code}
 
-
-@app.route("/decline_room_invite/<room_code>")
-@login_required
-def decline_room_invite(room_code):
-    username = current_user.username
+@app.post("/decline_room_invite/{room_code}")
+async def decline_room_invite(
+    room_code: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
     user_data = get_user_data(username)
 
-    # Find the invite to get the sender's username before removing it
     room_invites = user_data.get("room_invites", [])
     invite = next((inv for inv in room_invites if inv["room"] == room_code), None)
 
     if not invite:
-        flash("Room invite not found or already declined.")
-        return redirect(url_for("home"))
+        raise HTTPException(
+            status_code=404,
+            detail="Room invite not found or already declined"
+        )
 
-    # Get the sender's username from the invite
     sender_username = invite["from"]
 
     # Remove the invite from recipient
@@ -1211,62 +1000,67 @@ def decline_room_invite(room_code):
     sender_data = get_user_data(sender_username)
     if sender_data and "pending_invites" in sender_data:
         sender_data["pending_invites"] = [
-            inv
-            for inv in sender_data["pending_invites"]
+            inv for inv in sender_data["pending_invites"]
             if not (inv["username"] == username and inv["room"] == room_code)
         ]
         update_user_data(sender_username, sender_data)
 
-    flash("Room invite declined.")
-    return redirect(url_for("home"))
+    return {"message": "Room invite declined"}
 
-
-@app.route("/join_friend_room/<friend_username>")
-@login_required
-def join_friend_room(friend_username):
-    username = current_user.username
+@app.post("/join_friend_room/{friend_username}")
+async def join_friend_room(
+    friend_username: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
     user_data = users_collection.find_one({"username": username})
 
     if friend_username not in user_data.get("friends", []):
-        flash("User is not in your friends list.")
-        return redirect(url_for("home"))
+        raise HTTPException(
+            status_code=403,
+            detail="User is not in your friends list"
+        )
 
     friend_data = users_collection.find_one({"username": friend_username})
     friend_room = friend_data.get("current_room")
 
     if not friend_room:
-        flash("Friend is not in any room.")
-        return redirect(url_for("home"))
+        raise HTTPException(
+            status_code=404,
+            detail="Friend is not in any room"
+        )
 
     room_exists = rooms_collection.find_one({"_id": friend_room})
     if not room_exists:
-        flash("Friend's room no longer exists.")
-        return redirect(url_for("home"))
-
-    session["room"] = friend_room
-    session["name"] = username
+        raise HTTPException(
+            status_code=404,
+            detail="Friend's room no longer exists"
+        )
 
     # Update user's current room
     users_collection.update_one(
-        {"username": username}, {"$set": {"current_room": friend_room}}
+        {"username": username},
+        {"$set": {"current_room": friend_room}}
     )
 
-    return redirect(url_for("room"))
+    return {"message": "Joined friend's room", "room_code": friend_room}
 
-
-@app.route("/delete_room/<room_code>")
-@login_required
-def delete_room(room_code):
-    username = current_user.username
+@app.delete("/delete_room/{room_code}")
+async def delete_room(
+    room_code: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
     room_data = rooms_collection.find_one({"_id": room_code})
 
     if not room_data:
-        flash("Room does not exist.")
-        return redirect(url_for("home"))
+        raise HTTPException(status_code=404, detail="Room does not exist")
 
     if room_data["created_by"] != username:
-        flash("You don't have permission to delete this room.")
-        return redirect(url_for("home"))
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to delete this room"
+        )
 
     # Delete all media from Firebase Storage
     deleted_items = 0
@@ -1277,10 +1071,10 @@ def delete_room(room_code):
         try:
             ext = room_data["profile_photo"].split(".")[-1]
             profile_photo_path = f"room_profile_photos/{room_code}.{ext}"
-
+            
             bucket = storage.bucket()
             blob = bucket.blob(profile_photo_path)
-
+            
             if blob.exists():
                 blob.delete()
                 deleted_items += 1
@@ -1288,7 +1082,7 @@ def delete_room(room_code):
             failed_deletions += 1
             print(f"Failed to delete room profile photo: {str(e)}")
 
-    # Delete message media (images and videos)
+    # Delete message media
     if "messages" in room_data:
         for message in room_data["messages"]:
             # Handle images
@@ -1296,7 +1090,7 @@ def delete_room(room_code):
                 try:
                     image_path = message["image"].split("/o/")[1].split("?")[0]
                     image_path = urllib.parse.unquote(image_path)
-
+                    
                     blob = storage.bucket().blob(image_path)
                     if blob.exists():
                         blob.delete()
@@ -1310,7 +1104,7 @@ def delete_room(room_code):
                 try:
                     video_path = message["video"].split("/o/")[1].split("?")[0]
                     video_path = urllib.parse.unquote(video_path)
-
+                    
                     blob = storage.bucket().blob(video_path)
                     if blob.exists():
                         blob.delete()
@@ -1322,184 +1116,154 @@ def delete_room(room_code):
     # Remove room from all users
     users_collection.update_many(
         {"rooms": room_code},
-        {"$pull": {"rooms": room_code}, "$set": {"current_room": None}},
+        {"$pull": {"rooms": room_code}, "$set": {"current_room": None}}
     )
 
     # Delete the room
     rooms_collection.delete_one({"_id": room_code})
 
-    if deleted_items > 0 or failed_deletions > 0:
-        flash(
-            f"Room deleted. Successfully removed {deleted_items} media files. {failed_deletions} files failed to delete."
-        )
-    else:
-        flash("Room successfully deleted.")
+    return {
+        "message": f"Room deleted. Successfully removed {deleted_items} media files. {failed_deletions} files failed to delete."
+    }
 
-    return redirect(url_for("home"))
-
-
-def handle_room_operation(username, code, create, join):
+async def handle_room_operation(
+    username: str,
+    code: Optional[str],
+    create: bool,
+    join: bool,
+    room_name: Optional[str] = None
+):
     room = code
     if create:
         room = generate_unique_code()
-        room_name = request.form.get(
-            "room_name", "Unnamed Room"
-        )  # Get custom name from form
-        rooms_collection.insert_one(
-            {
-                "_id": room,
-                "name": room_name,  # Add custom name
-                "users": [username],
-                "messages": [],
-                "created_by": username,
-            }
-        )
+        rooms_collection.insert_one({
+            "_id": room,
+            "name": room_name or "Unnamed Room",
+            "users": [username],
+            "messages": [],
+            "created_by": username
+        })
     elif join:
         room_exists = rooms_collection.find_one({"_id": code})
         if not room_exists:
-            flash("Room does not exist.")
-            return redirect(url_for("home"))
+            raise HTTPException(status_code=404, detail="Room does not exist")
 
-        # Add user to the room's user list only if they're not already in it
-        rooms_collection.update_one({"_id": code}, {"$addToSet": {"users": username}})
-
-    session["room"] = room
-    session["name"] = username
+        # Add user to the room's user list
+        rooms_collection.update_one(
+            {"_id": code},
+            {"$addToSet": {"users": username}}
+        )
 
     # Update user's current room and rooms list
     users_collection.update_one(
         {"username": username},
-        {"$set": {"current_room": room}, "$addToSet": {"rooms": room}},
+        {
+            "$set": {"current_room": room},
+            "$addToSet": {"rooms": room}
+        }
     )
 
-    return redirect(url_for("room"))
+    return {"room_code": room}
 
 
-@app.route("/room_settings/<room_code>")
-@login_required
-def room_settings(room_code):
-    username = current_user.username
+@app.get("/room_settings/{room_code}")
+async def room_settings(
+    room_code: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
     room_data = rooms_collection.find_one({"_id": room_code})
 
     if not room_data:
-        flash("Room does not exist.")
-        return redirect(url_for("home"))
+        raise HTTPException(status_code=404, detail="Room does not exist")
 
-    # Check if user is in the room
     if username not in room_data["users"]:
-        flash("You don't have access to this room.")
-        return redirect(url_for("home"))
+        raise HTTPException(status_code=403, detail="You don't have access to this room")
 
     # Get detailed user information for each room member
     room_users = []
     for user_name in room_data["users"]:
         user_data = users_collection.find_one({"username": user_name})
         if user_data:
-            room_users.append(
-                {
-                    "username": user_name,
-                    "online": user_data.get("online", False),
-                    "current_room": user_data.get("current_room"),
-                }
-            )
+            room_users.append(RoomUser(
+                username=user_name,
+                online=user_data.get("online", False),
+                current_room=user_data.get("current_room")
+            ))
 
-    return render_template(
-        "room_settings.html",
-        room_code=room_code,
-        room_data=room_data,
-        room_users=room_users,
-        current_user=current_user,
-        is_owner=(room_data["created_by"] == username),
-    )
-
-
-@app.route("/search_messages/<room_code>")
-@login_required
-def search_messages(room_code):
-    username = current_user.username
-    query = request.args.get("q", "").strip().lower()
+    return {
+        "room_code": room_code,
+        "room_data": room_data,
+        "room_users": room_users,
+        "is_owner": room_data["created_by"] == username
+    }
+    
+@app.get("/search_messages/{room_code}")
+async def search_messages(
+    room_code: str,
+    q: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
+    query = q.strip().lower()
 
     if not query:
-        return jsonify({"messages": []})
+        return {"messages": []}
 
     room_data = rooms_collection.find_one({"_id": room_code})
 
     if not room_data or username not in room_data["users"]:
-        return jsonify({"error": "Access denied"}), 403
+        raise HTTPException(status_code=403, detail="Access denied")
 
     # Search messages
     matching_messages = [
-        msg for msg in room_data["messages"] if query in msg.get("message", "").lower()
+        msg for msg in room_data["messages"]
+        if query in msg.get("message", "").lower()
     ]
 
-    return jsonify({"messages": matching_messages[-50:]})  # Return last 50 matches
+    return {"messages": matching_messages[-50:]}  # Return last 50 matches
 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, Dict[str, WebSocket]] = {}
+        self.user_rooms: Dict[str, Set[str]] = {}
 
-@app.route("/kick_user/<room_code>/<username>", methods=["POST"])
-@login_required
-def kick_user(room_code, username):
-    current_username = current_user.username
-    room_data = rooms_collection.find_one({"_id": room_code})
+    async def connect(self, websocket: WebSocket, room_id: str, user_id: str):
+        await websocket.accept()
+        if room_id not in self.active_connections:
+            self.active_connections[room_id] = {}
+        self.active_connections[room_id][user_id] = websocket
+        
+        if user_id not in self.user_rooms:
+            self.user_rooms[user_id] = set()
+        self.user_rooms[user_id].add(room_id)
 
-    if not room_data:
-        return jsonify({"success": False, "message": "Room not found"}), 404
+    def disconnect(self, room_id: str, user_id: str):
+        if room_id in self.active_connections:
+            self.active_connections[room_id].pop(user_id, None)
+            if not self.active_connections[room_id]:
+                self.active_connections.pop(room_id)
+        
+        if user_id in self.user_rooms:
+            self.user_rooms[user_id].remove(room_id)
+            if not self.user_rooms[user_id]:
+                self.user_rooms.pop(user_id)
 
-    if room_data["created_by"] != current_username:
-        return (
-            jsonify({"success": False, "message": "Only room owner can kick users"}),
-            403,
-        )
+    async def broadcast_to_room(self, room_id: str, message: dict, exclude_user: Optional[str] = None):
+        if room_id in self.active_connections:
+            for user_id, connection in self.active_connections[room_id].items():
+                if user_id != exclude_user:
+                    await connection.send_json(message)
 
-    if username == current_username:
-        return (
-            jsonify({"success": False, "message": "You cannot kick yourself"}),
-            400,
-        )
+    async def send_personal_message(self, user_id: str, message: dict):
+        for room_id in self.user_rooms.get(user_id, set()):
+            if room_id in self.active_connections and user_id in self.active_connections[room_id]:
+                await self.active_connections[room_id][user_id].send_json(message)
 
-    if username == room_data["created_by"]:
-        return (
-            jsonify({"success": False, "message": "Cannot kick room owner"}),
-            400,
-        )
+manager = ConnectionManager()
 
-    if username not in room_data["users"]:
-        return jsonify({"success": False, "message": "User not in room"}), 404
-
-    # Remove user from room
-    rooms_collection.update_one({"_id": room_code}, {"$pull": {"users": username}})
-
-    # Update kicked user's data
-    users_collection.update_one(
-        {"username": username},
-        {"$pull": {"rooms": room_code}, "$set": {"current_room": None}},
-    )
-
-    # Emit socket event to notify kicked user
-    socketio.emit("user_kicked", {"room": room_code}, room=username)
-
-    return jsonify({"success": True, "message": "User kicked successfully"})
-
-
-def get_room_data(room_code):
-    """Get room data from MongoDB"""
-    try:
-        room_data = rooms_collection.find_one({"_id": room_code})
-        if not room_data:
-            return None
-
-        # Ensure all required fields exist
-        room_data.setdefault("users", [])
-        room_data.setdefault("messages", [])
-        room_data.setdefault("created_by", "Unknown")
-
-        return room_data
-
-    except Exception as e:
-        return None
-
-
-def get_message_type(message):
-    """Helper function to determine message type"""
+# Helper functions
+def get_message_type(message: dict) -> str:
     if message.get("video"):
         return "video"
     elif message.get("image"):
@@ -1512,51 +1276,32 @@ def get_message_type(message):
         return "text"
     return "unknown"
 
-def get_message_content(message):
-    """Helper function to get appropriate message content based on type"""
+def get_message_content(message: dict) -> str:
     message_type = get_message_type(message)
+    type_contents = {
+        "video": "📽 Video",
+        "image": "📷 Image",
+        "gif": "🎥 GIF",
+        "file": "📎 File",
+        "text": message.get("message", ""),
+        "unknown": "Unknown message type"
+    }
+    return type_contents[message_type]
 
-    if message_type == "video":
-        return "📽 Video"
-    elif message_type == "image":
-        return "📷 Image"
-    elif message_type == "gif":
-        return "🎥 GIF"
-    elif message_type == "file":
-        return "📎 File"
-    elif message_type == "text":
-        return message.get("message", "")
-    return "Unknown message type"
-
-
-@app.route("/get_last_message/<room_code>")
-@login_required
-def get_last_message(room_code):
+def get_room_data(room_code: str) -> Optional[dict]:
     try:
         room_data = rooms_collection.find_one({"_id": room_code})
-        if not room_data or not room_data.get("messages"):
-            return jsonify({"last_message": None})
+        if not room_data:
+            return None
 
-        last_message = room_data["messages"][-1]
+        room_data.setdefault("users", [])
+        room_data.setdefault("messages", [])
+        room_data.setdefault("created_by", "Unknown")
+        return room_data
+    except Exception:
+        return None
 
-        message_content = get_message_content(last_message)
-
-        return jsonify(
-            {
-                "last_message": {
-                    "content": message_content,
-                    "sender": last_message.get("name", ""),
-                    "timestamp": last_message.get("timestamp", ""),
-                    "type": get_message_type(last_message),
-                }
-            }
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# In your room route, update the rooms_with_messages preparation:
-def prepare_room_message_data(room_info):
+def prepare_room_message_data(room_info: dict) -> dict:
     last_message = room_info["messages"][-1] if room_info.get("messages") else None
     if last_message:
         message_content = get_message_content(last_message)
@@ -1572,325 +1317,374 @@ def prepare_room_message_data(room_info):
         "type": message_type,
     }
 
+# WebSocket endpoints
+@app.websocket("/ws/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str, current_user: User = Depends(get_current_user)):
+    await manager.connect(websocket, room_id, current_user["username"])
+    try:
+        while True:
+            data = await websocket.receive_json()
+            
+            # Handle different message types
+            if data["type"] == "message":
+                message = {
+                    "type": "message",
+                    "content": data["content"],
+                    "sender": current_user["username"],
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+                
+                # Save message to database
+                rooms_collection.update_one(
+                    {"_id": room_id},
+                    {"$push": {"messages": message}}
+                )
+                
+                # Broadcast to all users in room
+                await manager.broadcast_to_room(room_id, message)
+                
+            elif data["type"] == "user_typing":
+                typing_notification = {
+                    "type": "user_typing",
+                    "username": current_user["username"]
+                }
+                await manager.broadcast_to_room(room_id, typing_notification, exclude_user=current_user["username"])
 
-@app.route("/room/", defaults={"code": None}, methods=["GET", "POST"])
-@app.route("/room/<code>", methods=["GET", "POST"])
-@login_required
-def room(code):
-    username = current_user.username
+    except WebSocketDisconnect:
+        manager.disconnect(room_id, current_user["username"])
+        await manager.broadcast_to_room(
+            room_id,
+            {
+                "type": "user_disconnected",
+                "username": current_user["username"]
+            }
+        )
 
-    # Handle POST requests (room creation/joining)
-    if request.method == "POST":
-        if request.form.get("create"):
-            room_name = request.form.get("room_name")
-            if not room_name:
-                flash("Room name is required")
-                return redirect(url_for("room", code=code))
+# HTTP endpoints
+@app.get("/get_last_message/{room_code}", response_model=Optional[MessageContent])
+async def get_last_message(
+    room_code: str,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        room_data = rooms_collection.find_one({"_id": room_code})
+        if not room_data or not room_data.get("messages"):
+            return None
 
-            # Generate a unique room code
-            new_room_code = generate_unique_code()
+        last_message = room_data["messages"][-1]
+        message_content = get_message_content(last_message)
 
-            # Create new room document
-            new_room = {
-                "_id": new_room_code,
-                "name": room_name,
-                "users": [username],
-                "messages": [],
-                "created_by": username,
-                "created_at": datetime.utcnow(),
+        return MessageContent(
+            content=message_content,
+            sender=last_message.get("name", ""),
+            timestamp=last_message.get("timestamp", ""),
+            type=get_message_type(last_message)
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/room")
+@app.get("/room")
+@app.get("/room/{code}")
+async def room(
+    code: Optional[str] = None,
+    create: bool = False,
+    join: bool = False,
+    room_name: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
+
+    # Handle room creation
+    if create:
+        if not room_name:
+            raise HTTPException(status_code=400, detail="Room name is required")
+
+        new_room_code = generate_unique_code()
+        new_room = {
+            "_id": new_room_code,
+            "name": room_name,
+            "users": [username],
+            "messages": [],
+            "created_by": username,
+            "created_at": datetime.utcnow()
+        }
+
+        try:
+            rooms_collection.insert_one(new_room)
+            users_collection.update_one(
+                {"username": username},
+                {
+                    "$addToSet": {"rooms": new_room_code},
+                    "$set": {"current_room": new_room_code}
+                }
+            )
+            return {"room_code": new_room_code}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error creating room: {str(e)}")
+
+    # Handle room joining
+    if join and code:
+        join_room = rooms_collection.find_one({"_id": code})
+        if not join_room:
+            raise HTTPException(status_code=404, detail="Room does not exist")
+
+        try:
+            rooms_collection.update_one(
+                {"_id": code},
+                {"$addToSet": {"users": username}}
+            )
+            users_collection.update_one(
+                {"username": username},
+                {
+                    "$addToSet": {"rooms": code},
+                    "$set": {"current_room": code}
+                }
+            )
+            return {"room_code": code}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error joining room: {str(e)}")
+
+    # Get room data
+    if code:
+        room_data = get_room_data(code)
+        if not room_data:
+            raise HTTPException(status_code=404, detail="Room does not exist")
+
+        try:
+            user_data = users_collection.find_one({"username": username})
+            if not user_data:
+                raise HTTPException(status_code=404, detail="User data not found")
+
+            users_collection.update_one(
+                {"username": username},
+                {"$set": {"current_room": code}}
+            )
+
+            user_friends = set(user_data.get("friends", []))
+
+            # Process messages
+            for message in room_data["messages"]:
+                message["is_friend"] = message["name"] in user_friends
+
+            # Get user list
+            user_list = []
+            for user in room_data["users"]:
+                user_profile = users_collection.find_one({"username": user})
+                if user_profile:
+                    user_list.append(UserInfo(
+                        username=user,
+                        online=user_profile.get("online", False),
+                        isFriend=user in user_friends
+                    ))
+
+            # Get friends data
+            friends_data = []
+            for friend in user_friends:
+                friend_data = users_collection.find_one({"username": friend})
+                if friend_data:
+                    room_name = "Unknown Room"
+                    if friend_data.get("current_room"):
+                        friend_room_data = get_room_data(friend_data["current_room"])
+                        if friend_room_data:
+                            room_name = friend_room_data.get("name", "Unnamed Room")
+
+                    friends_data.append(FriendInfo(
+                        username=friend,
+                        online=friend_data.get("online", False),
+                        current_room=friend_data.get("current_room"),
+                        room_name=room_name
+                    ))
+
+            # Get rooms with messages
+            unread_messages = get_unread_messages(username)
+            rooms_with_messages = []
+            for room_code in user_data.get("rooms", []):
+                room_info = get_room_data(room_code)
+                if room_info:
+                    last_message_data = prepare_room_message_data(room_info)
+                    rooms_with_messages.append(RoomInfo(
+                        code=room_code,
+                        name=room_info.get("name", "Unnamed Room"),
+                        profile_photo=room_info.get("profile_photo"),
+                        users=room_info.get("users", []),
+                        last_message=last_message_data,
+                        unread_count=unread_messages.get(str(room_code), {}).get("unread_count", 0)
+                    ))
+
+            # Sort rooms by last message timestamp
+            rooms_with_messages.sort(
+                key=lambda room: room.last_message.timestamp,
+                reverse=True
+            )
+
+            return {
+                "code": code,
+                "room_name": room_data["name"],
+                "messages": room_data["messages"],
+                "users": user_list,
+                "username": username,
+                "created_by": room_data["created_by"],
+                "friends": friends_data,
+                "room_data": room_data,
+                "user_data": user_data,
+                "rooms_with_messages": rooms_with_messages
             }
 
-            try:
-                rooms_collection.insert_one(new_room)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error loading room data: {str(e)}")
 
-                users_collection.update_one(
-                    {"username": username},
-                    {
-                        "$addToSet": {"rooms": new_room_code},
-                        "$set": {"current_room": new_room_code},
-                    },
-                )
+    return {"message": "No room code provided"}
 
-                session["room"] = new_room_code
-                return redirect(url_for("room", code=new_room_code))
-
-            except Exception as e:
-                flash(f"Error creating room: {str(e)}")
-                return redirect(url_for("room", code=code))
-
-        elif request.form.get("join"):
-            join_code = request.form.get("code")
-            if not join_code:
-                flash("Room code is required")
-                return redirect(url_for("room", code=code))
-
-            join_room = rooms_collection.find_one({"_id": join_code})
-            if not join_room:
-                flash("Room does not exist")
-                return redirect(url_for("room", code=code))
-
-            try:
-                rooms_collection.update_one(
-                    {"_id": join_code}, {"$addToSet": {"users": username}}
-                )
-
-                users_collection.update_one(
-                    {"username": username},
-                    {
-                        "$addToSet": {"rooms": join_code},
-                        "$set": {"current_room": join_code},
-                    },
-                )
-
-                session["room"] = join_code
-                return redirect(url_for("room", code=join_code))
-
-            except Exception as e:
-                flash(f"Error joining room: {str(e)}")
-                return redirect(url_for("room", code=code))
-
-    room_data = rooms_collection.find_one({"_id": code})
-    if not room_data:
-        flash("Room does not exist")
-        return redirect(url_for("home"))
-
-    session["room"] = code
-    session["name"] = username
-
-    try:
-        user_data = users_collection.find_one({"username": username})
-        if not user_data:
-            flash("User data not found")
-            return redirect(url_for("home"))
-
-        users_collection.update_one(
-            {"username": username}, {"$set": {"current_room": code}}
-        )
-
-        room_data.setdefault("users", [])
-        room_data.setdefault("messages", [])
-        room_data.setdefault("created_by", "")
-        room_data.setdefault("name", "Unnamed Room")
-
-        user_friends = set(user_data.get("friends", []))
-
-        for message in room_data["messages"]:
-            message["is_friend"] = message["name"] in user_friends
-
-        user_list = []
-        for user in room_data["users"]:
-            user_profile = users_collection.find_one({"username": user})
-            if user_profile:
-                user_list.append(
-                    {
-                        "username": user,
-                        "online": user_profile.get("online", False),
-                        "isFriend": user in user_friends,
-                    }
-                )
-
-        unread_messages = get_unread_messages(username)
-
-        friends_data = []
-        for friend in user_friends:
-            friend_data = users_collection.find_one({"username": friend})
-            if friend_data:
-                room_name = "Unknown Room"
-                if friend_data.get("current_room"):
-                    friend_room_data = get_room_data(friend_data["current_room"])
-                    if friend_room_data:
-                        room_name = friend_room_data.get("name", "Unnamed Room")
-
-                friends_data.append(
-                    {
-                        "username": friend,
-                        "online": friend_data.get("online", False),
-                        "current_room": friend_data.get("current_room"),
-                        "room_name": room_name,
-                    }
-                )
-
-        # Prepare room data with last messages and sort by timestamp
-        rooms_with_messages = []
-        for room_code in user_data.get("rooms", []):
-            room_info = get_room_data(room_code)
-            if room_info:
-                last_message_data = prepare_room_message_data(room_info)
-                rooms_with_messages.append(
-                    {
-                        "code": room_code,
-                        "name": room_info.get("name", "Unnamed Room"),
-                        "profile_photo": room_info.get("profile_photo"),
-                        "users": room_info.get("users", []),
-                        "last_message": last_message_data,
-                        "unread_count": unread_messages.get(str(room_code), {}).get(
-                            "unread_count", 0
-                        ),
-                    }
-                )
-
-        # Sort rooms by last_message timestamp (most recent first)
-        rooms_with_messages.sort(
-            key=lambda room: room["last_message"].get("timestamp", datetime.min),
-            reverse=True,
-        )
-
-        return render_template(
-            "room.html",
-            code=code,
-            room_name=room_data["name"],
-            messages=room_data["messages"],
-            users=user_list,
-            username=username,
-            created_by=room_data["created_by"],
-            friends=friends_data,
-            room_data=room_data,
-            user_data=user_data,
-            rooms_with_messages=rooms_with_messages,
-        )
-
-    except Exception as e:
-        flash(f"Error loading room data: {str(e)}")
-        return redirect(url_for("home"))
-
-
-@app.route("/exit_room/<code>")
-@login_required
-def exit_room(code):
-    username = current_user.username
+@app.delete("/room/{room_code}/exit")
+async def exit_room(
+    room_code: str,
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
     user_data = users_collection.find_one({"username": username})
 
     # Verify the room exists
-    room_data = rooms_collection.find_one({"_id": code})
+    room_data = rooms_collection.find_one({"_id": room_code})
     if not room_data:
-        flash("Room does not exist.")
-        return redirect(url_for("home"))
+        raise HTTPException(status_code=404, detail="Room does not exist")
 
     # Verify user is not the room owner
     if room_data["created_by"] == username:
-        flash(
-            "Room owners cannot leave their own rooms. You must delete the room instead."
+        raise HTTPException(
+            status_code=400,
+            detail="Room owners cannot leave their own rooms. You must delete the room instead."
         )
-        return redirect(url_for("home"))
 
-    # Update user data
-    result = users_collection.update_one(
-        {"username": username},
-        {"$pull": {"rooms": code}, "$set": {"current_room": None}},
-    )
+    try:
+        # Update user data
+        users_collection.update_one(
+            {"username": username},
+            {"$pull": {"rooms": room_code}, "$set": {"current_room": None}}
+        )
 
-    # Always remove the user from the room's user list when exiting
-    rooms_collection.update_one({"_id": code}, {"$pull": {"users": username}})
+        # Remove user from room's user list
+        rooms_collection.update_one(
+            {"_id": room_code},
+            {"$pull": {"users": username}}
+        )
 
-    # Add system message about user leaving
-    system_message = {
-        "id": str(ObjectId()),
-        "name": "system",
-        "message": f"{username} has left the room",
-        "type": "system",
-        "read_by": room_data["users"],  # Mark as read by all current users
-    }
-    rooms_collection.update_one({"_id": code}, {"$push": {"messages": system_message}})
+        # Add system message about user leaving
+        system_message = {
+            "id": str(ObjectId()),
+            "name": "system",
+            "message": f"{username} has left the room",
+            "type": "system",
+            "read_by": room_data["users"],
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+        rooms_collection.update_one(
+            {"_id": room_code},
+            {"$push": {"messages": system_message}}
+        )
 
-    # Emit the system message to all users in the room
-    socketio.emit("message", system_message, to=code)
+        # Broadcast the system message through WebSocket
+        await manager.broadcast_to_room(room_code, system_message)
 
-    flash("You have left the room successfully.")
-    return redirect(url_for("home"))
+        return {"message": "Successfully left the room"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error exiting room: {str(e)}")
 
 
-@app.route("/update_room_name/<room_code>", methods=["POST"])
-@login_required
-def update_room_name(room_code):
-    username = current_user.username
-    new_name = request.form.get("room_name", "").strip()
+@app.put("/room/{room_code}/name")
+async def update_room_name(
+    room_code: str,
+    room_name: str = Form(...),
+    current_user: User = Depends(get_current_user)
+):
+    username = current_user["username"]
 
-    if not new_name:
-        flash("Room name cannot be empty.")
-        return redirect(url_for("room", code=room_code))
+    if not room_name.strip():
+        raise HTTPException(status_code=400, detail="Room name cannot be empty")
 
-    room_data = rooms_collection.find_one({f"_id": room_code})
-
+    room_data = rooms_collection.find_one({"_id": room_code})
     if not room_data:
-        flash("Room does not exist.")
-        return redirect(url_for("home"))
+        raise HTTPException(status_code=404, detail="Room does not exist")
 
     if room_data["created_by"] != username:
-        flash("You don't have permission to update this room's name.")
-        return redirect(url_for("room", code=room_code))
+        raise HTTPException(
+            status_code=403,
+            detail="You don't have permission to update this room's name"
+        )
 
-    # Update room name
-    rooms_collection.update_one({"_id": room_code}, {"$set": {"name": new_name}})
+    try:
+        rooms_collection.update_one(
+            {"_id": room_code},
+            {"$set": {"name": room_name.strip()}}
+        )
+        return {"message": "Room name updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating room name: {str(e)}")
 
-    flash("Room name updated successfully.")
-    return redirect(url_for("room", code=room_code))
 
-
-@app.route("/update_room_photo/<room_code>", methods=["POST"])
-@login_required
-def update_room_photo(room_code):
-    # Check if user is room owner
+@app.put("/room/{room_code}/photo")
+async def update_room_photo(
+    room_code: str,
+    photo: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    # Check if room exists
     room_data = rooms_collection.find_one({"_id": room_code})
-
     if not room_data:
-        return jsonify({"error": "Room not found"}), 404
+        raise HTTPException(status_code=404, detail="Room not found")
 
-    if "photo" not in request.files:
-        return jsonify({"error": "No photo provided"}), 400
-
-    photo = request.files["photo"]
-    if photo.filename == "":
-        return jsonify({"error": "No photo selected"}), 400
-
+    # Validate file type
     if not allowed_file(photo.filename):
-        return jsonify({"error": "Invalid file type"}), 400
+        raise HTTPException(status_code=400, detail="Invalid file type")
 
     try:
         # Delete existing room photo if it exists
         existing_photo_url = room_data.get("profile_photo")
         if existing_photo_url:
             try:
-                delete_firebase_image(existing_photo_url)
+                await delete_firebase_image(existing_photo_url)
             except Exception as e:
                 print(f"Error deleting existing room photo: {e}")
 
+        # Read the uploaded file
+        contents = await photo.read()
+        
         # Open the image using Pillow
-        img = Image.open(photo)
+        img = Image.open(io.BytesIO(contents))
 
         # Convert the image to webp
-        img = img.convert("RGB")  # Ensure it's in RGB mode for webp
-        img_byte_arr = io.BytesIO()  # Create a byte stream to save the image in memory
-        img.save(img_byte_arr, format="WEBP")  # Save as webp in the byte array
-        img_byte_arr.seek(0)  # Move to the beginning of the byte array
+        img = img.convert("RGB")
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format="WEBP")
+        img_byte_arr.seek(0)
 
-        # Generate unique filename using room code
+        # Generate unique filename
         filename = f"room_profile_photos/{room_code}.webp"
 
         # Upload to Firebase Storage
         bucket = storage.bucket()
         blob = bucket.blob(filename)
-        blob.content_type = "image/webp"  # Set content type to webp
+        blob.content_type = "image/webp"
 
-        # Upload the file from the byte array
+        # Upload the file from byte array
         blob.upload_from_file(img_byte_arr, content_type="image/webp")
-
-        # Make the blob publicly accessible
         blob.make_public()
 
         # Get the public URL
         photo_url = blob.public_url
 
-        # Update room document with new photo URL
+        # Update room document
         rooms_collection.update_one(
-            {"_id": room_code}, {"$set": {"profile_photo": photo_url}}
+            {"_id": room_code},
+            {"$set": {"profile_photo": photo_url}}
         )
 
-        return jsonify({"photo_url": photo_url}), 200
+        return {"photo_url": photo_url}
 
     except Exception as e:
-        print(f"Error uploading room photo: {e}")
-        return jsonify({"error": "Failed to upload photo"}), 500
-
+        raise HTTPException(status_code=500, detail=f"Error uploading photo: {str(e)}")
 
 @socketio.on("toggle_reaction")
 def handle_reaction(data):
