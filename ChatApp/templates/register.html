@@ -38,102 +38,90 @@
 
    <!-- Form Container -->
    <div class="form-container max-w-md w-full space-y-6 bg-white/80 dark:bg-gray-800/90 p-8 rounded-2xl shadow-2xl hover-scale">
-      <div>
-         <h2 class="mt-2 text-center text-3xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
-            Welcome
-         </h2>
-         <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Create an account
-         </p>
-      </div>
-
-      <!-- Validation Message -->
-      <div class="{{ bg_color }} {{ border_color }} {{ text_color }} border shadow-lg rounded-lg p-4 flex items-start space-x-2">
-         <!-- Icon -->
-         <svg class="h-6 w-6 {{ text_color }}" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-            {% if icon == 'check-circle' %}
-               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-            {% elif icon == 'x-circle' %}
-               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1.414-8l-2-2a1 1 0 011.414-1.414L10 8.586l2.293-2.293a1 1 0 011.414 1.414l-2 2 2.293 2.293a1 1 0 01-1.414 1.414L10 11.414l-2.293 2.293a1 1 0 01-1.414-1.414l2-2z" clip-rule="evenodd" />
-            {% else %}
-               <path fill-rule="evenodd" d="M18 10c0 4.418-3.582 8-8 8S2 14.418 2 10 5.582 2 10 2s8 3.582 8 8zm-8 1a1 1 0 110 2 1 1 0 010-2zm0-4a1 1 0 011 1v2a1 1 0 01-2 0V8a1 1 0 011-1z" clip-rule="evenodd" />
-            {% endif %}
-         </svg>
-         <!-- Message -->
-         <div>
-            <p class="font-medium">{{ message }}</p>
-         </div>
-      </div>
-
-      <!-- Form -->
-      <form class="mt-8 space-y-6" action="{{ url_for('register') }}" method="POST">
-         <!-- Username Field -->
-         <div>
-            <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Username
-            </label>
-            <input id="username" name="username" type="text" required
-               class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
-               placeholder="Enter username">
-            <!-- Username Requirements -->
-            <div class="mt-4 space-y-2">
-               <div class="flex items-center text-sm" id="username-chars">
-                  <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                     <span class="requirement-icon w-5 h-5 mr-2"></span>
-                     Only letters, numbers, dots, underscores, and hyphens
-                  </span>
-               </div>
-            </div>
-         </div>
-
-         <!-- Password Field -->
-         <div class="mt-6">
-            <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Password
-            </label>
-            <input id="password" name="password" type="password" required
-               class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
-               placeholder="Enter password">
-            <!-- Password Requirements -->
-            <div class="mt-4 space-y-2">
-               <div class="flex items-center text-sm" id="pass-length">
-                  <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                     <span class="requirement-icon w-5 h-5 mr-2"></span>
-                     At least 8 characters long
-                  </span>
-               </div>
-               <div class="flex items-center text-sm" id="pass-letter">
-                  <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                     <span class="requirement-icon w-5 h-5 mr-2"></span>
-                     Contains at least one letter
-                  </span>
-               </div>
-               <div class="flex items-center text-sm" id="pass-number">
-                  <span class="text-gray-500 dark:text-gray-400 flex items-center">
-                     <span class="requirement-icon w-5 h-5 mr-2"></span>
-                     Contains at least one number
-                  </span>
-               </div>
-            </div>
-         </div>
-
-         <button type="submit"
-            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
-         Create Account
-         </button>
-      </form>
-
-      <div class="text-center">
-         <p class="text-sm text-gray-600 dark:text-gray-400">Have an account?
-            <a href="{{ url_for('login') }}" 
-               class="font-medium text-indigo-600 dark:text-indigo-400 
-               hover:text-indigo-500 dark:hover:text-indigo-300 
-               transition-all duration-200">
-            Login
-            </a>
-         </p>
-      </div>
-   </div>
+    <div>
+       <h2 class="mt-2 text-center text-3xl font-extrabold bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+          Welcome
+       </h2>
+       <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+          Create an account
+       </p>
+    </div>
+ 
+    <!-- Validation Message -->
+    <div id="validation-message" class="hidden {{ bg_color }} {{ border_color }} {{ text_color }} border shadow-lg rounded-lg p-4 flex items-start space-x-2">
+       <!-- Icon -->
+       <svg class="h-6 w-6 {{ text_color }}" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path fill-rule="evenodd" d="M18 10c0 4.418-3.582 8-8 8S2 14.418 2 10 5.582 2 10 2s8 3.582 8 8zm-8 1a1 1 0 110 2 1 1 0 010-2zm0-4a1 1 0 011 1v2a1 1 0 01-2 0V8a1 1 0 011-1z" clip-rule="evenodd" />
+       </svg>
+       <!-- Message -->
+       <div>
+          <p id="error-message" class="font-medium"></p>
+       </div>
+    </div>
+ 
+    <!-- Form -->
+    <form class="mt-8 space-y-6" id="register-form">
+       <!-- Username Field -->
+       <div>
+          <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+             Username
+          </label>
+          <input id="username" name="username" type="text" required
+             class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+             placeholder="Enter username">
+       </div>
+ 
+       <!-- Password Field -->
+       <div class="mt-6">
+          <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+             Password
+          </label>
+          <input id="password" name="password" type="password" required
+             class="appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm dark:bg-gray-700"
+             placeholder="Enter password">
+       </div>
+ 
+       <button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200">
+          Create Account
+       </button>
+    </form>
+ 
+    <div class="text-center">
+       <p class="text-sm text-gray-600 dark:text-gray-400">Have an account?
+          <a href="{{ url_for('login') }}" 
+             class="font-medium text-indigo-600 dark:text-indigo-400 
+             hover:text-indigo-500 dark:hover:text-indigo-300 
+             transition-all duration-200">
+          Login
+          </a>
+       </p>
+    </div>
+ </div>
+ 
+ <script>
+    document.getElementById('register-form').addEventListener('submit', async function (event) {
+       event.preventDefault();
+       
+       const username = document.getElementById('username').value;
+       const password = document.getElementById('password').value;
+       
+       const response = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+       });
+ 
+       const data = await response.json();
+       
+       if (data.status === 'error') {
+          document.getElementById('validation-message').classList.remove('hidden');
+          document.getElementById('error-message').textContent = data.message;
+       } else {
+          window.location.href = '/login';  // Redirect to login page after successful registration
+       }
+    });
+ </script>
+ 
 
    <!-- Particles.js Script -->
    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>

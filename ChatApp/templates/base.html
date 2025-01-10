@@ -85,39 +85,46 @@
       </script>
       <!-- Heartbeat Logic for Server Connection -->
       <script>
-         let heartbeatInterval;
-         
-         function sendHeartbeat() {
-             fetch("/heartbeat", {
-                 method: "POST",
-                 headers: { "Content-Type": "application/json" },
-             })
-                 .then((response) => {
-                     if (!response.ok) console.error("Heartbeat failed");
-                 })
-                 .catch((error) => console.error("Error:", error));
-         }
-         
-         function startHeartbeat() {
-             sendHeartbeat();
-             console.log("Initial heartbeat sent!");
-             heartbeatInterval = setInterval(sendHeartbeat, 4 * 60 * 1000); // Every 4 minutes
-         }
-         
-         function stopHeartbeat() {
-             clearInterval(heartbeatInterval);
-             fetch("/stop_heartbeat", {
-                 method: "POST",
-                 headers: { "Content-Type": "application/json" },
-             })
-                 .then((response) => {
-                     if (!response.ok) console.error("Failed to stop heartbeat");
-                 })
-                 .catch((error) => console.error("Error:", error));
-         }
-         
-         startHeartbeat();
-         window.addEventListener("beforeunload", stopHeartbeat);
+        function sendHeartbeat() {
+            // Get the stored token from localStorage (or wherever you store it)
+            const token = localStorage.getItem("authToken"); // Replace 'authToken' with your actual token key
+    
+            // Send the heartbeat request with the token in the Authorization header
+            fetch("/heartbeat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`, // Add token to Authorization header
+                },
+            })
+            .then((response) => {
+                if (!response.ok) console.error("Heartbeat failed");
+            })
+            .catch((error) => console.error("Error:", error));
+        }
+    
+        function startHeartbeat() {
+            sendHeartbeat();
+            console.log("Initial heartbeat sent!");
+            heartbeatInterval = setInterval(sendHeartbeat, 4 * 60 * 1000); // Every 4 minutes
+        }
+    
+        function stopHeartbeat() {
+            clearInterval(heartbeatInterval);
+            fetch("/stop_heartbeat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+            .then((response) => {
+                if (!response.ok) console.error("Failed to stop heartbeat");
+            })
+            .catch((error) => console.error("Error:", error));
+        }
+    
+        startHeartbeat();
+        window.addEventListener("beforeunload", stopHeartbeat);
       </script>
    </body>
 </html>
