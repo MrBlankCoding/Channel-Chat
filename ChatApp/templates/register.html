@@ -97,31 +97,6 @@
        </p>
     </div>
  </div>
- 
- <script>
-    document.getElementById('register-form').addEventListener('submit', async function (event) {
-       event.preventDefault();
-       
-       const username = document.getElementById('username').value;
-       const password = document.getElementById('password').value;
-       
-       const response = await fetch('/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-       });
- 
-       const data = await response.json();
-       
-       if (data.status === 'error') {
-          document.getElementById('validation-message').classList.remove('hidden');
-          document.getElementById('error-message').textContent = data.message;
-       } else {
-          window.location.href = '/login';  // Redirect to login page after successful registration
-       }
-    });
- </script>
- 
 
    <!-- Particles.js Script -->
    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>

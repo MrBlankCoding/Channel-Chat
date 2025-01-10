@@ -309,48 +309,71 @@ async def login(
         context["message"] = "An error occurred during login"
         return templates.TemplateResponse("login.html", context)
 
-@app.post("/register", response_model=User)
-async def register_user(user: UserCreate):
-    # Validate username format
-    if not re.match(r"^[a-zA-Z0-9_.-]+$", user.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid username format"
-        )
+@app.route("/register", methods=["GET", "POST"])
+async def register(request: Request):
+    context = {"request": request, "message": None}
 
-    # Validate password strength
-    if len(user.password) < 8:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long"
-        )
-    if not re.search(r"[a-zA-Z]", user.password) or not re.search(r"\d", user.password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must contain both letters and numbers"
-        )
+    # Handle GET request (display form)
+    if request.method == "GET":
+        return templates.TemplateResponse("register.html", context)
 
-    existing_user = await users_collection.find_one({"username": user.username})
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
-        )
+    # Handle POST request (form submission)
+    try:
+        form = await request.form()
+        username = form.get("username")
+        password = form.get("password")
+        confirm_password = form.get("confirm_password")
 
-    user_data = user.dict()
-    user_data["hashed_password"] = get_password_hash(user.password)
-    del user_data["password"]
-    user_data.update({
-        "friends": [],
-        "friend_requests": [],
-        "current_room": None,
-        "online": False,
-        "rooms": [],
-        "disabled": False,
-    })
+        # Validate form inputs
+        if not username or not password or not confirm_password:
+            context["message"] = "All fields are required."
+            return templates.TemplateResponse("register.html", context)
 
-    await users_collection.insert_one(user_data)
-    return User(**user_data)
+        if password != confirm_password:
+            context["message"] = "Passwords do not match."
+            return templates.TemplateResponse("register.html", context)
+
+        # Validate username format
+        if not re.match(r"^[a-zA-Z0-9_.-]+$", username):
+            context["message"] = "Invalid username format."
+            return templates.TemplateResponse("register.html", context)
+
+        # Validate password strength
+        if len(password) < 8:
+            context["message"] = "Password must be at least 8 characters long."
+            return templates.TemplateResponse("register.html", context)
+
+        if not re.search(r"[a-zA-Z]", password) or not re.search(r"\d", password):
+            context["message"] = "Password must contain both letters and numbers."
+            return templates.TemplateResponse("register.html", context)
+
+        # Check if username already exists
+        existing_user = await users_collection.find_one({"username": username})
+        if existing_user:
+            context["message"] = "Username already registered."
+            return templates.TemplateResponse("register.html", context)
+
+        # Create and store the new user
+        hashed_password = get_password_hash(password)
+        user_data = {
+            "username": username,
+            "hashed_password": hashed_password,
+            "friends": [],
+            "friend_requests": [],
+            "current_room": None,
+            "online": False,
+            "rooms": [],
+            "disabled": False,
+        }
+
+        await users_collection.insert_one(user_data)
+
+        # Redirect to login page after successful registration
+        return RedirectResponse(url="/login", status_code=status.HTTP_302_FOUND)
+
+    except Exception as e:
+        context["message"] = "An error occurred during registration."
+        return templates.TemplateResponse("register.html", context)
 
 @app.post("/logout")
 async def logout(user: User = Depends(manager)):
@@ -714,42 +737,55 @@ async def decline_friend(username: str, current_user: User = Depends(get_current
 
     raise HTTPException(status_code=404, detail="No friend request found")
 
+@app.route("/", methods=["GET"])
+async def home(request: Request, current_user: User = Depends(get_current_user)):
+    context = {"request": request, "message": None}
 
-@app.get("/")
-async def home(current_user: User = Depends(get_current_user)):
-    username = current_user["username"]
+    try:
+        # Get current user's username
+        username = current_user["username"]
 
-    user_data = users_collection.find_one({"username": username})
-    if not user_data:
-        user_data = {
-            "username": username,
-            "rooms": [],
-            "friends": [],
-            "friend_requests": [],
-            "online": True,
-            "current_room": None,
-        }
-        users_collection.insert_one(user_data)
+        # Fetch user data or initialize it if not found
+        user_data = await users_collection.find_one({"username": username})
+        if not user_data:
+            user_data = {
+                "username": username,
+                "rooms": [],
+                "friends": [],
+                "friend_requests": [],
+                "online": True,
+                "current_room": None,
+            }
+            await users_collection.insert_one(user_data)
 
-    # Get friends data with online status and current rooms
-    friends_data = []
-    for friend in user_data.get("friends", []):
-        friend_data = users_collection.find_one({"username": friend})
-        if friend_data:
-            friends_data.append(
-                {
-                    "username": friend,
-                    "online": friend_data.get("online", False),
-                    "current_room": friend_data.get("current_room"),
-                }
-            )
+        # Get friends data with online status and current rooms
+        friends_data = []
+        for friend in user_data.get("friends", []):
+            friend_data = await users_collection.find_one({"username": friend})
+            if friend_data:
+                friends_data.append(
+                    {
+                        "username": friend,
+                        "online": friend_data.get("online", False),
+                        "current_room": friend_data.get("current_room"),
+                    }
+                )
 
-    return {
-        "username": username,
-        "user_data": user_data,
-        "friends": friends_data,
-        "friend_requests": user_data.get("friend_requests", []),
-    }
+        # Prepare context for rendering
+        context.update(
+            {
+                "username": username,
+                "user_data": user_data,
+                "friends": friends_data,
+                "friend_requests": user_data.get("friend_requests", []),
+            }
+        )
+
+        return templates.TemplateResponse("homepage.html", context)
+
+    except Exception as e:
+        context["message"] = "An error occurred while loading the homepage."
+        return templates.TemplateResponse("homepage.html", context)
 
 
 @app.post("/notification-settings")
@@ -2242,18 +2278,12 @@ async def mark_messages_read(
     return {"success": True, "modified_count": result.modified_count}
 
 
-@app.post("/update_timezone")
-async def update_timezone(
-    timezone_data: Dict[str, str], current_user: User = Depends(get_current_user)
-):
-    timezone_str = timezone_data.get("timezone")
-    if timezone_str in pytz.all_timezones:
-        users_collection.update_one(
-            {"username": current_user["username"]}, {"$set": {"timezone": timezone_str}}
-        )
-        return {"status": "success"}
-    raise HTTPException(status_code=400, detail="Invalid timezone")
-
+@app.get("/get_timezone")
+async def get_timezone(current_user: User = Depends(get_current_user)):
+    user = users_collection.find_one({"username": current_user["username"]})
+    if user and "timezone" in user:
+        return {"timezone": user["timezone"]}
+    return {"timezone": None}  # Return None if no timezone is set
 
 # Tenor API routes
 TENOR_API_KEY = os.getenv("TENOR_API_KEY")

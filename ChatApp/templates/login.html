@@ -239,43 +239,58 @@
    </script>
    <script>
     const syncTimezone = async () => {
-        // Get browser timezone
         const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        
-        // Check localStorage first
+
+        // Get stored timezone and token
         const storedTimezone = localStorage.getItem('userTimezone');
-        
-        // Get the stored token from localStorage or wherever you store it
-        const token = localStorage.getItem('authToken');  // Replace 'authToken' with your actual token key
-        
-        // Only update if timezone has changed or isn't stored
-        if (storedTimezone !== browserTimezone) {
-            try {
-                const response = await fetch('/update_timezone', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`,  // Add token to Authorization header
-                    },
-                    body: JSON.stringify({ timezone: browserTimezone }),
-                });
-                
+        const token = localStorage.getItem('authToken'); // Replace with your actual token key
+
+        try {
+            // Fetch user's timezone from the server
+            const response = await fetch('/get_timezone', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`, // Add token to Authorization header
+                },
+            });
+
+            if (response.ok) {
                 const data = await response.json();
-                
-                if (data.status === 'success') {
-                    localStorage.setItem('userTimezone', browserTimezone);
-                } else {
-                    console.error('Failed to update timezone:', data.message);
+                const serverTimezone = data.timezone;
+
+                // Compare server timezone, browser timezone, and localStorage
+                if (serverTimezone !== browserTimezone) {
+                    // Update server if browser timezone differs
+                    const updateResponse = await fetch('/update_timezone', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({ timezone: browserTimezone }),
+                    });
+
+                    const updateData = await updateResponse.json();
+
+                    if (updateData.status === 'success') {
+                        localStorage.setItem('userTimezone', browserTimezone);
+                    } else {
+                        console.error('Failed to update timezone:', updateData.message);
+                    }
+                } else if (!storedTimezone || storedTimezone !== serverTimezone) {
+                    // Sync localStorage with server timezone
+                    localStorage.setItem('userTimezone', serverTimezone);
                 }
-            } catch (error) {
-                console.error('Error syncing timezone:', error);
+            } else {
+                console.error('Failed to fetch timezone:', response.statusText);
             }
+        } catch (error) {
+            console.error('Error syncing timezone:', error);
         }
     };
-    
 
-// Call on page load
-document.addEventListener('DOMContentLoaded', syncTimezone);
+    // Call on page load
+    document.addEventListener('DOMContentLoaded', syncTimezone);
 </script>
 </div>
 {% endblock %}
